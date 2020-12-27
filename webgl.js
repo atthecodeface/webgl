@@ -8,14 +8,14 @@ function main() {
 
  const vsSource = `
     attribute vec4 aVertexPosition;
-    uniform mat4 uModelViewMatrix;
+    uniform mat4 uModelMatrix;
     uniform mat4 uCameraMatrix;
     uniform mat4 uProjectionMatrix;
     varying vec4 color_pos;
     void main() {
       color_pos = aVertexPosition;
       vec4 world_pos;
-      world_pos = uModelViewMatrix * aVertexPosition;
+      world_pos = uModelMatrix * aVertexPosition;
       gl_Position = uProjectionMatrix * uCameraMatrix * world_pos;
     }
   `;
@@ -38,7 +38,7 @@ function main() {
     uniformLocations: {
       projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
       cameraMatrix:     gl.getUniformLocation(shaderProgram, 'uCameraMatrix'),
-      modelViewMatrix:  gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
+      modelMatrix:  gl.getUniformLocation(shaderProgram, 'uModelMatrix'),
     },
   };
 
@@ -75,9 +75,6 @@ function initBuffers(gl) {
   };
 }
 
-//
-// Draw the scene.
-//
 function drawScene(gl, programInfo, buffers, time) {
   gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
   gl.clearDepth(1.0);                 // Clear everything
@@ -85,13 +82,6 @@ function drawScene(gl, programInfo, buffers, time) {
   gl.depthFunc(gl.LEQUAL);            // Near things obscure far things
 
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-  // Create a perspective matrix, a special matrix that is
-  // used to simulate the distortion of perspective in a camera.
-  // Our field of view is 45 degrees, with a width/height
-  // ratio that matches the display size of the canvas
-  // and we only want to see objects between 0.1 units
-  // and 100 units away from the camera.
 
   const fieldOfView = 45 * Math.PI / 180;   // in radians
   const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
@@ -104,16 +94,7 @@ function drawScene(gl, programInfo, buffers, time) {
   const cameraMatrix = mat4.create();
   mat4.translate(cameraMatrix,     // destination matrix
                  cameraMatrix,     // matrix to translate
-                 [-0.0, 0.0, -6.0]);  // amount to translate
-
-  const modelViewMatrix = mat4.create();
-  const axis1 = vec3.create();
-  const axis2 = vec3.create();
-  vec3.set(axis1,0.,1.,0.);
-  vec3.set(axis2,1.,0.,0.);
-  mat4.translate(modelViewMatrix, modelViewMatrix, [0.0, 0.0, 1.0]);
-  mat4.rotate(modelViewMatrix, modelViewMatrix, time*0.13, axis2 );
-  mat4.rotate(modelViewMatrix, modelViewMatrix, time*0.1, axis1 );
+                 [-0.0, 0.0, -10.0]);  // amount to translate
 
   // Tell WebGL how to pull out the positions from the position
   // buffer into the vertexPosition attribute.
@@ -139,12 +120,22 @@ function drawScene(gl, programInfo, buffers, time) {
         programInfo.attribLocations.vertexPosition);
   }
 
-    gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, modelViewMatrix);
-  {
-    const offset = 0;
-    const vertexCount = 8;
-    gl.drawArrays(gl.TRIANGLE_STRIP, offset, vertexCount);
-  }
+  const axis1 = vec3.create();
+  const axis2 = vec3.create();
+  vec3.set(axis1,0.,1.,0.);
+  vec3.set(axis2,1.,0.,0.);
+  var modelMatrix = mat4.create();
+  mat4.translate(modelMatrix, modelMatrix, [3.0, 0.0, 0.0]);
+  mat4.rotate(modelMatrix, modelMatrix, time*0.13, axis2 );
+  mat4.rotate(modelMatrix, modelMatrix, time*0.1, axis1 );
+  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 8);
+  modelMatrix = mat4.create();
+  mat4.translate(modelMatrix, modelMatrix, [3.0, 3.0, 0.0]);
+  mat4.rotate(modelMatrix, modelMatrix, time*0.13, axis2 );
+  mat4.rotate(modelMatrix, modelMatrix, time*0.1, axis1 );
+  gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 8);
 }
 
 //
