@@ -10,7 +10,8 @@ function main() {
   }
 
  const vsSource = `
-    attribute vec4 aVertexPosition;
+    attribute vec3 aVertexPosition;
+    attribute vec4 aVertexWeights;
     uniform mat4 uModelMatrix;
     uniform mat4 uCameraMatrix;
     uniform mat4 uProjectionMatrix;
@@ -19,9 +20,8 @@ function main() {
     varying vec3 color_pos;
     void main() {
       color_pos = vec3(aVertexPosition.x,aVertexPosition.y,aVertexPosition.z);
-      mat4 weightedMatrix = (uBonesMatrices[0] * aVertexPosition.w) + (uBonesMatrices[1] * (1.0-aVertexPosition.w));
-      vec4 model_pos = aVertexPosition;
-      model_pos.w = 1.0;
+      mat4 weightedMatrix = (uBonesMatrices[0] * aVertexWeights.x) + (uBonesMatrices[1] * aVertexWeights.y);
+      vec4 model_pos = vec4(aVertexPosition.x, aVertexPosition.y, aVertexPosition.z, 1.0);
       model_pos = weightedMatrix * model_pos;
       model_pos.w = 1.0;
       vec4 world_pos;
@@ -44,6 +44,7 @@ function main() {
     program: shaderProgram,
     attribLocations: {
       vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+      vertexWeights:  gl.getAttribLocation(shaderProgram, 'aVertexWeights'),
     },
     uniformLocations: {
       projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
@@ -148,24 +149,38 @@ function initBuffers(gl) {
     // strip
     // 3, 2, 1, 0, 4, 2, 6, 7, 4, 5, 1, 7, 3, 2
   const positions = [
-      1.0,  1.0, 1.0,     1.0,
-      -1.0,  1.0, 1.0,    1.0,
-      1.0, -1.0, 1.0,     1.0,
-      -1.0, -1.0, 1.0,    1.0,
-      1.0,  1.0, -1.0,    0.0,
-      -1.0,  1.0, -1.0,   0.0,
-      1.0, -1.0, -1.0,    0.0,
-      -1.0, -1.0, -1.0,   0.0,
+      1.0,  1.0, 1.0, 
+      -1.0,  1.0, 1.0,
+      1.0, -1.0, 1.0, 
+      -1.0, -1.0, 1.0,
+      1.0,  1.0, -1.0,
+      -1.0,  1.0, -1.0,
+      1.0, -1.0, -1.0,
+      -1.0, -1.0, -1.0,
+  ];
+  const weights = [
+      1., 0., 0., 0.,
+      1., 0., 0., 0.,
+      1., 0., 0., 0.,
+      1., 0., 0., 0.,
+      0., 1., 0., 0.,
+      0., 1., 0., 0.,
+      0., 1., 0., 0.,
+      0., 1., 0., 0.,
   ];
   const indices = [3, 2, 1, 0, 4, 2, 6, 7, 4, 5, 1, 7, 3, 2];
   const positionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+  const weightBuffer  = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, weightBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(weights), gl.STATIC_DRAW);
   const indexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint8Array(indices), gl.STATIC_DRAW);
   return {
     position: positionBuffer,
+    weight:   weightBuffer,
     index:    indexBuffer,
   };
 }
@@ -216,10 +231,15 @@ function drawScene(gl, programInfo, buffers, time, bones) {
     for (var i=0; i<16; i++) {mymatrix[16+i] = bones[1].animated_mtm[i];}
   gl.uniformMatrix4fv(programInfo.uniformLocations.bonelMatrices, false, mymatrix);    
 
-  gl.bindBuffer(gl.ARRAY_BUFFER,         buffers.position);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.index);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER,         buffers.position);
   gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-  gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 4, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER,         buffers.weight);
+  gl.enableVertexAttribArray(programInfo.attribLocations.vertexWeights);
+  gl.vertexAttribPointer(programInfo.attribLocations.vertexWeights, 4, gl.FLOAT, false, 0, 0);
 
   const axis1 = vec3.create();
   const axis2 = vec3.create();
