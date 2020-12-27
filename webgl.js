@@ -88,6 +88,12 @@ class Bone {
         this.animated_btm = mat4.create(); // bone to mesh
         this.animated_mtm = mat4.create(); // mesh to animated mesh
     }
+    quaternion_from_rest(quaternion) {
+        quat.multiply(this.quaternion, quaternion, this.quaternion_rest);
+    }
+    translate_from_rest(trans) {
+        vec3.add(this.translation, trans, this.translation_rest);
+    }
     derive_matrices() {
         mat4.fromQuat(this.btp, this.quaternion);
         mat4.add(this.btp, this.btp, mat4.fromTranslation(mat4.create(),this.translation));
@@ -101,7 +107,7 @@ class Bone {
         if (this.parent == null) {
             mat4.copy(this.mtb_rest, this.ptb);
         } else {
-            mat4.multiply(this.mtb_rest, this.ptb, parent.mtb_rest);
+            mat4.multiply(this.mtb_rest, this.ptb, this.parent.mtb_rest);
         }
         for (const c of this.children) {
             c.derive_at_rest();
@@ -113,7 +119,7 @@ class Bone {
         if (this.parent == null) {
             mat4.copy(this.animated_btm, this.btp);
         } else {
-            mat4.multiply(this.animated_btm, parent.animated_btm, this.btp);
+            mat4.multiply(this.animated_btm, this.parent.animated_btm, this.btp);
         }
         mat4.multiply(this.animated_mtm, this.animated_btm, this.mtb_rest);
         for (const c of this.children) {
@@ -122,12 +128,13 @@ class Bone {
     }
 }
 var time=0.0;
+function run_animation(gl, programInfo, buffers) {
 a = new Bone(null);
 b = new Bone(a);
 a.derive_at_rest();
-a.derive_animation();
-function run_animation(gl, programInfo, buffers) {
-    step_animation = function() {drawScene(gl, programInfo, buffers, time); time+=0.1; requestAnimationFrame(step_animation);}
+    a.derive_animation();
+    bones = [a,b];
+    step_animation = function() {drawScene(gl, programInfo, buffers, time, bones); time+=0.1; requestAnimationFrame(step_animation);}
     requestAnimationFrame(step_animation);
 }
 
@@ -163,11 +170,13 @@ function initBuffers(gl) {
   };
 }
 
-function drawScene(gl, programInfo, buffers, time) {
+function drawScene(gl, programInfo, buffers, time, bones) {
   gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
   gl.clearDepth(1.0);                 // Clear everything
   gl.enable(gl.DEPTH_TEST);           // Enable depth testing
-  gl.depthFunc(gl.LEQUAL);            // Near things obscure far things
+    gl.depthFunc(gl.LEQUAL);            // Near things obscure far things
+//    gl.enable(gl.CULL_FACE);
+    gl.cullFace(gl.BACK);
 
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -191,20 +200,20 @@ function drawScene(gl, programInfo, buffers, time) {
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix,false, projectionMatrix);
   gl.uniformMatrix4fv(programInfo.uniformLocations.cameraMatrix, false, cameraMatrix);
 
-  const boneMatrix = mat4.create();
-  // boneMatrix
     const mymatrix = Array(64);
+    const q = quat.create();
     const angle=Math.sin(time)*0.3;
-    mymatrix[0] = 1.0;
-    mymatrix[5] = 1.0;
-    mymatrix[10] = 1.0;
-    mymatrix[15] = 1.0;
-    mymatrix[16+0] = Math.cos(angle);
-    mymatrix[16+1] = Math.sin(angle);
-    mymatrix[16+4] = -Math.sin(angle);
-    mymatrix[16+5] = Math.cos(angle);
-    mymatrix[16+10] = 1.0;
-    mymatrix[16+15] = 1.0;
+    quat.identity(q);
+    // bones[0].translate_from_rest(vec3.set(vec3.create(),0.,angle*5,0.));
+    bones[0].translate_from_rest(vec3.set(vec3.create(),0.,0.,0.));
+    bones[0].quaternion_from_rest(q);
+    quat.identity(q);
+    quat.rotateZ(q,q,angle);
+    bones[1].translate_from_rest(vec3.set(vec3.create(),0.,0.,-angle*5));
+    bones[1].quaternion_from_rest(q);
+    bones[0].derive_animation();
+    mat4.copy(mymatrix, bones[0].animated_mtm);
+    for (var i=0; i<16; i++) {mymatrix[16+i] = bones[1].animated_mtm[i];}
   gl.uniformMatrix4fv(programInfo.uniformLocations.bonelMatrices, false, mymatrix);    
 
   gl.bindBuffer(gl.ARRAY_BUFFER,         buffers.position);
@@ -218,7 +227,7 @@ function drawScene(gl, programInfo, buffers, time) {
   vec3.set(axis2,1.,0.,0.);
   var modelMatrix = mat4.create();
   const scale = vec4.create();
-    vec3.set(scale,0.5,0.5,0.5,1.0);
+  vec3.set(scale,0.5,0.5,0.5,1.0);
   mat4.translate(modelMatrix, modelMatrix, [3.0, 0.0, 0.0]);
   mat4.rotate(modelMatrix, modelMatrix, time*0.13, axis2 );
   mat4.rotate(modelMatrix, modelMatrix, time*0.1, axis1 );
