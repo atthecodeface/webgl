@@ -14,18 +14,25 @@ function main() {
     uniform mat4 uModelMatrix;
     uniform mat4 uCameraMatrix;
     uniform mat4 uProjectionMatrix;
-    varying vec4 color_pos;
+
+    uniform mat4 uBonesMatrices[4];
+    varying vec3 color_pos;
     void main() {
-      color_pos = aVertexPosition;
+      color_pos = vec3(aVertexPosition.x,aVertexPosition.y,aVertexPosition.z);
+      mat4 weightedMatrix = (uBonesMatrices[0] * aVertexPosition.w) + (uBonesMatrices[1] * (1.0-aVertexPosition.w));
+      vec4 model_pos = aVertexPosition;
+      model_pos.w = 1.0;
+      model_pos = weightedMatrix * model_pos;
+      model_pos.w = 1.0;
       vec4 world_pos;
-      world_pos = uModelMatrix * aVertexPosition;
+      world_pos = uModelMatrix * model_pos;
       gl_Position = uProjectionMatrix * uCameraMatrix * world_pos;
     }
   `;
 
   const fsSource = `
     precision mediump float;
-    varying vec4 color_pos;
+    varying vec3 color_pos;
     void main() {
       gl_FragColor = vec4(color_pos.x/2.0+0.5, color_pos.y/2.0+0.5, color_pos.z/2.0+0.5, 1.0);
     }
@@ -41,14 +48,84 @@ function main() {
     uniformLocations: {
       projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
       cameraMatrix:     gl.getUniformLocation(shaderProgram, 'uCameraMatrix'),
-      modelMatrix:  gl.getUniformLocation(shaderProgram, 'uModelMatrix'),
+      modelMatrix:      gl.getUniformLocation(shaderProgram, 'uModelMatrix'),
+      bonelMatrices:    gl.getUniformLocation(shaderProgram, 'uBonesMatrices'),
     },
   };
 
   const buffers = initBuffers(gl);
-    run_animation(gl, programInfo, buffers);
+  run_animation(gl, programInfo, buffers);
+}
+class Bone {
+    // The bone has an origin relative to its parent
+    // and it has a quaternion that represents the scale and change in orientation of its contents/children
+    // A point in this bone's space is then translate(rotate(scale(pt))) in its parent's space
+    // From this the bone has a local bone-to-parent transform matrix
+    // and it has a local parent-to-bone transform matrix
+    // At rest (where a mesh is skinned) there are two rest matrix variants
+    // Hence bone_relative = ptb * parent_relative
+    // The skinned mesh has points that are parent relative, so
+    // animated_parent_relative(t) = btp(t) * ptb * parent_relative(skinned)
+    // For a chain of bones Root -> A -> B -> C
+    // bone_relative = C.ptb * B.ptb * A.ptb * mesh
+    // root = A.btp * B.btp * C.btp * C_bone_relative
+    // animated(t) = A.btp(t) * B.btp(t) * C.btp(t) * C.ptb * B.ptb * A.ptb * mesh
+    constructor(parent) {
+        this.parent = parent;
+        if (parent != null) {
+            parent.children.push(this);
+        }
+        this.children = new Array();
+        this.translation = vec3.create();
+        this.quaternion = quat.create();
+        quat.identity(this.quaternion);
+        this.btp = mat4.create(); // derived from translation and quaternion
+        this.ptb = mat4.create();
+        this.translation_rest = vec3.create();
+        this.quaternion_rest = quat.create();
+        this.ptb_rest = mat4.create();
+        this.mtb_rest = mat4.create(); // mesh to bone
+        this.animated_btm = mat4.create(); // bone to mesh
+        this.animated_mtm = mat4.create(); // mesh to animated mesh
+    }
+    derive_matrices() {
+        mat4.fromQuat(this.btp, this.quaternion);
+        mat4.add(this.btp, this.btp, mat4.fromTranslation(mat4.create(),this.translation));
+        mat4.invert(this.ptb, this.btp);
+    }
+    derive_at_rest() {
+        this.derive_matrices();
+        vec3.copy(this.translation_rest, this.translation);
+        quat.copy(this.quaternion_rest, this.quaternion);
+        mat4.copy(this.ptb_rest, this.ptb);
+        if (this.parent == null) {
+            mat4.copy(this.mtb_rest, this.ptb);
+        } else {
+            mat4.multiply(this.mtb_rest, this.ptb, parent.mtb_rest);
+        }
+        for (const c of this.children) {
+            c.derive_at_rest();
+        }
+    }
+    derive_animation() {
+        mat4.fromQuat(this.btp, this.quaternion);
+        mat4.add(this.btp, this.btp, mat4.fromTranslation(mat4.create(),this.translation));
+        if (this.parent == null) {
+            mat4.copy(this.animated_btm, this.btp);
+        } else {
+            mat4.multiply(this.animated_btm, parent.animated_btm, this.btp);
+        }
+        mat4.multiply(this.animated_mtm, this.animated_btm, this.mtb_rest);
+        for (const c of this.children) {
+            c.derive_animation();
+        }
+    }
 }
 var time=0.0;
+a = new Bone(null);
+b = new Bone(a);
+a.derive_at_rest();
+a.derive_animation();
 function run_animation(gl, programInfo, buffers) {
     step_animation = function() {drawScene(gl, programInfo, buffers, time); time+=0.1; requestAnimationFrame(step_animation);}
     requestAnimationFrame(step_animation);
@@ -64,14 +141,14 @@ function initBuffers(gl) {
     // strip
     // 3, 2, 1, 0, 4, 2, 6, 7, 4, 5, 1, 7, 3, 2
   const positions = [
-      1.0,  1.0, 1.0,
-      -1.0,  1.0, 1.0,
-      1.0, -1.0, 1.0,
-      -1.0, -1.0, 1.0,
-      1.0,  1.0, -1.0,
-      -1.0,  1.0, -1.0,
-      1.0, -1.0, -1.0,
-      -1.0, -1.0, -1.0,
+      1.0,  1.0, 1.0,     1.0,
+      -1.0,  1.0, 1.0,    1.0,
+      1.0, -1.0, 1.0,     1.0,
+      -1.0, -1.0, 1.0,    1.0,
+      1.0,  1.0, -1.0,    0.0,
+      -1.0,  1.0, -1.0,   0.0,
+      1.0, -1.0, -1.0,    0.0,
+      -1.0, -1.0, -1.0,   0.0,
   ];
   const indices = [3, 2, 1, 0, 4, 2, 6, 7, 4, 5, 1, 7, 3, 2];
   const positionBuffer = gl.createBuffer();
@@ -114,19 +191,38 @@ function drawScene(gl, programInfo, buffers, time) {
   gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix,false, projectionMatrix);
   gl.uniformMatrix4fv(programInfo.uniformLocations.cameraMatrix, false, cameraMatrix);
 
+  const boneMatrix = mat4.create();
+  // boneMatrix
+    const mymatrix = Array(64);
+    const angle=Math.sin(time)*0.3;
+    mymatrix[0] = 1.0;
+    mymatrix[5] = 1.0;
+    mymatrix[10] = 1.0;
+    mymatrix[15] = 1.0;
+    mymatrix[16+0] = Math.cos(angle);
+    mymatrix[16+1] = Math.sin(angle);
+    mymatrix[16+4] = -Math.sin(angle);
+    mymatrix[16+5] = Math.cos(angle);
+    mymatrix[16+10] = 1.0;
+    mymatrix[16+15] = 1.0;
+  gl.uniformMatrix4fv(programInfo.uniformLocations.bonelMatrices, false, mymatrix);    
+
   gl.bindBuffer(gl.ARRAY_BUFFER,         buffers.position);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.index);
   gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-  gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 4, gl.FLOAT, false, 0, 0);
 
   const axis1 = vec3.create();
   const axis2 = vec3.create();
   vec3.set(axis1,0.,1.,0.);
   vec3.set(axis2,1.,0.,0.);
   var modelMatrix = mat4.create();
+  const scale = vec4.create();
+    vec3.set(scale,0.5,0.5,0.5,1.0);
   mat4.translate(modelMatrix, modelMatrix, [3.0, 0.0, 0.0]);
   mat4.rotate(modelMatrix, modelMatrix, time*0.13, axis2 );
   mat4.rotate(modelMatrix, modelMatrix, time*0.1, axis1 );
+    mat4.scale(modelMatrix, modelMatrix, scale);
   gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
   gl.drawElements(gl.TRIANGLE_STRIP, 14, gl.UNSIGNED_BYTE, 0);
   modelMatrix = mat4.create();
