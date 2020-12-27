@@ -1,3 +1,6 @@
+// a skinned mesh vertex is a vec3 and an array of N influences for N bones
+// Each bone derives a mat4.
+// PosedVertex = Sum(Influence[n] * BoneMat4[n]) * RestVertex
 function main() {
   const canvas = document.querySelector("#glcanvas");
   const gl     = canvas.getContext("webgl");
@@ -52,9 +55,14 @@ function run_animation(gl, programInfo, buffers) {
 }
 
 function initBuffers(gl) {
-  const positionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 
+    // cube front face   back face (as seen from front)
+    //        1    0        5   4
+    //        3    2        7   6
+    // triangles (anticlockwise for first)
+    //  3.2.1 2.1.0 1.0.4 0.4.2 4.2.6 2.6.7 6.7.4 7.4.5 4.5.1 5.1.7 1.7.3 7.3.2
+    // strip
+    // 3, 2, 1, 0, 4, 2, 6, 7, 4, 5, 1, 7, 3, 2
   const positions = [
       1.0,  1.0, 1.0,
       -1.0,  1.0, 1.0,
@@ -65,13 +73,16 @@ function initBuffers(gl) {
       1.0, -1.0, -1.0,
       -1.0, -1.0, -1.0,
   ];
-
-  gl.bufferData(gl.ARRAY_BUFFER,
-                new Float32Array(positions),
-                gl.STATIC_DRAW);
-
+  const indices = [3, 2, 1, 0, 4, 2, 6, 7, 4, 5, 1, 7, 3, 2];
+  const positionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+  const indexBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint8Array(indices), gl.STATIC_DRAW);
   return {
     position: positionBuffer,
+    index:    indexBuffer,
   };
 }
 
@@ -100,25 +111,13 @@ function drawScene(gl, programInfo, buffers, time) {
   // buffer into the vertexPosition attribute.
   gl.useProgram(programInfo.program);
 
-    gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix,false, projectionMatrix);
-    gl.uniformMatrix4fv(programInfo.uniformLocations.cameraMatrix, false, cameraMatrix);
-  {
-    const numComponents = 3;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
-    gl.vertexAttribPointer(
-        programInfo.attribLocations.vertexPosition,
-        numComponents,
-        type,
-        normalize,
-        stride,
-        offset);
-    gl.enableVertexAttribArray(
-        programInfo.attribLocations.vertexPosition);
-  }
+  gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix,false, projectionMatrix);
+  gl.uniformMatrix4fv(programInfo.uniformLocations.cameraMatrix, false, cameraMatrix);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER,         buffers.position);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.index);
+  gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+  gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
 
   const axis1 = vec3.create();
   const axis2 = vec3.create();
@@ -129,7 +128,7 @@ function drawScene(gl, programInfo, buffers, time) {
   mat4.rotate(modelMatrix, modelMatrix, time*0.13, axis2 );
   mat4.rotate(modelMatrix, modelMatrix, time*0.1, axis1 );
   gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
-  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 8);
+  gl.drawElements(gl.TRIANGLE_STRIP, 14, gl.UNSIGNED_BYTE, 0);
   modelMatrix = mat4.create();
   mat4.translate(modelMatrix, modelMatrix, [3.0, 3.0, 0.0]);
   mat4.rotate(modelMatrix, modelMatrix, time*0.13, axis2 );
