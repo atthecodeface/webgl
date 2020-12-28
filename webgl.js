@@ -9,12 +9,14 @@ function main() {
         return;
     }
 
+    moon = loadTexture(gl, "./moon.png");
+    wood = loadTexture(gl, "./wood.jpg");
     shaders = shader_compile(gl);
     const mesh_objects = []
-    mesh_objects.push(new MeshObject(gl, dbl_cube, [3,0,0]));
-    mesh_objects.push(new MeshObject(gl, cube, [-3,0,0]));
-    mesh_objects.push(new MeshObject(gl, dbl_cube2, [0,0,0]));
-    mesh_objects.push(new MeshObject(gl, make_snake(15, 6), [-6,0,0]));
+    mesh_objects.push(new MeshObject(gl, dbl_cube,          moon, [3,0,0]));
+    mesh_objects.push(new MeshObject(gl, cube,              wood, [-3,0,0]));
+    mesh_objects.push(new MeshObject(gl, dbl_cube2,         wood, [0,0,0]));
+    mesh_objects.push(new MeshObject(gl, make_snake(16, 6), moon, [-6,0,0]));
     run_animation(gl, shaders, mesh_objects);
 }
 
@@ -31,8 +33,8 @@ function run_animation(gl, shaders, mesh_objects) {
     const cameraMatrix = mat4.create();
     mat4.translate(cameraMatrix,     // destination matrix
                    cameraMatrix,     // matrix to translate
-                   [-0.0, 0.0, -20.0]);  // amount to translate
-
+                   [-0.0, -4.0, -20.0]);  // amount to translate
+    mat4.rotateX(cameraMatrix, cameraMatrix, 0.3);
     matrices = [projectionMatrix, cameraMatrix];
     step_animation = function() {
         drawScene(gl, shaders, mesh_objects, time, matrices);

@@ -1,3 +1,33 @@
+function isPowerOf2(value) {
+  return (value & (value - 1)) == 0;
+}
+function loadTexture(gl, url) {
+  const texture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+
+    const image = new Image();
+image.crossOrigin = "anonymous";
+  image.src = url;
+  image.onload = function() {
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+/*    if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
+       // Yes, it's a power of 2. Generate mips.
+    } else {
+       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    }
+*/
+      console.log("Loaded texture", texture);
+  };
+  return texture;
+}
+
 class Submesh {
     constructor(bone_indices, gl_type, offset, count) {
         this.bone_indices = bone_indices;
@@ -9,16 +39,20 @@ class Submesh {
 class Mesh {
     //f constructor
     constructor(gl, obj) {
-        this.positions = gl.createBuffer();
-        this.normals   = gl.createBuffer();
-        this.weights   = gl.createBuffer();
-        this.indices   = gl.createBuffer();
+        this.positions  = gl.createBuffer();
+        this.normals    = gl.createBuffer();
+        this.texcoords  = gl.createBuffer();
+        this.weights    = gl.createBuffer();
+        this.indices    = gl.createBuffer();
         
         gl.bindBuffer(gl.ARRAY_BUFFER, this.positions);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(obj.positions), gl.STATIC_DRAW);
         
         gl.bindBuffer(gl.ARRAY_BUFFER, this.normals);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(obj.normals), gl.STATIC_DRAW);
+        
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.texcoords);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(obj.texcoords), gl.STATIC_DRAW);
         
         gl.bindBuffer(gl.ARRAY_BUFFER, this.weights);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(obj.weights), gl.STATIC_DRAW);
@@ -38,6 +72,10 @@ class Mesh {
         gl.bindBuffer(gl.ARRAY_BUFFER,         this.normals);
         gl.enableVertexAttribArray(shader.attribLocations.vertexNormal);
         gl.vertexAttribPointer(shader.attribLocations.vertexNormal, 3, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER,         this.texcoords);
+        gl.enableVertexAttribArray(shader.attribLocations.vertexTexture);
+        gl.vertexAttribPointer(shader.attribLocations.vertexTexture, 2, gl.FLOAT, false, 0, 0);
 
         gl.bindBuffer(gl.ARRAY_BUFFER,         this.weights);
         gl.enableVertexAttribArray(shader.attribLocations.vertexWeights);
@@ -59,7 +97,8 @@ class Mesh {
 }
 
 class MeshObject {
-    constructor(gl, obj, world_vec) {
+    constructor(gl, obj, texture, world_vec) {
+        this.texture = texture;
         this.world_matrix = mat4.create();
         this.place(world_vec);
         this.mesh = new Mesh(gl, obj);
@@ -99,6 +138,8 @@ class MeshObject {
         this.bones[0].derive_animation();
     }
     draw(gl, shader) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this.texture);
         gl.uniformMatrix4fv(shader.uniformLocations.modelMatrix, false, this.world_matrix);
         this.mesh.draw(gl, shader, this.bones);
     }
@@ -135,6 +176,8 @@ const cube =  {
       1.0, -1.0, -1.0,
       -1.0, -1.0, -1.0,
     ],
+    texcoords : [ 1,0, 0,0, 1,1, 0,1,
+            1,1, 0,1, 1,0, 0,0 ],
     weights : [
       1., 0., 0., 0.,
       1., 0., 0., 0.,
@@ -173,6 +216,9 @@ const dbl_cube =  {
       1.0, -1.0, -3.0,
       -1.0, -1.0, -3.0,
     ],
+    texcoords : [ 1,0, 0,0, 1,1, 0,1,
+                  1,0, 0,0, 1,1, 0,1,
+                  1,1, 0,1, 1,0, 0,0 ],
     normals : [
       1.0,  1.0, 1.0, 
       -1.0,  1.0, 1.0,
@@ -241,6 +287,9 @@ const dbl_cube2 =  {
       1.0, -1.0, -1.0,
       -1.0, -1.0, -1.0,
     ],
+    texcoords : [ 1,0, 0,0, 1,1, 0,1,
+                  1,0, 0,0, 1,1, 0,1,
+                  1,1, 0,1, 1,0, 0,0 ],
     weights : [
         1., 0., 0., 0.,
         1., 0., 0., 0.,
@@ -263,17 +312,16 @@ function make_snake(snake_slices, snake_height) {
     const snake_slice_height=snake_height/snake_slices;
     const snake_positions = [];
     const snake_normals = [];
+    const snake_texcoords = [];
     const snake_weights = [];
     const snake_indices = [];
     for (i=0; i<=snake_slices; i++) {
         var z = 1.0 - i*snake_slice_height
-        snake_positions.push(1., 1., z, -1., 1., z, 1., -1., z, -1., -1., z);
-        z = 1.0;
-        if (i>0) {z=0.;}
-        if (i>=snake_slices) {z=-1.;}
-        snake_normals.push(1., 1., z, -1., 1., z, 1., -1., z, -1., -1., z);
+        snake_positions.push(1, 1, z, -1, 1, z, 1, -1, z, -1, -1, z);
+        snake_normals.push(1, 1, 0, -1, 1, 0, 1, -1, 0, -1, -1, 0);
         if (i>=snake_slices/2) {
             z = 2-(i/snake_slices)*2;
+            snake_texcoords.push( 1,1-z, 0,1-z, 0,1-z, 1,1-z);
             snake_weights.push(0., z, 1.-z, 0.);
             snake_weights.push(0., z, 1.-z, 0.);
             snake_weights.push(0., z, 1.-z, 0.);
@@ -281,35 +329,40 @@ function make_snake(snake_slices, snake_height) {
         } else {
             z = 1-i/snake_slices * 2;
             snake_weights.push(z, 1.-z, 0., 0.);
+            snake_texcoords.push( 1,z, 0,z, 0,z, 1,z);
             snake_weights.push(z, 1.-z, 0., 0.);
             snake_weights.push(z, 1.-z, 0., 0.);
             snake_weights.push(z, 1.-z, 0., 0.);
-        }
-    }
-    snake_indices.push(3,2,1,0);
-    for (i=0; i<snake_slices; i++) {
-        var f=8*Math.floor(i/2);
-        if (i&1) {
-            snake_indices.push(f+11,f+5,f+9,f+8);
-        } else {
-            snake_indices.push(f+4,f+2,f+6,f+7);
         }
     }
     for (i=0; i<snake_slices; i++) {
-        var f=8*Math.floor((snake_slices-1-i)/2);
-        if ((snake_slices-i)&1) {
-            snake_indices.push(f+4,f+5,f+1,f+7);
-        } else {
-            snake_indices.push(f+11,f+10,f+6,f+8);
-        }
+        const base=i*4;
+        snake_indices.push(base, base, base, base+4, base+1, base+5, base+3, base+7, base+2, base+6);
+        snake_indices.push(base, base+4, base+4, base+4);
     }
-    snake_indices.push(3,2);
+    {
+        var z = 1.0;
+        snake_positions.push(1, 1, z, -1, 1, z, 1, -1, z, -1, -1, z);
+        snake_normals.push(0,0,1, 0,0,1, 0,0,1, 0,0,1);
+        snake_texcoords.push( 1,0, 0,0, 1,1, 0,1);
+        snake_weights.push(1, 0, 0, 0,  1, 0, 0, 0,  1, 0, 0, 0,  1, 0, 0, 0 );
+        z = 1 - snake_height;
+        snake_positions.push(1, 1, z, -1, 1, z, 1, -1, z, -1, -1, z);
+        snake_normals.push(0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1);
+        snake_texcoords.push( 1,0, 0,0, 1,1, 0,1);
+        snake_weights.push(0, 0, 1, 0,  0, 0, 1, 0,  0, 0, 1, 0,  0, 0, 1, 0);
+    }
+    endcap = 4*(snake_slices+1);
+    snake_indices.push(endcap, endcap, endcap+1,endcap+2,endcap+3,endcap+3);// now ccw winding
+    snake_indices.push(endcap+4,endcap+4,endcap+5,endcap+6,endcap+7); // now ccw winding
+    
     const snake =  {
         positions : snake_positions,
         normals   : snake_normals,
+        texcoords : snake_texcoords,
         weights   : snake_weights,
         indices   : snake_indices,
-        submeshes : [ new Submesh([0,1,2,0], "TS", 0, 6+8*snake_slices),
+        submeshes : [ new Submesh([0,1,2,0], "TS", 0, snake_indices.length),
                     ],
     }
     return snake;
@@ -319,6 +372,8 @@ function draw_objects(gl, shader, meshes, matrices) {
     gl.useProgram(shader.program);
     gl.uniformMatrix4fv(shader.uniformLocations.projectionMatrix,false, matrices[0]);
     gl.uniformMatrix4fv(shader.uniformLocations.cameraMatrix, false, matrices[1]);
+
+    gl.uniform1i(shader.uniformLocations.texture, 0);
 
     for (const m of meshes) {
         m.draw(gl, shader);

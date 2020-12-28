@@ -2,38 +2,45 @@
     attribute vec3 aVertexPosition;
     attribute vec3 aVertexNormal;
     attribute vec4 aVertexWeights;
-    uniform mat4 uModelMatrix;
-    uniform mat4 uCameraMatrix;
-    uniform mat4 uProjectionMatrix;
+    attribute vec2 aVertexTexture;
 
+    uniform mat4 uProjectionMatrix;
+    uniform mat4 uCameraMatrix;
+    uniform mat4 uModelMatrix;
     uniform mat4 uBonesMatrices[4];
+
     varying vec3 color_pos;
     varying vec3 normal;
+    varying vec2 tex_uv;
 
     void main() {
       mat4 weightedMatrix = ( (uBonesMatrices[0] * aVertexWeights.x) +
                               (uBonesMatrices[1] * aVertexWeights.y) +
                               (uBonesMatrices[2] * aVertexWeights.z) +
                               (uBonesMatrices[3] * aVertexWeights.w) );
-      color_pos      = (normalize(aVertexNormal) + 1.) / 2.0;
+      color_pos      = (normalize(aVertexPosition) + 1.) / 2.0;
       vec4 model_pos = weightedMatrix * vec4(aVertexPosition.xyz, 1.0);
       vec3 world_pos = (uModelMatrix * vec4(model_pos.xyz, 1.)).xyz;
       normal         = (uModelMatrix * weightedMatrix * vec4(aVertexNormal,0.)).xyz;
       gl_Position    = uProjectionMatrix * uCameraMatrix * vec4(world_pos.xyz, 1.);
+      tex_uv         = aVertexTexture.xy;
     }
   `;
 
   const frag = `
     precision mediump float;
+    uniform sampler2D uTexture;
+
     varying vec3 color_pos;
     varying vec3 normal;
+    varying vec2 tex_uv;
     void main() {
+      vec4 t = texture2D(uTexture, tex_uv);
       vec3 light_direction = -normalize(vec3(-0.2, -1., -1.));
       float n = clamp( dot(light_direction, normalize(normal)), 0., 1. );
-      vec3 c = color_pos;
-      vec3 ambient = vec3(0.2,0.2,0.2) * color_pos;
-      c = (n * c) + ambient;
+      vec4 c = vec4((n*0.8 + vec3(0.2)).xyz,1.) * t;
       gl_FragColor = vec4(c.xyz, 1.0);
+    //gl_FragColor = t;
       // gl_FragColor = vec4((normalize(normal.xyz)+1.)/2., 1.0);
     }
   `;
@@ -82,12 +89,14 @@ function shader_compile(gl) {
             vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
             vertexNormal:   gl.getAttribLocation(shaderProgram, 'aVertexNormal'),
             vertexWeights:  gl.getAttribLocation(shaderProgram, 'aVertexWeights'),
+            vertexTexture:   gl.getAttribLocation(shaderProgram, 'aVertexTexture'),
         },
         uniformLocations: {
             projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
             cameraMatrix:     gl.getUniformLocation(shaderProgram, 'uCameraMatrix'),
             modelMatrix:      gl.getUniformLocation(shaderProgram, 'uModelMatrix'),
             boneMatrices:     gl.getUniformLocation(shaderProgram, 'uBonesMatrices'),
+            texture:          gl.getUniformLocation(shaderProgram, 'uTexture'),
         },
     };
     return [programInfo];
