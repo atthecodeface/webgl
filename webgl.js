@@ -17,16 +17,16 @@ function main() {
     run_animation(gl, shaders, mesh_objects);
 }
 
-var time=0.0;
 function run_animation(gl, shaders, mesh_objects) {
     const fieldOfView = 45 * Math.PI / 180;   // in radians
     const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
     const zNear = 0.1;
     const zFar = 100.0;
     const projectionMatrix = mat4.create();
-
+    
     mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
 
+    var time=0.0;
     const cameraMatrix = mat4.create();
     mat4.translate(cameraMatrix,     // destination matrix
                    cameraMatrix,     // matrix to translate

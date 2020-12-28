@@ -8,21 +8,25 @@ class Submesh {
 }
 class Mesh {
     //f constructor
-    constructor(gl, positions, weights, indices, submeshes) {
+    constructor(gl, obj) {
         this.positions = gl.createBuffer();
+        this.normals   = gl.createBuffer();
         this.weights   = gl.createBuffer();
         this.indices   = gl.createBuffer();
         
         gl.bindBuffer(gl.ARRAY_BUFFER, this.positions);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(obj.positions), gl.STATIC_DRAW);
+        
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.normals);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(obj.normals), gl.STATIC_DRAW);
         
         gl.bindBuffer(gl.ARRAY_BUFFER, this.weights);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(weights), gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(obj.weights), gl.STATIC_DRAW);
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indices);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint8Array(indices), gl.STATIC_DRAW);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint8Array(obj.indices), gl.STATIC_DRAW);
 
-        this.submeshes = submeshes;
+        this.submeshes = obj.submeshes;
     }
     draw(gl, shader, bones) {
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indices);
@@ -30,6 +34,10 @@ class Mesh {
         gl.bindBuffer(gl.ARRAY_BUFFER,         this.positions);
         gl.enableVertexAttribArray(shader.attribLocations.vertexPosition);
         gl.vertexAttribPointer(shader.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER,         this.normals);
+        gl.enableVertexAttribArray(shader.attribLocations.vertexNormal);
+        gl.vertexAttribPointer(shader.attribLocations.vertexNormal, 3, gl.FLOAT, false, 0, 0);
 
         gl.bindBuffer(gl.ARRAY_BUFFER,         this.weights);
         gl.enableVertexAttribArray(shader.attribLocations.vertexWeights);
@@ -54,7 +62,7 @@ class MeshObject {
     constructor(gl, obj, world_vec) {
         this.world_matrix = mat4.create();
         this.place(world_vec);
-        this.mesh = new Mesh(gl, obj.positions, obj.weights, obj.indices, obj.submeshes);
+        this.mesh = new Mesh(gl, obj);
         this.bones = []
         this.bones.push(new Bone(null));
         this.bones.push(new Bone(this.bones[0]));
@@ -77,6 +85,7 @@ class MeshObject {
         quat.identity(q);
         quat.rotateX(q,q,1.85);
         //quat.rotateX(q,q,+angle*2);
+        quat.rotateZ(q,q,time*0.3);
         this.bones[0].translate_from_rest(vec3.set(vec3.create(),0.,0.,0.));
         this.bones[0].quaternion_from_rest(q);
         quat.identity(q);
@@ -114,7 +123,17 @@ const cube =  {
       -1.0,  1.0, -1.0,
       1.0, -1.0, -1.0,
       -1.0, -1.0, -1.0,
+    ],
+    normals : [
+      1.0,  1.0, 1.0, 
+      -1.0,  1.0, 1.0,
+      1.0, -1.0, 1.0, 
+      -1.0, -1.0, 1.0,
 
+      1.0,  1.0, -1.0,
+      -1.0,  1.0, -1.0,
+      1.0, -1.0, -1.0,
+      -1.0, -1.0, -1.0,
     ],
     weights : [
       1., 0., 0., 0.,
@@ -154,6 +173,22 @@ const dbl_cube =  {
       1.0, -1.0, -3.0,
       -1.0, -1.0, -3.0,
     ],
+    normals : [
+      1.0,  1.0, 1.0, 
+      -1.0,  1.0, 1.0,
+      1.0, -1.0, 1.0, 
+      -1.0, -1.0, 1.0,
+
+      1.0,  1.0,  0.,
+      -1.0,  1.0, 0.,
+      1.0, -1.0,  0.,
+      -1.0, -1.0, 0.,
+
+      1.0,  1.0, -1.0,
+      -1.0,  1.0, -1.0,
+      1.0, -1.0, -1.0,
+      -1.0, -1.0, -1.0,
+    ],
     weights : [
       1., 0., 0., 0.,
       1., 0., 0., 0.,
@@ -189,6 +224,22 @@ const dbl_cube2 =  {
       -1.0,  1.0, -3.0,
       1.0, -1.0, -3.0,
       -1.0, -1.0, -3.0,
+    ],
+    normals : [
+      1.0,  1.0, 1.0, 
+      -1.0,  1.0, 1.0,
+      1.0, -1.0, 1.0, 
+      -1.0, -1.0, 1.0,
+
+      1.0,  1.0,  0.,
+      -1.0,  1.0, 0.,
+      1.0, -1.0,  0.,
+      -1.0, -1.0, 0.,
+
+      1.0,  1.0, -1.0,
+      -1.0,  1.0, -1.0,
+      1.0, -1.0, -1.0,
+      -1.0, -1.0, -1.0,
     ],
     weights : [
         1., 0., 0., 0.,

@@ -1,5 +1,6 @@
  const vertex_bone4 = `
     attribute vec3 aVertexPosition;
+    attribute vec3 aVertexNormal;
     attribute vec4 aVertexWeights;
     uniform mat4 uModelMatrix;
     uniform mat4 uCameraMatrix;
@@ -7,23 +8,33 @@
 
     uniform mat4 uBonesMatrices[4];
     varying vec3 color_pos;
+    varying vec3 normal;
+
     void main() {
-      color_pos = vec3(aVertexPosition.x,aVertexPosition.y,aVertexPosition.z);
-      mat4 weightedMatrix = (uBonesMatrices[0] * aVertexWeights.x) + (uBonesMatrices[1] * aVertexWeights.y)+ (uBonesMatrices[2] * aVertexWeights.z);
-      vec4 model_pos = vec4(aVertexPosition.x, aVertexPosition.y, aVertexPosition.z, 1.0);
-      model_pos = weightedMatrix * model_pos;
-      model_pos.w = 1.0;
-      vec4 world_pos;
-      world_pos = uModelMatrix * model_pos;
-      gl_Position = uProjectionMatrix * uCameraMatrix * world_pos;
+      mat4 weightedMatrix = ( (uBonesMatrices[0] * aVertexWeights.x) +
+                              (uBonesMatrices[1] * aVertexWeights.y) +
+                              (uBonesMatrices[2] * aVertexWeights.z) +
+                              (uBonesMatrices[3] * aVertexWeights.w) );
+      color_pos      = (normalize(aVertexNormal) + 1.) / 2.0;
+      vec4 model_pos = weightedMatrix * vec4(aVertexPosition.xyz, 1.0);
+      vec3 world_pos = (uModelMatrix * vec4(model_pos.xyz, 1.)).xyz;
+      normal         = (uModelMatrix * weightedMatrix * vec4(aVertexNormal,0.)).xyz;
+      gl_Position    = uProjectionMatrix * uCameraMatrix * vec4(world_pos.xyz, 1.);
     }
   `;
 
   const frag = `
     precision mediump float;
     varying vec3 color_pos;
+    varying vec3 normal;
     void main() {
-      gl_FragColor = vec4(color_pos.x/4.0+0.5, color_pos.y/4.0+0.5, color_pos.z/4.0+0.5, 1.0);
+      vec3 light_direction = -normalize(vec3(-0.2, -1., -1.));
+      float n = clamp( dot(light_direction, normalize(normal)), 0., 1. );
+      vec3 c = color_pos;
+      vec3 ambient = vec3(0.2,0.2,0.2) * color_pos;
+      c = (n * c) + ambient;
+      gl_FragColor = vec4(c.xyz, 1.0);
+      // gl_FragColor = vec4((normalize(normal.xyz)+1.)/2., 1.0);
     }
   `;
 
@@ -69,6 +80,7 @@ function shader_compile(gl) {
         program: shaderProgram,
         attribLocations: {
             vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+            vertexNormal:   gl.getAttribLocation(shaderProgram, 'aVertexNormal'),
             vertexWeights:  gl.getAttribLocation(shaderProgram, 'aVertexWeights'),
         },
         uniformLocations: {
