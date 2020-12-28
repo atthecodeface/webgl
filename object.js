@@ -259,53 +259,60 @@ const dbl_cube2 =  {
     submeshes : [ new Submesh([0,1,2,0], "TS", 0, 22),
                 ],
 }
-const snake_slices=15;
-const snake_height=4.;
-const snake_slice_height=snake_height/snake_slices;
-const snake_positions = [];
-const snake_normals = [];
-const snake_weights = [];
-const snake_indices = [];
-for (i=0; i<=snake_slices; i++) {
-    var z = 1.0 - i*snake_slice_height
-    snake_positions.push(1., 1., z, -1., 1., z, 1., -1., z, -1., -1., z);
-    z = 1.0;
-    if (i>0) {z=0.;}
-    if (i>=snake_slices) {z=-1.;}
-    snake_normals.push(1., 1., z, -1., 1., z, 1., -1., z, -1., -1., z);
-    z = (i+0.) / snake_slices;
-    snake_weights.push(z, 1.-z, 0., 0.);
-    snake_weights.push(z, 1.-z, 0., 0.);
-    snake_weights.push(z, 1.-z, 0., 0.);
-    snake_weights.push(z, 1.-z, 0., 0.);
-}
-snake_indices.push(3,2,1,0);
-for (i=0; i<snake_slices; i++) {
-    var f=8*Math.floor(i/2);
-    if (i&1) {
-        snake_indices.push(f+11,f+5,f+9,f+8);
-    } else {
-        snake_indices.push(f+4,f+2,f+6,f+7);
+function make_snake(snake_slices, snake_height) {
+    const snake_slice_height=snake_height/snake_slices;
+    const snake_positions = [];
+    const snake_normals = [];
+    const snake_weights = [];
+    const snake_indices = [];
+    for (i=0; i<=snake_slices; i++) {
+        var z = 1.0 - i*snake_slice_height
+        snake_positions.push(1., 1., z, -1., 1., z, 1., -1., z, -1., -1., z);
+        z = 1.0;
+        if (i>0) {z=0.;}
+        if (i>=snake_slices) {z=-1.;}
+        snake_normals.push(1., 1., z, -1., 1., z, 1., -1., z, -1., -1., z);
+        if (i>=snake_slices/2) {
+            z = 2-(i/snake_slices)*2;
+            snake_weights.push(0., z, 1.-z, 0.);
+            snake_weights.push(0., z, 1.-z, 0.);
+            snake_weights.push(0., z, 1.-z, 0.);
+            snake_weights.push(0., z, 1.-z, 0.);
+        } else {
+            z = 1-i/snake_slices * 2;
+            snake_weights.push(z, 1.-z, 0., 0.);
+            snake_weights.push(z, 1.-z, 0., 0.);
+            snake_weights.push(z, 1.-z, 0., 0.);
+            snake_weights.push(z, 1.-z, 0., 0.);
+        }
     }
-}
-for (i=0; i<snake_slices; i++) {
-    var f=8*Math.floor((snake_slices-1-i)/2);
-    if ((snake_slices-i)&1) {
-        snake_indices.push(f+4,f+5,f+1,f+7);
-    } else {
-        snake_indices.push(f+11,f+10,f+6,f+8);
+    snake_indices.push(3,2,1,0);
+    for (i=0; i<snake_slices; i++) {
+        var f=8*Math.floor(i/2);
+        if (i&1) {
+            snake_indices.push(f+11,f+5,f+9,f+8);
+        } else {
+            snake_indices.push(f+4,f+2,f+6,f+7);
+        }
     }
-}
-snake_indices.push(3,2);
-//     indices :  [3, 2, 1, 0, 4, 2, 6, 7,  4, 5, 1, 7, 3, 2],
-console.log(snake_indices);
-const snake =  {
-    positions : snake_positions,
-    normals   : snake_normals,
-    weights   : snake_weights,
-    indices   : snake_indices,
-    submeshes : [ new Submesh([0,1,0,0], "TS", 0, 6+8*snake_slices),
-                ],
+    for (i=0; i<snake_slices; i++) {
+        var f=8*Math.floor((snake_slices-1-i)/2);
+        if ((snake_slices-i)&1) {
+            snake_indices.push(f+4,f+5,f+1,f+7);
+        } else {
+            snake_indices.push(f+11,f+10,f+6,f+8);
+        }
+    }
+    snake_indices.push(3,2);
+    const snake =  {
+        positions : snake_positions,
+        normals   : snake_normals,
+        weights   : snake_weights,
+        indices   : snake_indices,
+        submeshes : [ new Submesh([0,1,2,0], "TS", 0, 6+8*snake_slices),
+                    ],
+    }
+    return snake;
 }
 
 function draw_objects(gl, shader, meshes, matrices) {

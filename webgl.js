@@ -14,7 +14,7 @@ function main() {
     mesh_objects.push(new MeshObject(gl, dbl_cube, [3,0,0]));
     mesh_objects.push(new MeshObject(gl, cube, [-3,0,0]));
     mesh_objects.push(new MeshObject(gl, dbl_cube2, [0,0,0]));
-    mesh_objects.push(new MeshObject(gl, snake, [-6,0,0]));
+    mesh_objects.push(new MeshObject(gl, make_snake(15, 6), [-6,0,0]));
     run_animation(gl, shaders, mesh_objects);
 }
 
