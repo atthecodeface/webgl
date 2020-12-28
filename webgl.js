@@ -20,7 +20,7 @@ function main() {
     varying vec3 color_pos;
     void main() {
       color_pos = vec3(aVertexPosition.x,aVertexPosition.y,aVertexPosition.z);
-      mat4 weightedMatrix = (uBonesMatrices[0] * aVertexWeights.x) + (uBonesMatrices[1] * aVertexWeights.y);
+      mat4 weightedMatrix = (uBonesMatrices[0] * aVertexWeights.x) + (uBonesMatrices[1] * aVertexWeights.y)+ (uBonesMatrices[2] * aVertexWeights.z);
       vec4 model_pos = vec4(aVertexPosition.x, aVertexPosition.y, aVertexPosition.z, 1.0);
       model_pos = weightedMatrix * model_pos;
       model_pos.w = 1.0;
@@ -34,7 +34,7 @@ function main() {
     precision mediump float;
     varying vec3 color_pos;
     void main() {
-      gl_FragColor = vec4(color_pos.x/2.0+0.5, color_pos.y/2.0+0.5, color_pos.z/2.0+0.5, 1.0);
+      gl_FragColor = vec4(color_pos.x/4.0+0.5, color_pos.y/4.0+0.5, color_pos.z/4.0+0.5, 1.0);
     }
   `;
 
@@ -50,7 +50,7 @@ function main() {
       projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
       cameraMatrix:     gl.getUniformLocation(shaderProgram, 'uCameraMatrix'),
       modelMatrix:      gl.getUniformLocation(shaderProgram, 'uModelMatrix'),
-      bonelMatrices:    gl.getUniformLocation(shaderProgram, 'uBonesMatrices'),
+      boneMatrices:     gl.getUniformLocation(shaderProgram, 'uBonesMatrices'),
     },
   };
 
@@ -117,6 +117,7 @@ class Bone {
     derive_animation() {
         mat4.fromQuat(this.btp, this.quaternion);
         mat4.add(this.btp, this.btp, mat4.fromTranslation(mat4.create(),this.translation));
+        // this.btp[15]=1.0;
         if (this.parent == null) {
             mat4.copy(this.animated_btm, this.btp);
         } else {
@@ -132,9 +133,16 @@ var time=0.0;
 function run_animation(gl, programInfo, buffers) {
 a = new Bone(null);
 b = new Bone(a);
+    c = new Bone(b);
+    a.translate_from_rest(vec3.set(vec3.create(),0.,0.,1.));
+    b.translate_from_rest(vec3.set(vec3.create(),0.,0.,-2.));
+    c.translate_from_rest(vec3.set(vec3.create(),0.,0.,-2.));
+    
+c.derive_at_rest();
+b.derive_at_rest();
 a.derive_at_rest();
     a.derive_animation();
-    bones = [a,b];
+    bones = [a,b,c];
     step_animation = function() {drawScene(gl, programInfo, buffers, time, bones); time+=0.1; requestAnimationFrame(step_animation);}
     requestAnimationFrame(step_animation);
 }
@@ -146,17 +154,25 @@ function initBuffers(gl) {
     //        3    2        7   6
     // triangles (anticlockwise for first)
     //  3.2.1 2.1.0 1.0.4 0.4.2 4.2.6 2.6.7 6.7.4 7.4.5 4.5.1 5.1.7 1.7.3 7.3.2
-    // strip
+    // Cube strip
     // 3, 2, 1, 0, 4, 2, 6, 7, 4, 5, 1, 7, 3, 2
+    // Double cube strip
+    // 3, 2, 1, 0, 4, 2, 6, 7,   11, 5, 9, 8, 11, 10, 6, 8,   4, 5, 1, 7, 3, 2
   const positions = [
       1.0,  1.0, 1.0, 
       -1.0,  1.0, 1.0,
       1.0, -1.0, 1.0, 
       -1.0, -1.0, 1.0,
+
       1.0,  1.0, -1.0,
       -1.0,  1.0, -1.0,
       1.0, -1.0, -1.0,
       -1.0, -1.0, -1.0,
+
+      1.0,  1.0, -3.0,
+      -1.0,  1.0, -3.0,
+      1.0, -1.0, -3.0,
+      -1.0, -1.0, -3.0,
   ];
   const weights = [
       1., 0., 0., 0.,
@@ -167,8 +183,12 @@ function initBuffers(gl) {
       0., 1., 0., 0.,
       0., 1., 0., 0.,
       0., 1., 0., 0.,
+      0., 0., 1., 0.,
+      0., 0., 1., 0.,
+      0., 0., 1., 0.,
+      0., 0., 1., 0.,
   ];
-  const indices = [3, 2, 1, 0, 4, 2, 6, 7, 4, 5, 1, 7, 3, 2];
+    const indices = [3, 2, 1, 0, 4, 2, 6, 7,   11, 5, 9, 8, 11, 10, 6, 8,   4, 5, 1, 7, 3, 2];
   const positionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
@@ -206,7 +226,7 @@ function drawScene(gl, programInfo, buffers, time, bones) {
   const cameraMatrix = mat4.create();
   mat4.translate(cameraMatrix,     // destination matrix
                  cameraMatrix,     // matrix to translate
-                 [-0.0, 0.0, -10.0]);  // amount to translate
+                 [-0.0, 0.0, -40.0]);  // amount to translate
 
   // Tell WebGL how to pull out the positions from the position
   // buffer into the vertexPosition attribute.
@@ -217,19 +237,28 @@ function drawScene(gl, programInfo, buffers, time, bones) {
 
     const mymatrix = Array(64);
     const q = quat.create();
-    const angle=Math.sin(time)*0.3;
+    const angle=Math.sin(time*0.2)*0.7;
+    //const angle=0.8;
     quat.identity(q);
     // bones[0].translate_from_rest(vec3.set(vec3.create(),0.,angle*5,0.));
     bones[0].translate_from_rest(vec3.set(vec3.create(),0.,0.,0.));
     bones[0].quaternion_from_rest(q);
     quat.identity(q);
-    quat.rotateZ(q,q,angle);
-    bones[1].translate_from_rest(vec3.set(vec3.create(),0.,0.,-angle*5));
+    quat.rotateZ(q,q,4*angle);
+    bones[1].translate_from_rest(vec3.set(vec3.create(),0.,0.,0.));// -angle*0.9));
     bones[1].quaternion_from_rest(q);
+    quat.identity(q);
+    quat.rotateZ(q,q,4*angle);
+    bones[2].translate_from_rest(vec3.set(vec3.create(),0.,0.,0.));// +angle*0.9));
+    //bones[2].quaternion_from_rest(q);
     bones[0].derive_animation();
     mat4.copy(mymatrix, bones[0].animated_mtm);
-    for (var i=0; i<16; i++) {mymatrix[16+i] = bones[1].animated_mtm[i];}
-  gl.uniformMatrix4fv(programInfo.uniformLocations.bonelMatrices, false, mymatrix);    
+    for (var i=0; i<16; i++) {
+        mymatrix[ 0+i] = bones[0].animated_mtm[i];
+        mymatrix[16+i] = bones[1].animated_mtm[i];
+        mymatrix[32+i] = bones[2].animated_mtm[i];
+    }
+  gl.uniformMatrix4fv(programInfo.uniformLocations.boneMatrices, false, mymatrix);    
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.index);
 
@@ -247,19 +276,20 @@ function drawScene(gl, programInfo, buffers, time, bones) {
   vec3.set(axis2,1.,0.,0.);
   var modelMatrix = mat4.create();
   const scale = vec4.create();
-  vec3.set(scale,0.5,0.5,0.5,1.0);
+  vec3.set(scale,2.5,2.5,2.5,1.0);
   mat4.translate(modelMatrix, modelMatrix, [3.0, 0.0, 0.0]);
   mat4.rotate(modelMatrix, modelMatrix, time*0.13, axis2 );
-  mat4.rotate(modelMatrix, modelMatrix, time*0.1, axis1 );
+  mat4.rotate(modelMatrix, modelMatrix, time*0.10, axis1 );
     mat4.scale(modelMatrix, modelMatrix, scale);
   gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
-  gl.drawElements(gl.TRIANGLE_STRIP, 14, gl.UNSIGNED_BYTE, 0);
+  gl.drawElements(gl.TRIANGLE_STRIP, 22, gl.UNSIGNED_BYTE, 0);
   modelMatrix = mat4.create();
   mat4.translate(modelMatrix, modelMatrix, [3.0, 3.0, 0.0]);
   mat4.rotate(modelMatrix, modelMatrix, time*0.13, axis2 );
-  mat4.rotate(modelMatrix, modelMatrix, time*0.1, axis1 );
+  mat4.rotate(modelMatrix, modelMatrix, time*0.10, axis1 );
   gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
-  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 8);
+  gl.drawElements(gl.TRIANGLE_STRIP, 22, gl.UNSIGNED_BYTE, 0);
+//  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 8);
 }
 
 //
