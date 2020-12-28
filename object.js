@@ -50,6 +50,51 @@ class Mesh {
     }
 }
 
+class MeshObject {
+    constructor(gl, obj, world_vec) {
+        this.world_matrix = mat4.create();
+        this.place(world_vec);
+        this.mesh = new Mesh(gl, obj.positions, obj.weights, obj.indices, obj.submeshes);
+        this.bones = []
+        this.bones.push(new Bone(null));
+        this.bones.push(new Bone(this.bones[0]));
+        this.bones.push(new Bone(this.bones[1]));
+        this.bones[0].translate_from_rest(vec3.set(vec3.create(),0.,0.,1.));
+        this.bones[1].translate_from_rest(vec3.set(vec3.create(),0.,0.,-2.));
+        this.bones[2].translate_from_rest(vec3.set(vec3.create(),0.,0.,-2.));
+        this.bones[0].derive_at_rest();
+        this.bones[0].derive_animation();
+    }
+    place(world_vec) {
+        mat4.identity(this.world_matrix);
+        this.world_matrix[12] = world_vec[0];
+        this.world_matrix[13] = world_vec[1];
+        this.world_matrix[14] = world_vec[2];
+    }
+    animate(time) {
+        const q = quat.create();
+        const angle=Math.sin(time*0.2)*0.3;
+        quat.identity(q);
+        quat.rotateX(q,q,1.85);
+        //quat.rotateX(q,q,+angle*2);
+        this.bones[0].translate_from_rest(vec3.set(vec3.create(),0.,0.,0.));
+        this.bones[0].quaternion_from_rest(q);
+        quat.identity(q);
+        quat.rotateZ(q,q,4*angle);
+        this.bones[1].translate_from_rest(vec3.set(vec3.create(),0.,0.,1.0-Math.cos(4*angle)));
+        this.bones[1].quaternion_from_rest(q);
+        quat.identity(q);
+        quat.rotateZ(q,q,-4*angle);
+        this.bones[2].translate_from_rest(vec3.set(vec3.create(),0.,0.,1.0-Math.cos(4*angle)));
+        this.bones[2].quaternion_from_rest(q);
+        this.bones[0].derive_animation();
+    }
+    draw(gl, shader) {
+        gl.uniformMatrix4fv(shader.uniformLocations.modelMatrix, false, this.world_matrix);
+        this.mesh.draw(gl, shader, this.bones);
+    }
+}
+
 //a Cube mesh with single bone
 // cube front face   back face (as seen from front)
 //        1    0        5   4
@@ -87,13 +132,9 @@ const cube =  {
 }
 
 //a Double cube object
-    // cube front face   back face (as seen from front)
-    //        1    0        5   4
-    //        3    2        7   6
-    // triangles (anticlockwise for first)
-    //  3.2.1 2.1.0 1.0.4 0.4.2 4.2.6 2.6.7 6.7.4 7.4.5 4.5.1 5.1.7 1.7.3 7.3.2
-    // Cube strip
-    // 3, 2, 1, 0, 4, 2, 6, 7, 4, 5, 1, 7, 3, 2
+    // cube front face   mid   back face (as seen from front)
+    //        1  0      5  4     9  8
+    //        3  2      7  6    11 10
     // Double cube strip
     // 3, 2, 1, 0, 4, 2, 6, 7,   11, 5, 9, 8, 11, 10, 6, 8,   4, 5, 1, 7, 3, 2
 const dbl_cube =  {
@@ -132,13 +173,48 @@ const dbl_cube =  {
                 ],
 }
 
-function draw_objects(gl, shader, meshes, bones, matrices) {
+const dbl_cube2 =  {
+    positions : [
+      1.0,  1.0, 1.0, 
+      -1.0,  1.0, 1.0,
+      1.0, -1.0, 1.0, 
+      -1.0, -1.0, 1.0,
+
+      1.0,  1.0, -1.0,
+      -1.0,  1.0, -1.0,
+      1.0, -1.0, -1.0,
+      -1.0, -1.0, -1.0,
+
+      1.0,  1.0, -3.0,
+      -1.0,  1.0, -3.0,
+      1.0, -1.0, -3.0,
+      -1.0, -1.0, -3.0,
+    ],
+    weights : [
+        1., 0., 0., 0.,
+        1., 0., 0., 0.,
+        1., 0., 0., 0.,
+        1., 0., 0., 0.,
+        0.4, 0.6, 0., 0.,
+        0.4, 0.6, 0., 0.,
+        0.4, 0.6, 0., 0.,
+        0.4, 0.6, 0., 0.,
+      0., 1., 0., 0.,
+      0., 1., 0., 0.,
+      0., 1., 0., 0.,
+      0., 1., 0., 0.,
+    ],
+    indices :  [3, 2, 1, 0, 4, 2, 6, 7,   11, 5, 9, 8, 11, 10, 6, 8,   4, 5, 1, 7, 3, 2],
+    submeshes : [ new Submesh([0,1,2,0], "TS", 0, 22),
+                ],
+}
+
+function draw_objects(gl, shader, meshes, matrices) {
     gl.useProgram(shader.program);
     gl.uniformMatrix4fv(shader.uniformLocations.projectionMatrix,false, matrices[0]);
     gl.uniformMatrix4fv(shader.uniformLocations.cameraMatrix, false, matrices[1]);
-    gl.uniformMatrix4fv(shader.uniformLocations.modelMatrix, false, matrices[2]);
 
     for (const m of meshes) {
-        m.draw(gl, shader, bones);
+        m.draw(gl, shader);
     }
 }
