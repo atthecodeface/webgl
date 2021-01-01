@@ -17,44 +17,39 @@ class Bone {
     // animated(t) = A.btp(t) * B.btp(t) * C.btp(t) * C.ptb * B.ptb * A.ptb * mesh
     //f constructor
     constructor(parent) {
-        this.parent = parent;
-        if (parent != null) {
+        this.parent = null;
+        if (parent !== undefined) {
+            this.parent = parent;
             parent.children.push(this);
         }
         this.children = new Array();
-        this.translation = vec3.create();
-        this.quaternion = quat.create();
-        quat.identity(this.quaternion);
+        this.transformation      = new Transformation();
+        this.transformation_rest = new Transformation();
+
         this.btp = mat4.create(); // derived from translation and quaternion
         this.ptb = mat4.create();
-        this.translation_rest = vec3.create();
-        this.quaternion_rest = quat.create();
         this.ptb_rest = mat4.create();
         this.mtb_rest = mat4.create(); // mesh to bone
         this.animated_btm = mat4.create(); // bone to mesh
         this.animated_mtm = mat4.create(); // mesh to animated mesh
     }
-    //f quaternion_from_rest
-    quaternion_from_rest(quaternion) {
-        quat.multiply(this.quaternion, quaternion, this.quaternion_rest);
+    //f transform_from_rest
+    transform_from_rest(transform) {
+        this.transformation.set(this.transformation_rest, transform);
     }
-    //f translate_from_rest
-    translate_from_rest(trans) {
-        vec3.add(this.translation, trans, this.translation_rest);
+    //f transform
+    transform(transform) {
+        this.transformation.set(this.transformation, transform);
     }
     //f derive_matrices
     derive_matrices() {
-        mat4.fromQuat(this.btp, this.quaternion);
-        this.btp[12] += this.translation[0];
-        this.btp[13] += this.translation[1];
-        this.btp[14] += this.translation[2];
+        mat4.copy(this.btp, this.transformation.mat4());
         mat4.invert(this.ptb, this.btp);
     }
     //f derive_at_rest
     derive_at_rest() {
         this.derive_matrices();
-        vec3.copy(this.translation_rest, this.translation);
-        quat.copy(this.quaternion_rest, this.quaternion);
+        this.transformation_rest.copy(this.transformation);
         mat4.copy(this.ptb_rest, this.ptb);
         if (this.parent == null) {
             mat4.copy(this.mtb_rest, this.ptb);
@@ -67,10 +62,7 @@ class Bone {
     }
     //f derive_animation
     derive_animation() {
-        mat4.fromQuat(this.btp, this.quaternion);
-        this.btp[12] += this.translation[0];
-        this.btp[13] += this.translation[1];
-        this.btp[14] += this.translation[2];
+        mat4.copy(this.btp, this.transformation.mat4());
         if (this.parent == null) {
             mat4.copy(this.animated_btm, this.btp);
         } else {

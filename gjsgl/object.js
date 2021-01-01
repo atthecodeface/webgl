@@ -89,12 +89,12 @@ class MeshObject {
         this.place(world_vec);
         this.mesh = new Mesh(obj);
         this.bones = []
-        this.bones.push(new Bone(null));
+        this.bones.push(new Bone());
         this.bones.push(new Bone(this.bones[0]));
         this.bones.push(new Bone(this.bones[1]));
-        this.bones[0].translate_from_rest(vec3.set(vec3.create(),0.,0.,1.));
-        this.bones[1].translate_from_rest(vec3.set(vec3.create(),0.,0.,-2.));
-        this.bones[2].translate_from_rest(vec3.set(vec3.create(),0.,0.,-2.));
+        this.bones[0].transform(new Transformation([0.,0.,1.]));
+        this.bones[1].transform(new Transformation([0.,0.,-2.]));
+        this.bones[2].transform(new Transformation([0.,0.,-2.]));
         this.bones[0].derive_at_rest();
         this.bones[0].derive_animation();
     }
@@ -113,16 +113,13 @@ class MeshObject {
         quat.rotateX(q,q,1.85);
         //quat.rotateX(q,q,+angle*2);
         quat.rotateZ(q,q,time*0.3);
-        this.bones[0].translate_from_rest(vec3.set(vec3.create(),0.,0.,0.));
-        this.bones[0].quaternion_from_rest(q);
+        this.bones[0].transform_from_rest(new Transformation([0.,0.,0.],q));
         quat.identity(q);
         quat.rotateZ(q,q,4*angle);
-        this.bones[1].translate_from_rest(vec3.set(vec3.create(),0.,0.,1.0-Math.cos(4*angle)));
-        this.bones[1].quaternion_from_rest(q);
+        this.bones[1].transform_from_rest(new Transformation([0.,0.,1.0-Math.cos(4*angle)],q));
         quat.identity(q);
         quat.rotateZ(q,q,-4*angle);
-        this.bones[2].translate_from_rest(vec3.set(vec3.create(),0.,0.,1.0-Math.cos(4*angle)));
-        this.bones[2].quaternion_from_rest(q);
+        this.bones[2].transform_from_rest(new Transformation([0.,0.,1.0+Math.cos(4*angle)],q));
         this.bones[0].derive_animation();
     }
     //f draw
