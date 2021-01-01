@@ -3,8 +3,7 @@ from OpenGL import GL
 from typing import *
 
 if not TYPE_CHECKING:
-    class x: pass
-    GL.Texture = x
+    GL.Texture = object
     pass
 
 #a Classes

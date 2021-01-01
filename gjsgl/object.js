@@ -1,33 +1,4 @@
-function isPowerOf2(value) {
-  return (value & (value - 1)) == 0;
-}
-function loadTexture(gl, url) {
-  const texture = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, texture);
-
-    const image = new Image();
-image.crossOrigin = "anonymous";
-  image.src = url;
-  image.onload = function() {
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-/*    if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
-       // Yes, it's a power of 2. Generate mips.
-    } else {
-       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    }
-*/
-      console.log("Loaded texture", texture);
-  };
-  return texture;
-}
-
+//c Submesh
 class Submesh {
     constructor(bone_indices, gl_type, offset, count) {
         this.bone_indices = bone_indices;
@@ -36,72 +7,87 @@ class Submesh {
         this.vindex_count = count;
     }
 }
+
+//c Mesh
 class Mesh {
     //f constructor
-    constructor(gl, obj) {
-        this.positions  = gl.createBuffer();
-        this.normals    = gl.createBuffer();
-        this.texcoords  = gl.createBuffer();
-        this.weights    = gl.createBuffer();
-        this.indices    = gl.createBuffer();
+    constructor(obj) {
+        this.obj        = obj;
         
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.positions);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(obj.positions), gl.STATIC_DRAW);
+        this.positions  = GL.createBuffer();
+        this.normals    = GL.createBuffer();
+        this.texcoords  = GL.createBuffer();
+        this.weights    = GL.createBuffer();
+        this.indices    = GL.createBuffer();
         
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.normals);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(obj.normals), gl.STATIC_DRAW);
+        GL.bindBuffer(GL.ARRAY_BUFFER, this.positions);
+        GL.bufferData(GL.ARRAY_BUFFER, new Float32Array(obj.positions), GL.STATIC_DRAW);
         
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.texcoords);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(obj.texcoords), gl.STATIC_DRAW);
+        GL.bindBuffer(GL.ARRAY_BUFFER, this.normals);
+        GL.bufferData(GL.ARRAY_BUFFER, new Float32Array(obj.normals), GL.STATIC_DRAW);
         
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.weights);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(obj.weights), gl.STATIC_DRAW);
+        GL.bindBuffer(GL.ARRAY_BUFFER, this.texcoords);
+        GL.bufferData(GL.ARRAY_BUFFER, new Float32Array(obj.texcoords), GL.STATIC_DRAW);
+        
+        GL.bindBuffer(GL.ARRAY_BUFFER, this.weights);
+        GL.bufferData(GL.ARRAY_BUFFER, new Float32Array(obj.weights), GL.STATIC_DRAW);
 
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indices);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint8Array(obj.indices), gl.STATIC_DRAW);
-
-        this.submeshes = obj.submeshes;
+        GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, this.indices);
+        GL.bufferData(GL.ELEMENT_ARRAY_BUFFER, new Uint8Array(obj.indices), GL.STATIC_DRAW);
     }
-    draw(gl, shader, bones) {
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indices);
+    //f bind
+    bind(shader) {
+        GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, this.indices);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER,         this.positions);
-        gl.enableVertexAttribArray(shader.attribLocations.vertexPosition);
-        gl.vertexAttribPointer(shader.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+        GL.bindBuffer(GL.ARRAY_BUFFER,         this.positions);
+        GL.enableVertexAttribArray(shader.attribLocations.vertexPosition);
+        GL.vertexAttribPointer(shader.attribLocations.vertexPosition, 3, GL.FLOAT, false, 0, 0);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER,         this.normals);
-        gl.enableVertexAttribArray(shader.attribLocations.vertexNormal);
-        gl.vertexAttribPointer(shader.attribLocations.vertexNormal, 3, gl.FLOAT, false, 0, 0);
+        GL.bindBuffer(GL.ARRAY_BUFFER,         this.normals);
+        GL.enableVertexAttribArray(shader.attribLocations.vertexNormal);
+        GL.vertexAttribPointer(shader.attribLocations.vertexNormal, 3, GL.FLOAT, false, 0, 0);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER,         this.texcoords);
-        gl.enableVertexAttribArray(shader.attribLocations.vertexTexture);
-        gl.vertexAttribPointer(shader.attribLocations.vertexTexture, 2, gl.FLOAT, false, 0, 0);
+        GL.bindBuffer(GL.ARRAY_BUFFER,         this.texcoords);
+        GL.enableVertexAttribArray(shader.attribLocations.vertexTexture);
+        GL.vertexAttribPointer(shader.attribLocations.vertexTexture, 2, GL.FLOAT, false, 0, 0);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER,         this.weights);
-        gl.enableVertexAttribArray(shader.attribLocations.vertexWeights);
-        gl.vertexAttribPointer(shader.attribLocations.vertexWeights, 4, gl.FLOAT, false, 0, 0);
+        GL.bindBuffer(GL.ARRAY_BUFFER,         this.weights);
+        GL.enableVertexAttribArray(shader.attribLocations.vertexWeights);
+        GL.vertexAttribPointer(shader.attribLocations.vertexWeights, 4, GL.FLOAT, false, 0, 0);
+
+    }
+    //f draw
+    draw(shader, bones, texture) {
+        this.bind(shader);
+
+        GL.activeTexture(GL.TEXTURE0);
+        GL.bindTexture(GL.TEXTURE_2D, texture);
+        GL.uniform1i(shader.uniforms.Texture, 0);
 
         const mymatrix = Array(64);
-        const gl_types = {"TS":gl.TRIANGLE_STRIP};
-        for (const sm of this.submeshes) {
+        const gl_types = {"TS":GL.TRIANGLE_STRIP};
+        for (const sm of this.obj.submeshes) {
             for (var i=0; i<16; i++) {
                 mymatrix[ 0+i] = bones[sm.bone_indices[0]].animated_mtm[i];
                 mymatrix[16+i] = bones[sm.bone_indices[1]].animated_mtm[i];
                 mymatrix[32+i] = bones[sm.bone_indices[2]].animated_mtm[i];
                 mymatrix[48+i] = bones[sm.bone_indices[3]].animated_mtm[i];
             }
-            gl.uniformMatrix4fv(shader.uniformLocations.boneMatrices, false, mymatrix);    
-            gl.drawElements(gl_types[sm.gl_type], sm.vindex_count, gl.UNSIGNED_BYTE, sm.vindex_offset);
+            GL.uniformMatrix4fv(shader.uniformLocations.boneMatrices, false, mymatrix);    
+            GL.drawElements(gl_types[sm.gl_type], sm.vindex_count, GL.UNSIGNED_BYTE, sm.vindex_offset);
         }
     }
+    //f All done
 }
 
+//c MeshObject
 class MeshObject {
-    constructor(gl, obj, texture, world_vec) {
+    //f constructor
+    constructor(obj, texture, world_vec) {
         this.texture = texture;
         this.world_matrix = mat4.create();
         this.place(world_vec);
-        this.mesh = new Mesh(gl, obj);
+        this.mesh = new Mesh(obj);
         this.bones = []
         this.bones.push(new Bone(null));
         this.bones.push(new Bone(this.bones[0]));
@@ -112,12 +98,14 @@ class MeshObject {
         this.bones[0].derive_at_rest();
         this.bones[0].derive_animation();
     }
+    //f place
     place(world_vec) {
         mat4.identity(this.world_matrix);
         this.world_matrix[12] = world_vec[0];
         this.world_matrix[13] = world_vec[1];
         this.world_matrix[14] = world_vec[2];
     }
+    //f animate
     animate(time) {
         const q = quat.create();
         const angle=Math.sin(time*0.2)*0.3;
@@ -137,245 +125,10 @@ class MeshObject {
         this.bones[2].quaternion_from_rest(q);
         this.bones[0].derive_animation();
     }
-    draw(gl, shader) {
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.texture);
-        gl.uniformMatrix4fv(shader.uniformLocations.modelMatrix, false, this.world_matrix);
-        this.mesh.draw(gl, shader, this.bones);
+    //f draw
+    draw(shader) {
+        GL.uniformMatrix4fv(shader.uniformLocations.modelMatrix, false, this.world_matrix);
+        this.mesh.draw(shader, this.bones, this.texture);
     }
-}
-
-//a Cube mesh with single bone
-// cube front face   back face (as seen from front)
-//        1    0        5   4
-//        3    2        7   6
-// triangles (anticlockwise for first)
-//  3.2.1 2.1.0 1.0.4 0.4.2 4.2.6 2.6.7 6.7.4 7.4.5 4.5.1 5.1.7 1.7.3 7.3.2
-// Cube strip
-// 3, 2, 1, 0, 4, 2, 6, 7, 4, 5, 1, 7, 3, 2
-const cube =  {
-    positions : [
-      1.0,  1.0, 1.0, 
-      -1.0,  1.0, 1.0,
-      1.0, -1.0, 1.0, 
-      -1.0, -1.0, 1.0,
-
-      1.0,  1.0, -1.0,
-      -1.0,  1.0, -1.0,
-      1.0, -1.0, -1.0,
-      -1.0, -1.0, -1.0,
-    ],
-    normals : [
-      1.0,  1.0, 1.0, 
-      -1.0,  1.0, 1.0,
-      1.0, -1.0, 1.0, 
-      -1.0, -1.0, 1.0,
-
-      1.0,  1.0, -1.0,
-      -1.0,  1.0, -1.0,
-      1.0, -1.0, -1.0,
-      -1.0, -1.0, -1.0,
-    ],
-    texcoords : [ 1,0, 0,0, 1,1, 0,1,
-            1,1, 0,1, 1,0, 0,0 ],
-    weights : [
-      1., 0., 0., 0.,
-      1., 0., 0., 0.,
-      1., 0., 0., 0.,
-      1., 0., 0., 0.,
-      0., 1., 0., 0.,
-      0., 1., 0., 0.,
-      0., 1., 0., 0.,
-      0., 1., 0., 0.,
-    ],
-    indices :  [3, 2, 1, 0, 4, 2, 6, 7,  4, 5, 1, 7, 3, 2],
-    submeshes : [ new Submesh([0,1,0,0], "TS", 0, 14),
-                ],
-}
-
-//a Double cube object
-    // cube front face   mid   back face (as seen from front)
-    //        1  0      5  4     9  8
-    //        3  2      7  6    11 10
-    // Double cube strip
-    // 3, 2, 1, 0, 4, 2, 6, 7,   11, 5, 9, 8, 11, 10, 6, 8,   4, 5, 1, 7, 3, 2
-const dbl_cube =  {
-    positions : [
-      1.0,  1.0, 1.0, 
-      -1.0,  1.0, 1.0,
-      1.0, -1.0, 1.0, 
-      -1.0, -1.0, 1.0,
-
-      1.0,  1.0, -1.0,
-      -1.0,  1.0, -1.0,
-      1.0, -1.0, -1.0,
-      -1.0, -1.0, -1.0,
-
-      1.0,  1.0, -3.0,
-      -1.0,  1.0, -3.0,
-      1.0, -1.0, -3.0,
-      -1.0, -1.0, -3.0,
-    ],
-    texcoords : [ 1,0, 0,0, 1,1, 0,1,
-                  1,0, 0,0, 1,1, 0,1,
-                  1,1, 0,1, 1,0, 0,0 ],
-    normals : [
-      1.0,  1.0, 1.0, 
-      -1.0,  1.0, 1.0,
-      1.0, -1.0, 1.0, 
-      -1.0, -1.0, 1.0,
-
-      1.0,  1.0,  0.,
-      -1.0,  1.0, 0.,
-      1.0, -1.0,  0.,
-      -1.0, -1.0, 0.,
-
-      1.0,  1.0, -1.0,
-      -1.0,  1.0, -1.0,
-      1.0, -1.0, -1.0,
-      -1.0, -1.0, -1.0,
-    ],
-    weights : [
-      1., 0., 0., 0.,
-      1., 0., 0., 0.,
-      1., 0., 0., 0.,
-      1., 0., 0., 0.,
-      0., 1., 0., 0.,
-      0., 1., 0., 0.,
-      0., 1., 0., 0.,
-      0., 1., 0., 0.,
-      0., 0., 1., 0.,
-      0., 0., 1., 0.,
-      0., 0., 1., 0.,
-      0., 0., 1., 0.,
-    ],
-    indices :  [3, 2, 1, 0, 4, 2, 6, 7,   11, 5, 9, 8, 11, 10, 6, 8,   4, 5, 1, 7, 3, 2],
-    submeshes : [ new Submesh([0,1,2,0], "TS", 0, 22),
-                ],
-}
-
-const dbl_cube2 =  {
-    positions : [
-      1.0,  1.0, 1.0, 
-      -1.0,  1.0, 1.0,
-      1.0, -1.0, 1.0, 
-      -1.0, -1.0, 1.0,
-
-      1.0,  1.0, -1.0,
-      -1.0,  1.0, -1.0,
-      1.0, -1.0, -1.0,
-      -1.0, -1.0, -1.0,
-
-      1.0,  1.0, -3.0,
-      -1.0,  1.0, -3.0,
-      1.0, -1.0, -3.0,
-      -1.0, -1.0, -3.0,
-    ],
-    normals : [
-      1.0,  1.0, 1.0, 
-      -1.0,  1.0, 1.0,
-      1.0, -1.0, 1.0, 
-      -1.0, -1.0, 1.0,
-
-      1.0,  1.0,  0.,
-      -1.0,  1.0, 0.,
-      1.0, -1.0,  0.,
-      -1.0, -1.0, 0.,
-
-      1.0,  1.0, -1.0,
-      -1.0,  1.0, -1.0,
-      1.0, -1.0, -1.0,
-      -1.0, -1.0, -1.0,
-    ],
-    texcoords : [ 1,0, 0,0, 1,1, 0,1,
-                  1,0, 0,0, 1,1, 0,1,
-                  1,1, 0,1, 1,0, 0,0 ],
-    weights : [
-        1., 0., 0., 0.,
-        1., 0., 0., 0.,
-        1., 0., 0., 0.,
-        1., 0., 0., 0.,
-        0.4, 0.6, 0., 0.,
-        0.4, 0.6, 0., 0.,
-        0.4, 0.6, 0., 0.,
-        0.4, 0.6, 0., 0.,
-      0., 1., 0., 0.,
-      0., 1., 0., 0.,
-      0., 1., 0., 0.,
-      0., 1., 0., 0.,
-    ],
-    indices :  [3, 2, 1, 0, 4, 2, 6, 7,   11, 5, 9, 8, 11, 10, 6, 8,   4, 5, 1, 7, 3, 2],
-    submeshes : [ new Submesh([0,1,2,0], "TS", 0, 22),
-                ],
-}
-function make_snake(snake_slices, snake_height) {
-    const snake_slice_height=snake_height/snake_slices;
-    const snake_positions = [];
-    const snake_normals = [];
-    const snake_texcoords = [];
-    const snake_weights = [];
-    const snake_indices = [];
-    for (i=0; i<=snake_slices; i++) {
-        var z = 1.0 - i*snake_slice_height
-        snake_positions.push(1, 1, z, -1, 1, z, 1, -1, z, -1, -1, z);
-        snake_normals.push(1, 1, 0, -1, 1, 0, 1, -1, 0, -1, -1, 0);
-        if (i>=snake_slices/2) {
-            z = 2-(i/snake_slices)*2;
-            snake_texcoords.push( 1,1-z, 0,1-z, 0,1-z, 1,1-z);
-            snake_weights.push(0., z, 1.-z, 0.);
-            snake_weights.push(0., z, 1.-z, 0.);
-            snake_weights.push(0., z, 1.-z, 0.);
-            snake_weights.push(0., z, 1.-z, 0.);
-        } else {
-            z = 1-i/snake_slices * 2;
-            snake_weights.push(z, 1.-z, 0., 0.);
-            snake_texcoords.push( 1,z, 0,z, 0,z, 1,z);
-            snake_weights.push(z, 1.-z, 0., 0.);
-            snake_weights.push(z, 1.-z, 0., 0.);
-            snake_weights.push(z, 1.-z, 0., 0.);
-        }
-    }
-    for (i=0; i<snake_slices; i++) {
-        const base=i*4;
-        snake_indices.push(base, base, base, base+4, base+1, base+5, base+3, base+7, base+2, base+6);
-        snake_indices.push(base, base+4, base+4, base+4);
-    }
-    {
-        var z = 1.0;
-        snake_positions.push(1, 1, z, -1, 1, z, 1, -1, z, -1, -1, z);
-        snake_normals.push(0,0,1, 0,0,1, 0,0,1, 0,0,1);
-        snake_texcoords.push( 1,0, 0,0, 1,1, 0,1);
-        snake_weights.push(1, 0, 0, 0,  1, 0, 0, 0,  1, 0, 0, 0,  1, 0, 0, 0 );
-        z = 1 - snake_height;
-        snake_positions.push(1, 1, z, -1, 1, z, 1, -1, z, -1, -1, z);
-        snake_normals.push(0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1);
-        snake_texcoords.push( 1,0, 0,0, 1,1, 0,1);
-        snake_weights.push(0, 0, 1, 0,  0, 0, 1, 0,  0, 0, 1, 0,  0, 0, 1, 0);
-    }
-    endcap = 4*(snake_slices+1);
-    snake_indices.push(endcap, endcap, endcap+1,endcap+2,endcap+3,endcap+3);// now ccw winding
-    snake_indices.push(endcap+4,endcap+4,endcap+5,endcap+6,endcap+7); // now ccw winding
-    
-    const snake =  {
-        positions : snake_positions,
-        normals   : snake_normals,
-        texcoords : snake_texcoords,
-        weights   : snake_weights,
-        indices   : snake_indices,
-        submeshes : [ new Submesh([0,1,2,0], "TS", 0, snake_indices.length),
-                    ],
-    }
-    return snake;
-}
-
-function draw_objects(gl, shader, meshes, matrices) {
-    gl.useProgram(shader.program);
-    gl.uniformMatrix4fv(shader.uniformLocations.projectionMatrix,false, matrices[0]);
-    gl.uniformMatrix4fv(shader.uniformLocations.cameraMatrix, false, matrices[1]);
-
-    gl.uniform1i(shader.uniformLocations.texture, 0);
-
-    for (const m of meshes) {
-        m.draw(gl, shader);
-    }
+    //f All done
 }

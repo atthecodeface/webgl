@@ -16,10 +16,12 @@ from .shader import Shader
 from typing import *
 
 if not TYPE_CHECKING:
+    GL.VAO          = object
     GL.Program      = object
     GL.Shader       = object
     GL.ShaderType   = object
     GL.Texture      = object
+    GL.Buffer       = object
     GL.Uniform      = object
     GL.Attribute    = object
     pass
@@ -55,15 +57,24 @@ class Submesh:
 
 #c Mesh
 class Mesh:
+    obj        : Object
+    glid       : GL.VAO
+    positions  : GL.Buffer
+    normals    : GL.Buffer
+    texcoords  : GL.Buffer
+    weights    : GL.Buffer
+    indices    : GL.Buffer
     #f __init__
     def __init__(self, shader:Shader, obj:Object) -> None:
-        self.glid = GL.glGenVertexArrays(1)  # create OpenGL vertex array id
-        GL.glBindVertexArray(self.glid)      # activate to receive state below
-        self.positions  = GL.glGenBuffers(1) # glCreateBuffer()
-        self.normals    = GL.glGenBuffers(1) # glCreateBuffer()
-        self.texcoords  = GL.glGenBuffers(1) # glCreateBuffer()
-        self.weights    = GL.glGenBuffers(1) # glCreateBuffer()
-        self.indices    = GL.glGenBuffers(1) # glCreateBuffer()
+        self.obj = obj
+        self.glid = GL.glGenVertexArrays(1)
+        GL.glBindVertexArray(self.glid)
+
+        self.positions  = GL.glGenBuffers(1)
+        self.normals    = GL.glGenBuffers(1)
+        self.texcoords  = GL.glGenBuffers(1)
+        self.weights    = GL.glGenBuffers(1)
+        self.indices    = GL.glGenBuffers(1)
 
         GL.glEnableVertexAttribArray(0)      # assign to layout = 0 attribute
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.positions)
@@ -88,11 +99,14 @@ class Mesh:
         GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.indices)
         GL.glBufferData(GL.GL_ELEMENT_ARRAY_BUFFER, np.array(obj.indices,np.uint8), GL.GL_STATIC_DRAW)
 
-        self.submeshes = obj.submeshes
+        pass
+    #f bind
+    def bind(self, shader:Shader) -> None:
+        GL.glBindVertexArray(self.glid)
         pass
     #f draw
     def draw(self, shader:Shader, bones:List[Any], texture:Texture) -> None:
-        GL.glBindVertexArray(self.glid)
+        self.bind()
 
         GL.glActiveTexture(GL.GL_TEXTURE0)
         GL.glBindTexture(GL.GL_TEXTURE_2D, texture.texture)
@@ -100,7 +114,7 @@ class Mesh:
 
         mymatrix = np.zeros(64,np.float32)
         gl_types = {"TS":GL.GL_TRIANGLE_STRIP}
-        for sm  in self.submeshes:
+        for sm  in self.obj.submeshes:
             for i in range(16):
                 (r,c) = (i//4, i%4)
                 mymatrix[ 0+i] = bones[sm.bone_indices[0]].animated_mtm[r][c]

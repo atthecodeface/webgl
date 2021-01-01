@@ -96,7 +96,9 @@ function shader_compile(gl) {
             cameraMatrix:     gl.getUniformLocation(shaderProgram, 'uCameraMatrix'),
             modelMatrix:      gl.getUniformLocation(shaderProgram, 'uModelMatrix'),
             boneMatrices:     gl.getUniformLocation(shaderProgram, 'uBonesMatrices'),
-            texture:          gl.getUniformLocation(shaderProgram, 'uTexture'),
+        },
+        uniforms: {
+            Texture:          gl.getUniformLocation(shaderProgram, 'uTexture'),
         },
     };
     return [programInfo];
