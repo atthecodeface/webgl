@@ -85,19 +85,17 @@ function shader_compile(gl) {
     const shaderProgram = initShaderProgram(gl, vertex_bone4, frag);
     const programInfo = {
         program: shaderProgram,
-        attribLocations: {
+        attributes: {
             vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
             vertexNormal:   gl.getAttribLocation(shaderProgram, 'aVertexNormal'),
             vertexWeights:  gl.getAttribLocation(shaderProgram, 'aVertexWeights'),
             vertexTexture:   gl.getAttribLocation(shaderProgram, 'aVertexTexture'),
         },
-        uniformLocations: {
+        uniforms: {
             projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
             cameraMatrix:     gl.getUniformLocation(shaderProgram, 'uCameraMatrix'),
             modelMatrix:      gl.getUniformLocation(shaderProgram, 'uModelMatrix'),
             boneMatrices:     gl.getUniformLocation(shaderProgram, 'uBonesMatrices'),
-        },
-        uniforms: {
             Texture:          gl.getUniformLocation(shaderProgram, 'uTexture'),
         },
     };

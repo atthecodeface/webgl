@@ -40,20 +40,20 @@ class Mesh {
         GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, this.indices);
 
         GL.bindBuffer(GL.ARRAY_BUFFER,         this.positions);
-        GL.enableVertexAttribArray(shader.attribLocations.vertexPosition);
-        GL.vertexAttribPointer(shader.attribLocations.vertexPosition, 3, GL.FLOAT, false, 0, 0);
+        GL.enableVertexAttribArray(shader.attributes.vertexPosition);
+        GL.vertexAttribPointer(shader.attributes.vertexPosition, 3, GL.FLOAT, false, 0, 0);
 
         GL.bindBuffer(GL.ARRAY_BUFFER,         this.normals);
-        GL.enableVertexAttribArray(shader.attribLocations.vertexNormal);
-        GL.vertexAttribPointer(shader.attribLocations.vertexNormal, 3, GL.FLOAT, false, 0, 0);
+        GL.enableVertexAttribArray(shader.attributes.vertexNormal);
+        GL.vertexAttribPointer(shader.attributes.vertexNormal, 3, GL.FLOAT, false, 0, 0);
 
         GL.bindBuffer(GL.ARRAY_BUFFER,         this.texcoords);
-        GL.enableVertexAttribArray(shader.attribLocations.vertexTexture);
-        GL.vertexAttribPointer(shader.attribLocations.vertexTexture, 2, GL.FLOAT, false, 0, 0);
+        GL.enableVertexAttribArray(shader.attributes.vertexTexture);
+        GL.vertexAttribPointer(shader.attributes.vertexTexture, 2, GL.FLOAT, false, 0, 0);
 
         GL.bindBuffer(GL.ARRAY_BUFFER,         this.weights);
-        GL.enableVertexAttribArray(shader.attribLocations.vertexWeights);
-        GL.vertexAttribPointer(shader.attribLocations.vertexWeights, 4, GL.FLOAT, false, 0, 0);
+        GL.enableVertexAttribArray(shader.attributes.vertexWeights);
+        GL.vertexAttribPointer(shader.attributes.vertexWeights, 4, GL.FLOAT, false, 0, 0);
 
     }
     //f draw
@@ -73,7 +73,7 @@ class Mesh {
                 mymatrix[32+i] = bones[sm.bone_indices[2]].animated_mtm[i];
                 mymatrix[48+i] = bones[sm.bone_indices[3]].animated_mtm[i];
             }
-            GL.uniformMatrix4fv(shader.uniformLocations.boneMatrices, false, mymatrix);    
+            GL.uniformMatrix4fv(shader.uniforms.boneMatrices, false, mymatrix);    
             GL.drawElements(gl_types[sm.gl_type], sm.vindex_count, GL.UNSIGNED_BYTE, sm.vindex_offset);
         }
     }
@@ -127,7 +127,7 @@ class MeshObject {
     }
     //f draw
     draw(shader) {
-        GL.uniformMatrix4fv(shader.uniformLocations.modelMatrix, false, this.world_matrix);
+        GL.uniformMatrix4fv(shader.uniforms.modelMatrix, false, this.world_matrix);
         this.mesh.draw(shader, this.bones, this.texture);
     }
     //f All done

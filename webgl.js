@@ -65,8 +65,8 @@ function drawScene(shaders, mesh_objects, time, matrices) {
 
 function draw_objects(shader, meshes, matrices) {
     GL.useProgram(shader.program);
-    GL.uniformMatrix4fv(shader.uniformLocations.projectionMatrix,false, matrices[0]);
-    GL.uniformMatrix4fv(shader.uniformLocations.cameraMatrix, false, matrices[1]);
+    GL.uniformMatrix4fv(shader.uniforms.projectionMatrix,false, matrices[0]);
+    GL.uniformMatrix4fv(shader.uniforms.cameraMatrix, false, matrices[1]);
 
     for (const m of meshes) {
         m.draw(shader);
