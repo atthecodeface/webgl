@@ -1,28 +1,13 @@
-#a Notes on conversion js to python
-"""
-replace-string // with #
-replace-string this. with self.
-replace class heading () : with :
-replace constructor( with def __init__(self, 
-macro replace #f ... next line <>( etc with def <>(self, 
-replace-string ; with nothing
-replace-string 'new Array()' with []
-replace-string '} else :' with else:
-replace-string ':' with :
-replace-string '}' with '    pass'
-Add imports
-hand tidy
-"""
-
 #a Imports
 import glm
+from .transformation import Transformation
+
 from typing import *
 if not TYPE_CHECKING:
     glm.Vec3 = Tuple[float,float,float]
     glm.Vec4 = Tuple[float,float,float,float]
     glm.Mat4 = Tuple[glm.Vec4,glm.Vec4,glm.Vec4,glm.Vec4]
-    class x: pass
-    glm.Quat = x
+    glm.Quat = object
     pass
     
 #a Bone class
@@ -45,10 +30,8 @@ class Bone:
     #v Properties
     parent : Optional["Bone"]
     children : List["Bone"]
-    translation      : glm.Vec3
-    quaternion       : glm.Quat
-    translation_rest : glm.Vec3
-    quaternion_rest  : glm.Quat
+    transformation      : Transformation
+    transformation_rest  : Transformation
     btp              : glm.Mat4
     ptb              : glm.Mat4
     ptb_rest         : glm.Mat4
@@ -62,11 +45,8 @@ class Bone:
             parent.children.append(self)
             pass
         self.children = []
-        self.translation = glm.vec3()
-        self.quaternion = glm.quat() # defaults to identity
-
-        self.translation_rest = glm.vec3()
-        self.quaternion_rest = glm.quat()
+        self.transformation      = Transformation()
+        self.transformation_rest = Transformation()
 
         self.btp = glm.mat4()
         self.ptb = glm.mat4()
@@ -75,27 +55,23 @@ class Bone:
         self.animated_btm = glm.mat4() # bone to mesh
         self.animated_mtm = glm.mat4() # mesh to animated mesh
         pass
-    #f quaternion_from_rest
-    def quaternion_from_rest(self, quaternion:glm.Quat) -> None:
-        self.quaternion =  quaternion * self.quaternion_rest
+    #f transform_from_rest
+    def transform_from_rest(self, transform:Transformation) -> None:
+        self.transformation.set(self.transformation_rest, transform)
         pass
-    #f translate_from_rest
-    def translate_from_rest(self, trans:glm.Vec3) -> None:
-        self.translation = trans + self.translation_rest
+    #f transform
+    def transform(self, transform:Transformation) -> None:
+        self.transformation.set(self.transformation, transform)
         pass
     #f derive_matrices
     def derive_matrices(self) -> None:
-        self.btp = glm.mat4_cast(self.quaternion)
-        self.btp[3][0] += self.translation[0]
-        self.btp[3][1] += self.translation[1]
-        self.btp[3][2] += self.translation[2]
+        self.btp = self.transformation.mat4()
         self.ptb = glm.inverse(self.btp)
         pass
     #f derive_at_rest
     def derive_at_rest(self) -> None :
         self.derive_matrices()
-        self.translation_rest = glm.vec3(self.translation)
-        self.quaternion_rest  = glm.quat(self.quaternion)
+        self.transformation_rest.copy(self.transformation)
         self.ptb_rest         = glm.mat4(self.ptb)
         if self.parent is None:
             self.mtb_rest = glm.mat4(self.ptb)
@@ -109,10 +85,7 @@ class Bone:
         pass
     #f derive_animation
     def derive_animation(self) -> None:
-        self.btp = glm.mat4_cast(self.quaternion)
-        self.btp[3][0] += self.translation[0]
-        self.btp[3][1] += self.translation[1]
-        self.btp[3][2] += self.translation[2]
+        self.btp = self.transformation.mat4()
         if self.parent is None:
             self.animated_btm = glm.mat4(self.btp)
             pass

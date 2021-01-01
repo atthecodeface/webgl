@@ -81,9 +81,6 @@ class F(Frontend):
     
 a = Bone()
 a.derive_at_rest()
-a.quaternion_from_rest(quat())
-print(a.quaternion)
-print(a.quaternion_rest)
 p = F()
 p.run()
 

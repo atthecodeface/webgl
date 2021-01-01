@@ -12,6 +12,7 @@ import glm
 from .texture import Texture
 from .bone import Bone
 from .shader import Shader
+from .transformation import Transformation
 
 from typing import *
 
@@ -106,7 +107,7 @@ class Mesh:
         pass
     #f draw
     def draw(self, shader:Shader, bones:List[Any], texture:Texture) -> None:
-        self.bind()
+        self.bind(shader)
 
         GL.glActiveTexture(GL.GL_TEXTURE0)
         GL.glBindTexture(GL.GL_TEXTURE_2D, texture.texture)
@@ -141,9 +142,9 @@ class MeshObject:
         self.bones.append(Bone())
         self.bones.append(Bone(self.bones[0]))
         self.bones.append(Bone(self.bones[1]))
-        self.bones[0].translate_from_rest(glm.vec3([0.,0.,1.]))
-        self.bones[1].translate_from_rest(glm.vec3([0.,0.,-2.]))
-        self.bones[2].translate_from_rest(glm.vec3([0.,0.,-2.]))
+        self.bones[0].transform(Transformation(translation=(0.,0., 1.)))
+        self.bones[1].transform(Transformation(translation=(0.,0.,-2.)))
+        self.bones[2].transform(Transformation(translation=(0.,0.,-2.)))
         self.bones[0].derive_at_rest()
         self.bones[0].derive_animation()
         pass
@@ -160,16 +161,13 @@ class MeshObject:
         q = glm.quat()
         q = glm.angleAxis(time*0.3, glm.vec3([0,0,1])) * q
         q = glm.angleAxis(1.85,     glm.vec3([1,0,0])) * q
-        self.bones[0].translate_from_rest(glm.vec3([0.,0.,0.]))
-        self.bones[0].quaternion_from_rest(q)
+        self.bones[0].transform_from_rest(Transformation(translation=(0.,0.,0.), quaternion=q))
         q = glm.quat()
         q = glm.angleAxis(angle*4, glm.vec3([0,0,1])) * q
-        self.bones[1].translate_from_rest(glm.vec3([0.,0.,0.0-math.cos(4*angle)]))
-        self.bones[1].quaternion_from_rest(q)
+        self.bones[1].transform_from_rest(Transformation(translation=(0.,0.,-math.cos(4*angle)), quaternion=q))
         q = glm.quat()
         q = glm.angleAxis(angle*4, glm.vec3([0,0,1])) * q
-        self.bones[2].translate_from_rest(glm.vec3([0.,0.,0.0+math.cos(4*angle)]))
-        self.bones[2].quaternion_from_rest(q)
+        self.bones[2].transform_from_rest(Transformation(translation=(0.,0.,+math.cos(4*angle)), quaternion=q))
         self.bones[0].derive_animation()
         pass
     #f draw

@@ -22,7 +22,7 @@ class Mat4:
 def mat4_cast(Quat) -> Mat4: pass
 def quat(x:Optional[Quat]=None) -> Quat: pass
 def mat4(x:Optional[Mat4]=None) -> Mat4: pass
-def vec3(x:Union[Vec3,List[float],List[int],None]=None) -> Vec3: pass
+def vec3(x:Union[Vec3,List[float],List[int],Tuple[float,float,float],None]=None) -> Vec3: pass
 
 def inverse(m:Mat4) -> Mat4: pass
 def perspective(fov:float, aspect:float, near:float, far:float) -> Mat4: pass
