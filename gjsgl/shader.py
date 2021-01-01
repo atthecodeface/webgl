@@ -1,43 +1,60 @@
-from OpenGL.GL import *
+#a Imports
+from OpenGL import GL
+from typing import *
+
+if not TYPE_CHECKING:
+    class x: pass
+    GL.Texture = x
+    pass
+
+#a Classes
+#c Shader
 class Shader:
-    #f loadShader
-    @staticmethod
-    def loadShader(t, source):
-        shader = glCreateShader(t)
-        glShaderSource(shader, source);
-        glCompileShader(shader);
-        if glGetShaderiv(shader, GL_COMPILE_STATUS) !=1:
-            raise Exception(f"Failed to compile shader {glGetShaderInfoLog(shader).decode()}")
+    #v Properties
+    vertex_source   : ClassVar[str]
+    fragment_source : ClassVar[str]
+    attrib_keys     : ClassVar[List[str]]
+    uniform_keys    : ClassVar[List[str]]
+    uniforms        : Dict[str, GL.Uniform]
+    attributes      : Dict[str, GL.Attribute]
+    vertex_shader   : GL.Shader
+    fragment_shader : GL.Shader
+    program         : GL.Program
+    #f compile
+    def compile(self, shader_type:GL.ShaderType, source:str) -> GL.Shader:
+        shader = GL.glCreateShader(shader_type)
+        GL.glShaderSource(shader, source);
+        GL.glCompileShader(shader);
+        if GL.glGetShaderiv(shader, GL.GL_COMPILE_STATUS) !=1:
+            raise Exception(f"Failed to compile shader {GL.glGetShaderInfoLog(shader).decode()}")
         return shader
     #f __init__
-    def __init__(self):
-        self.vertex_shader   = self.loadShader(GL_VERTEX_SHADER, self.vertex_source)
-        self.fragment_shader = self.loadShader(GL_FRAGMENT_SHADER, self.frag_source)
-        self.program = glCreateProgram()
-        glAttachShader(self.program, self.vertex_shader)
-        glAttachShader(self.program, self.fragment_shader)
-        glLinkProgram(self.program)
-        if (glGetProgramiv(self.program, GL_LINK_STATUS)) != 1:
-            raise Exception(f"Unable to initialize the shader program: {glGetShaderInfoLog(self.program).decode()}")
+    def __init__(self) -> None:
+        self.vertex_shader   = self.compile(GL.GL_VERTEX_SHADER, self.vertex_source)
+        self.fragment_shader = self.compile(GL.GL_FRAGMENT_SHADER, self.fragment_source)
+        self.program = GL.glCreateProgram()
+        GL.glAttachShader(self.program, self.vertex_shader)
+        GL.glAttachShader(self.program, self.fragment_shader)
+        GL.glLinkProgram(self.program)
+        if (GL.glGetProgramiv(self.program, GL.GL_LINK_STATUS)) != 1:
+            raise Exception(f"Unable to initialize the shader program: {GL.glGetProgramInfoLog(self.program).decode()}")
         self.attributes = {}
         self.uniforms   = {}
         for k in self.attrib_keys:
-            self.attributes[k] = glGetAttribLocation(self.program, k)
+            self.attributes[k] = GL.glGetAttribLocation(self.program, k)
             pass
         for k in self.uniform_keys:
-            self.uniforms[k]   = glGetUniformLocation(self.program, k)
+            self.uniforms[k]   = GL.glGetUniformLocation(self.program, k)
+            print(k,self.uniforms[k])
             pass
         pass
-    #f use
-    def use(self, uniforms):
-        for (k,v) in uniforms:
-            pass
-        pass
+    #f All done
     pass
 
+#c BoneShader
 class BoneShader(Shader):
     vertex_source = """
-    #version 330 core
+    #version 410 core
     layout(location = 0) in vec3 aVertexPosition;
     layout(location = 1) in vec3 aVertexNormal;
     layout(location = 2) in vec4 aVertexWeights;
@@ -65,8 +82,8 @@ class BoneShader(Shader):
       tex_uv         = aVertexTexture.xy;
     }
     """
-    frag_source = """
-    #version 330 core
+    fragment_source = """
+    #version 410 core
     uniform sampler2D uTexture;
 
     in vec3 color_pos;
@@ -74,19 +91,17 @@ class BoneShader(Shader):
     in vec2 tex_uv;
     out vec4 outColor;
     void main() {
-      vec4 t;
-      t = texture(uTexture, tex_uv);
-      // vec4
-      t=vec4(color_pos,1.);
+      vec4 t = texture( uTexture, tex_uv );
       vec3 light_direction = -normalize(vec3(-0.2, -1., -1.));
       float n = clamp( dot(light_direction, normalize(normal)), 0., 1. );
-      vec4 c = vec4((n*0.8 + vec3(0.2)).xyz,1.) * t;//vec4(1.);
+      vec4 c = vec4((n*0.8 + vec3(0.2)).xyz,1.) * t;
       outColor = vec4(c.xyz, 1.0);
     }
     """
     attrib_keys = ["aVertexPosition", "aVertexNormal", "aVertexWeights", "aVertexTexture", ]
-    uniform_keys = ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix", "uBonesMatrices", "uTexture", ]
+    uniform_keys = ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix", "uBonesMatrices", "uTexture" ]
     
+#c FlatShader
 class FlatShader(Shader):
     vertex_source = """
     #version 330 core
@@ -95,13 +110,13 @@ class FlatShader(Shader):
         gl_Position = vec4(position, 1);
     }
     """
-    frag_source = """
+    fragment_source = """
     #version 330 core
     out vec4 outColor;
     void main() {
     outColor = vec4(1, 0, 0, 1);
     }
     """
-    attrib_keys  = []
-    uniform_keys = []
+    attrib_keys  : ClassVar[List[str]] = []
+    uniform_keys : ClassVar[List[str]] = []
     

@@ -1,32 +1,17 @@
-"""
-from OpenGL.GLUT import *
-class Frontend:
-    window_title = "blah"
-    def __init__(self):
-        glutInit()
-        glutInitDisplayMode(GLUT_RGBA)
-        glutInitWindowSize(500, 500)
-        glutInitWindowPosition(0, 0)
-        self.main_window = glutCreateWindow(self.window_title)
-        self.opengl_ready()
-        glutDisplayFunc(self.draw)
-        glutIdleFunc(self.idle)
-        pass
-    def swap_buffers(self):
-        glutSwapBuffers()
-        pass
-    def run(self):
-        self.finished = False
-        glutMainLoop()
-        pass
-    pass
-"""
-
+#a Imports
 import glfw
+from OpenGL import GL
+from typing import *
+
+#a Classes
+#c Frontend
 class Frontend:
-    window_title = "blah"
-    def __init__(self):
-        from OpenGL import GL
+    #v Properties
+    window_title : ClassVar[str] = "blah"
+    finished : bool
+    main_window : int
+    #f __init__
+    def __init__(self) -> None:
         glfw.init()
         glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 4)
         glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 1)
@@ -39,10 +24,12 @@ class Frontend:
             pass
         self.opengl_ready()
         pass
-    def swap_buffers(self):
+    #f swap_buffers
+    def swap_buffers(self) -> None:
         glfw.swap_buffers(self.main_window)
         pass
-    def run(self):
+    #f run
+    def run(self) -> None:
         self.finished = False
         while not self.finished and not glfw.window_should_close(self.main_window):
             glfw.poll_events()
@@ -51,6 +38,13 @@ class Frontend:
             pass
         glfw.terminate()
         pass
+    #f idle
+    def idle(self) -> None:
+        pass
+    #f opengl_ready - override
+    def opengl_ready(self) -> None:
+        pass
+    #f All done
     pass
 
 
