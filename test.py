@@ -1,6 +1,6 @@
 from glm import mat4, quat, vec3, value_ptr, perspective
 from gjsgl.object import Mesh, MeshObject
-from gjsgl.sample_objects import Cube, DoubleCube, DoubleCube2
+from gjsgl.sample_objects import Cube, DoubleCube, DoubleCube2, Snake
 from gjsgl.bone import Bone
 from gjsgl.shader import BoneShader, FlatShader
 from gjsgl.frontend import Frontend
@@ -25,6 +25,7 @@ class F(Frontend):
         self.mesh_objects = []
         c = DoubleCube2()
         #c = Cube()
+        c = Snake(16,8.)
         # texture = loadTexture("wood.jpg")
         texture = Texture("moon.png")
         m = MeshObject(c, self.shader, texture, vec3())
@@ -67,6 +68,7 @@ class F(Frontend):
         matrices = []
         projection_matrix = perspective(45.*3.1415/180., 1.0, 0.1, 100.0)
         camera_matrix     = mat4()
+        camera_matrix[3][1] -= 6.0
         camera_matrix[3][2] -= 20.0
         matrices.append(projection_matrix)
         matrices.append(camera_matrix)
