@@ -19,6 +19,12 @@ class Mat4:
     def __getitem__(self,x:int) -> Vec4: pass
     def __setitem__(self,x:int,v:Vec4) -> None: pass
     def __mul__(self, other:"Mat4") -> "Mat4": pass
+    pass
+class Mat3:
+    def __getitem__(self,x:int) -> Vec3: pass
+    def __setitem__(self,x:int,v:Vec3) -> None: pass
+    def __mul__(self, other:"Mat3") -> "Mat3": pass
+    pass
 def mat4_cast(Quat) -> Mat4: pass
 def quat(x:Optional[Quat]=None) -> Quat: pass
 def mat4(x:Optional[Mat4]=None) -> Mat4: pass

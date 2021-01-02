@@ -81,12 +81,13 @@ class F(Frontend):
         pass
     pass
 
+from pathlib import Path
 from gjsgl.gltf import Gltf
 a = Bone()
 a.derive_at_rest()
 p = F()
 # p.run()
-g = Gltf(Path("./cubeplus.gltf"))
+g = Gltf(Path("."),Path("./cubeplus.gltf"))
 
 
 

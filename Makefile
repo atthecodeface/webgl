@@ -10,3 +10,6 @@ mypy:
 py:
 	python3 -m test
 
+py_all:
+	python3 -m test_all
+
