@@ -1,5 +1,9 @@
 help:
 	@echo "Help!"
+	@echo "httpd  - run server for javascript use/testing"
+	@echo "mypy   - do strict type checking (there will be some errors)"
+	@echo "py     - run python GUI"
+	@echo "py_all - run python unittest"
 
 httpd:
 	python3 -m http.server

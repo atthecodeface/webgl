@@ -181,7 +181,7 @@ class Snake(Object):
         for i in range(snake_slices+1):
             z = 1.0 - i*snake_slice_height
             snake_positions.extend( [1, 1, z, -1, 1, z, 1, -1, z, -1, -1, z ])
-            snake_normals.extend( [1, 1, 0, -1, 1, 0, 1, -1, 0, -1, -1, 0 ])
+            snake_normals.extend( [1., 1., 0, -1, 1, 0, 1, -1, 0, -1, -1, 0 ])
             if (i>=snake_slices/2):
                 z = 2-(i/snake_slices)*2
                 snake_texcoords.extend( [ 1,1-z, 0,1-z, 0,1-z, 1,1-z ])

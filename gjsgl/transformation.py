@@ -7,12 +7,13 @@ if not TYPE_CHECKING:
     glm.Vec3 = Tuple[float,float,float]
     glm.Vec4 = Tuple[float,float,float,float]
     glm.Mat4 = Tuple[glm.Vec4,glm.Vec4,glm.Vec4,glm.Vec4]
+    glm.Mat3 = Tuple[glm.Vec3,glm.Vec3,glm.Vec3]
     glm.Quat = object
     pass
 
 #a Useful functions
 #f quaternion_of_rotation
-def quaternion_of_rotation(rotation:glm.mat3) -> glm.quat:
+def quaternion_of_rotation(rotation:glm.Mat3) -> glm.Quat:
     """
     Note that R . axis = axis
     RI = (R - I*999/1000)
@@ -35,10 +36,10 @@ def quaternion_of_rotation(rotation:glm.mat3) -> glm.quat:
     v''' = normalize(RI' . v'') etc
     This gets closer and closer to the axis
     """
-    rot_min_id = rotation - 0.99999 * glm.mat3()
-    rot_min_id_i = glm.inverse(rot_min_id)
+    rot_min_id   : glm.Mat3 = rotation - (0.99999 * glm.mat3())
+    rot_min_id_i : glm.Mat3 = glm.inverse(rot_min_id)
     for j in range(3):
-        v = glm.vec3(0,0,0.)
+        v = glm.vec3()
         v[j] = 1.
         for i in range(10):
             last_v = v
@@ -49,14 +50,14 @@ def quaternion_of_rotation(rotation:glm.mat3) -> glm.quat:
         if dist2<0.00001: break
         pass
 
-    w = glm.vec3(1.0,0,0)
-    if axis[0]>0.9 or axis[0]<-0.9: w = glm.vec3(0,1.0,0)
-    na0 = glm.normalize(glm.cross(w, axis))
-    na1 = glm.cross(axis, na0)
+    w = glm.vec3([1.0,0,0])
+    if axis[0]>0.9 or axis[0]<-0.9: w = glm.vec3([0,1.0,0])
+    na0 : glm.Vec3 = glm.normalize(glm.cross(w, axis))
+    na1 : glm.Vec3 = glm.cross(axis, na0)
 
     # Rotate w_perp_n around the axis of rotation by angle A
-    na0_r = rotation * na0
-    na1_r = rotation * na1
+    na0_r : glm.Vec3 = rotation * na0
+    na1_r : glm.Vec3 = rotation * na1
 
     # Get angle of rotation
     cos_angle =  glm.dot(na0, na0_r)
@@ -96,7 +97,7 @@ class Transformation:
             pass
         pass
     #f __str__
-    def __str__(self):
+    def __str__(self) -> str:
         r = f"{self.translation}:{self.quaternion}:{self.scale}"
         return r
     #f copy
@@ -127,21 +128,21 @@ class Transformation:
         return m
     #f from_mat4
     def from_mat4(self, m:glm.Mat4) -> None:
-        self.translation = glm.vec3(m[3][0], m[3][1], m[3][2])
+        self.translation = glm.vec3([m[3][0], m[3][1], m[3][2]])
         rotation = glm.mat3()
         for i in range(3):
-            v = glm.vec3(m[i])
+            v = glm.vec3([m[i][0], m[i][1], m[i][2]])
             l = glm.length(v)
             self.scale[i] = l
-            rotation[i] = v/l
+            rotation[i] = v / l
             pass
         self.quaternion = quaternion_of_rotation(rotation)
         pass
     #f distance
-    def distance(self, other:"Translation") -> float:
+    def distance(self, other:"Transformation") -> float:
         td = glm.distance(self.translation, other.translation)
         sd = glm.distance(self.scale, other.scale)
-        qn = glm.inverse(self.quaternion)*other.quaternion
+        qn :glm.Quat = glm.inverse(self.quaternion)*other.quaternion
         if qn.w<0: qn = -qn
         qd = glm.length(qn - glm.quat())
         return td+sd+qd

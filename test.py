@@ -1,5 +1,5 @@
 from glm import mat4, quat, vec3, value_ptr, perspective
-from gjsgl.object import Mesh, MeshObject
+from gjsgl.object import Object, Mesh, MeshObject
 from gjsgl.sample_objects import Cube, DoubleCube, DoubleCube2, Snake
 from gjsgl.bone import Bone
 from gjsgl.shader import BoneShader, FlatShader
@@ -23,7 +23,7 @@ class F(Frontend):
         self.shader = BoneShader()
         # self.shader = FlatShader()
         self.mesh_objects = []
-        c = DoubleCube2()
+        c : Object = DoubleCube2()
         #c = Cube()
         c = Snake(16,8.)
         # texture = loadTexture("wood.jpg")

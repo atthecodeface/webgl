@@ -30,12 +30,12 @@ if not TYPE_CHECKING:
 #a Objects
 #c Object
 class Object:
-    positions : ClassVar[List[float]]
-    normals   : ClassVar[List[float]]
-    texcoords : ClassVar[List[float]]
-    weights   : ClassVar[List[float]]
-    indices   : ClassVar[List[int]]
-    submeshes : ClassVar[List["Submesh"]]
+    positions : List[float]
+    normals   : List[float]
+    texcoords : List[float]
+    weights   : List[float]
+    indices   : List[int]
+    submeshes : List["Submesh"]
     pass
 
 #a Classes
