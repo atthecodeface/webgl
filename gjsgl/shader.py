@@ -44,7 +44,16 @@ class Shader:
             pass
         for k in self.uniform_keys:
             self.uniforms[k]   = GL.glGetUniformLocation(self.program, k)
-            print(k,self.uniforms[k])
+            pass
+        pass
+    #f get_attr
+    def get_attr(self, name:str) -> Optional[GL.Attribute]:
+        return self.attributes.get(name,None)
+    #f set_uniform_if
+    def set_uniform_if(self, name:str, fn:Callable[[GL.Uniform],None]) -> None:
+        # print("set_uniform_if",name,self.uniforms,self.uniforms.get(name,""))
+        if name in self.uniforms:
+            fn(self.uniforms[name])
             pass
         pass
     #f All done
@@ -63,6 +72,7 @@ class BoneShader(Shader):
     uniform mat4 uCameraMatrix;
     uniform mat4 uModelMatrix;
     uniform mat4 uBonesMatrices[4];
+    uniform float uBonesScale;
 
     out vec3 color_pos;
     out vec3 normal;
@@ -73,6 +83,7 @@ class BoneShader(Shader):
                               (uBonesMatrices[1] * aVertexWeights.y) +
                               (uBonesMatrices[2] * aVertexWeights.z) +
                               (uBonesMatrices[3] * aVertexWeights.w) );
+      weightedMatrix = weightedMatrix * uBonesScale + (mat4(1.) * (1.-uBonesScale));
       color_pos      = (normalize(aVertexPosition) + 1.) / 2.0;
       vec4 model_pos = weightedMatrix * vec4(aVertexPosition.xyz, 1.0);
       vec3 world_pos = (uModelMatrix * vec4(model_pos.xyz, 1.)).xyz;
@@ -98,7 +109,36 @@ class BoneShader(Shader):
     }
     """
     attrib_keys = ["aVertexPosition", "aVertexNormal", "aVertexWeights", "aVertexTexture", ]
-    uniform_keys = ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix", "uBonesMatrices", "uTexture" ]
+    uniform_keys = ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix", "uBonesMatrices", "uBonesScale", "uTexture" ]
+    
+#c UnbonedShader
+class UnbonedShader(Shader):
+    vertex_source = """
+    #version 410 core
+    layout(location = 0) in vec3 aVertexPosition;
+
+    uniform mat4 uProjectionMatrix;
+    uniform mat4 uCameraMatrix;
+    uniform mat4 uModelMatrix;
+
+    out vec3 color_pos;
+
+    void main() {
+      color_pos      = (normalize(aVertexPosition) + 1.) / 2.0;
+// color_pos = vec3(1.);
+      gl_Position    = uProjectionMatrix * uCameraMatrix * uModelMatrix * vec4(aVertexPosition.xyz, 1.);
+    }
+    """
+    fragment_source = """
+    #version 410 core
+    in vec3 color_pos;
+    out vec4 outColor;
+    void main() {
+      outColor = vec4(color_pos,1.);
+    }
+    """
+    attrib_keys = ["aVertexPosition"]
+    uniform_keys = ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix"]
     
 #c FlatShader
 class FlatShader(Shader):
@@ -116,6 +156,6 @@ class FlatShader(Shader):
     outColor = vec4(1, 0, 0, 1);
     }
     """
-    attrib_keys  : ClassVar[List[str]] = []
+    attrib_keys  : ClassVar[List[str]] = ["aVertexPosition"]
     uniform_keys : ClassVar[List[str]] = []
     

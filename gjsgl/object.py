@@ -56,10 +56,18 @@ class Submesh:
     #f All done
     pass
 
+#c MeshBase
+class MeshBase:
+    #f draw
+    def draw(self, shader:Shader, bones:List[Any], texture:Texture) -> None:
+        pass
+    #f All done
+    pass
+
 #c Mesh
-class Mesh:
-    obj        : Object
+class Mesh(MeshBase):
     glid       : GL.VAO
+    obj        : Object
     positions  : GL.Buffer
     normals    : GL.Buffer
     texcoords  : GL.Buffer
@@ -77,25 +85,35 @@ class Mesh:
         self.weights    = GL.glGenBuffers(1)
         self.indices    = GL.glGenBuffers(1)
 
-        GL.glEnableVertexAttribArray(0)      # assign to layout = 0 attribute
+        a = shader.get_attr("aVertexPosition")
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.positions)
         GL.glBufferData(GL.GL_ARRAY_BUFFER, np.array(obj.positions,np.float32), GL.GL_STATIC_DRAW)
-        GL.glVertexAttribPointer(shader.attributes["aVertexPosition"], 3, GL.GL_FLOAT, False, 0, None)
+        GL.glEnableVertexAttribArray(a)
+        GL.glVertexAttribPointer(a, 3, GL.GL_FLOAT, False, 0, None)
+
+        a = shader.get_attr("aVertexNormal")
+        if a is not None:
+            GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.normals)
+            GL.glBufferData(GL.GL_ARRAY_BUFFER, np.array(obj.normals,np.float32), GL.GL_STATIC_DRAW)
+            GL.glEnableVertexAttribArray(a)
+            GL.glVertexAttribPointer(a, 3, GL.GL_FLOAT, False, 0, None)
+            pass
         
-        GL.glEnableVertexAttribArray(1)      # assign to layout = 0 attribute
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.normals)
-        GL.glBufferData(GL.GL_ARRAY_BUFFER, np.array(obj.normals,np.float32), GL.GL_STATIC_DRAW)
-        GL.glVertexAttribPointer(shader.attributes["aVertexNormal"], 3, GL.GL_FLOAT, False, 0, None)
+        a = shader.get_attr("aVertexTexture")
+        if a is not None:
+            GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.texcoords)
+            GL.glBufferData(GL.GL_ARRAY_BUFFER, np.array(obj.texcoords,np.float32), GL.GL_STATIC_DRAW)
+            GL.glEnableVertexAttribArray(a)
+            GL.glVertexAttribPointer(a, 2, GL.GL_FLOAT, False, 0, None)
+            pass
         
-        GL.glEnableVertexAttribArray(2)      # assign to layout = 0 attribute
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.texcoords)
-        GL.glBufferData(GL.GL_ARRAY_BUFFER, np.array(obj.texcoords,np.float32), GL.GL_STATIC_DRAW)
-        GL.glVertexAttribPointer(shader.attributes["aVertexTexture"], 2, GL.GL_FLOAT, False, 0, None)
-        
-        GL.glEnableVertexAttribArray(3)      # assign to layout = 0 attribute
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.weights)
-        GL.glBufferData(GL.GL_ARRAY_BUFFER, np.array(obj.weights,np.float32), GL.GL_STATIC_DRAW)
-        GL.glVertexAttribPointer(shader.attributes["aVertexWeights"], 4, GL.GL_FLOAT, False, 0, None)
+        a = shader.get_attr("aVertexWeights")
+        if a is not None:
+            GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.weights)
+            GL.glBufferData(GL.GL_ARRAY_BUFFER, np.array(obj.weights,np.float32), GL.GL_STATIC_DRAW)
+            GL.glEnableVertexAttribArray(a)
+            GL.glVertexAttribPointer(a, 4, GL.GL_FLOAT, False, 0, None)
+            pass
 
         GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.indices)
         GL.glBufferData(GL.GL_ELEMENT_ARRAY_BUFFER, np.array(obj.indices,np.uint8), GL.GL_STATIC_DRAW)
@@ -111,7 +129,8 @@ class Mesh:
 
         GL.glActiveTexture(GL.GL_TEXTURE0)
         GL.glBindTexture(GL.GL_TEXTURE_2D, texture.texture)
-        GL.glUniform1i(shader.uniforms["uTexture"], 0)
+        shader.set_uniform_if("uTexture",    lambda u:GL.glUniform1i(u, 0))
+        shader.set_uniform_if("uBonesScale", lambda u:GL.glUniform1f(u, 1.))
 
         mymatrix = np.zeros(64,np.float32)
         gl_types = {"TS":GL.GL_TRIANGLE_STRIP}
@@ -123,7 +142,7 @@ class Mesh:
                 mymatrix[32+i] = bones[sm.bone_indices[2]].animated_mtm[r][c]
                 mymatrix[48+i] = bones[sm.bone_indices[3]].animated_mtm[r][c]
                 pass
-            GL.glUniformMatrix4fv(shader.uniforms["uBonesMatrices"], 4, False, mymatrix)
+            shader.set_uniform_if("uBonesMatrices", lambda u:GL.glUniformMatrix4fv(u, 4, False, mymatrix))
             GL.glDrawElements(gl_types[sm.gl_type], sm.vindex_count, GL.GL_UNSIGNED_BYTE, ctypes.c_void_p(sm.vindex_offset))
             pass
         pass
@@ -133,11 +152,11 @@ class Mesh:
 #c MeshObject
 class MeshObject:
     #f __init__
-    def __init__(self, obj:Object, shader:Shader, texture:Texture, world_vec:glm.Vec3) -> None:
+    def __init__(self, mesh:MeshBase, texture:Texture, world_vec:glm.Vec3) -> None:
         self.texture = texture
         self.world_matrix = glm.mat4()
         self.place(world_vec)
-        self.mesh = Mesh(shader, obj)
+        self.mesh = mesh
         self.bones = []
         self.bones.append(Bone())
         self.bones.append(Bone(self.bones[0]))
@@ -172,7 +191,6 @@ class MeshObject:
         pass
     #f draw
     def draw(self, shader:Shader) -> None:
-        # GL.glEnable(GL.GL_TEXTURE_2D)
         GL.glUniformMatrix4fv(shader.uniforms["uModelMatrix"], 1, False, glm.value_ptr(self.world_matrix))
         self.mesh.draw(shader, self.bones, self.texture)
         pass

@@ -1,10 +1,16 @@
 #a Imports
+from OpenGL import GL
 import json
 import base64
 import glm
+import ctypes
+import numpy as np
 from pathlib import Path
 from dataclasses import dataclass
 from .transformation import Transformation
+from .object import MeshBase
+from .texture import Texture as OTexture
+from .shader import Shader
 
 from typing import *
 Json = Dict[str,Any]
@@ -14,39 +20,60 @@ class Enum:
     name: ClassVar[str]
     enum: ClassVar[int]
     enum_to_cls : ClassVar[Dict[int,Type["Enum"]]]
+    name_to_cls : ClassVar[Dict[str,Type["Enum"]]]
     @classmethod
     def of_enum(cls:Type["Enum"], enum:int) -> Type["Enum"]: return cls.enum_to_cls[enum]
+    @classmethod
+    def of_name(cls:Type["Enum"], name:str) -> Type["Enum"]: return cls.name_to_cls[name]
     pass
 
-class ValueType(Enum): pass
-class VTByte(ValueType):   enum=5120; name="BYTE"
-class VTUByte(ValueType):  enum=5121; name="UNSIGNED_BYTE"
-class VTShort(ValueType):  enum=5122; name="SHORT"
-class VTUShort(ValueType): enum=5123; name="UNSIGNED_SHORT"
-class VTUInt(ValueType):   enum=5125; name="UNSIGNED_INT"
-class VTFloat(ValueType):  enum=5126; name="FLOAT"
+class ValueType(Enum): size: int; pass
+class VTByte(ValueType):   enum=5120; size=1; gl_type=GL.GL_BYTE;           name="BYTE"
+class VTUByte(ValueType):  enum=5121; size=1; gl_type=GL.GL_UNSIGNED_BYTE;  name="UNSIGNED_BYTE"
+class VTShort(ValueType):  enum=5122; size=2; gl_type=GL.GL_SHORT;          name="SHORT"
+class VTUShort(ValueType): enum=5123; size=2; gl_type=GL.GL_UNSIGNED_SHORT; name="UNSIGNED_SHORT"
+class VTUInt(ValueType):   enum=5125; size=4; gl_type=GL.GL_UNSIGNED_INT;   name="UNSIGNED_INT"
+class VTFloat(ValueType):  enum=5126; size=4; gl_type=GL.GL_FLOAT;          name="FLOAT"
+ValueType.enum_to_cls = {
+    VTByte.enum   : VTByte,
+    VTUByte.enum  : VTUByte,
+    VTShort.enum  : VTShort,
+    VTUShort.enum : VTUShort,
+    VTUInt.enum   : VTUInt,
+    VTFloat.enum  : VTFloat,
+}
 
-class CompType(Enum): pass
-class CTScalar(CompType):     enum=1; name="SCALAR"
-class CTVec2Scalar(CompType): enum=1; name="VEC2"
-class CTVec3Scalar(CompType): enum=1; name="VEC3"
-class CTVec4Scalar(CompType): enum=1; name="VEC4"
-class CTMat2Scalar(CompType): enum=1; name="MAT2"
-class CTMat3Scalar(CompType): enum=1; name="MAT3"
-class CTMat4Scalar(CompType): enum=1; name="MAT4"
+class CompType(Enum): size: int; pass
+class CTScalar(CompType):     enum=1; size=1;  name="SCALAR"
+class CTVec2Scalar(CompType): enum=1; size=2;  name="VEC2"
+class CTVec3Scalar(CompType): enum=1; size=3;  name="VEC3"
+class CTVec4Scalar(CompType): enum=1; size=4;  name="VEC4"
+class CTMat2Scalar(CompType): enum=1; size=4;  name="MAT2"
+class CTMat3Scalar(CompType): enum=1; size=9;  name="MAT3"
+class CTMat4Scalar(CompType): enum=1; size=16; name="MAT4"
+CompType.name_to_cls = {
+    CTScalar.name                    :CTScalar,
+    CTVec2Scalar.name                    :CTVec2Scalar,
+    CTVec3Scalar.name                    :CTVec3Scalar,
+    CTVec4Scalar.name                    :CTVec4Scalar,
+    CTMat2Scalar.name                    :CTMat2Scalar,
+    CTMat3Scalar.name                    :CTMat3Scalar,
+    CTMat4Scalar.name                    :CTMat4Scalar,
+}
+
 
 class BViewTgt(Enum): pass
 class BVTArray(BViewTgt): enum=34962; name="ARRAY_BUFFER"
 class BVTIndex(BViewTgt): enum=34963; name="ELEMENT_ARRAY_BUFFER"
 
 class PrimitiveType(Enum): pass
-class PTPoints(PrimitiveType): enum=0; name="POINTS"
-class PTLines(PrimitiveType): enum=1; name="LINES"
-class PTLineLoop(PrimitiveType): enum=2; name="LINE_LOOP"
-class PTLineStrip(PrimitiveType): enum=3; name="LINE_STRIP"
-class PTTriangles(PrimitiveType): enum=4; name="TRIANGLES"
-class PTTriangleStrip(PrimitiveType): enum=5; name="TRIANGLE_STRIP"
-class PTTriangleFan(PrimitiveType): enum=6; name="TRIANGLE_FAN"
+class PTPoints(PrimitiveType):        enum=0; gl_type=GL.GL_POINTS; name="POINTS"
+class PTLines(PrimitiveType):         enum=1; gl_type=GL.GL_LINES; name="LINES"
+class PTLineLoop(PrimitiveType):      enum=2; gl_type=GL.GL_LINE_LOOP; name="LINE_LOOP"
+class PTLineStrip(PrimitiveType):     enum=3; gl_type=GL.GL_LINE_STRIP; name="LINE_STRIP"
+class PTTriangles(PrimitiveType):     enum=4; gl_type=GL.GL_TRIANGLES; name="TRIANGLES"
+class PTTriangleStrip(PrimitiveType): enum=5; gl_type=GL.GL_TRIANGLE_STRIP; name="TRIANGLE_STRIP"
+class PTTriangleFan(PrimitiveType)  : enum=6; gl_type=GL.GL_TRIANGLE_FAN; name="TRIANGLE_FAN"
 PrimitiveType.enum_to_cls = {
     PTPoints.enum          : PTPoints,
     PTLines.enum           : PTLines,
@@ -59,11 +86,12 @@ PrimitiveType.enum_to_cls = {
 
 #a Data classes
 #c Buffer
+NPArray = Any
 class Buffer:
     #v Properties
     name: str
     length: int
-    data : bytes
+    data : NPArray
     #f __init__
     def __init__(self, json:Json) -> None:
         self.name   = json.get("name","")
@@ -71,12 +99,13 @@ class Buffer:
         self.length = json["byteLength"]
         if self.uri[:17] == "data:application/":
             data = self.uri.split(";base64,")[1]
-            self.data = base64.b64decode(data)
+            self.data = np.frombuffer(base64.b64decode(data),dtype=np.uint8)
             pass
         else:
             path = Path(self.uri)
             with path.open("rb") as f:
-                self.data = f.read()
+                data = f.read()
+                self.data = np.frombuffer(data, dtype=np.uint8)
                 pass
             pass
         pass
@@ -107,18 +136,30 @@ class Accessor:
     name: str
     view: BufferView
     offset: int # n'th item at byte view_offset+this.offset+view_stride*m
-    acc_type: str # SCALAR, VEC3, etc
-    comp_type: int # GL_FLOAT, etc
+    acc_type: CompType
+    comp_type: ValueType
     count: int # number of VEC3 of FLOAT (e.g.)
     #f __init__
     def __init__(self, gltf:"Gltf", json:Json) -> None:
         self.view = gltf.get_buffer_view(json["bufferView"])
         self.name   = json.get("name","")
         self.offset = json.get("byteOffset",0)
-        self.acc_type = json.get("type","")
-        self.comp_type = json.get("componentType","")
+        self.acc_type  = cast(CompType, CompType.of_name(json.get("type","SCALAR")))
+        self.comp_type = cast(ValueType, ValueType.of_enum(json.get("componentType",5120)))
         self.count = json.get("count",0)
         pass
+    #f as_np_data
+    def as_np_data(self) -> bytes:
+        item_size = self.comp_type.size * self.acc_type.size
+        stride = self.view.stride
+        if stride==0: stride=item_size
+        b = np.ndarray((self.count * item_size,), dtype=np.uint8)
+        for i in range(self.count):
+            dest_offset = item_size*i
+            src_offset = self.view.offset + self.offset + stride*i
+            b[dest_offset:dest_offset+item_size] = self.view.buffer.data[src_offset:src_offset+item_size]
+            pass
+        return b
     #f All done
     pass
 
@@ -172,7 +213,7 @@ class Material:
 
 #c Primitive - Add non-standard maps
 class Primitive: # Defines a drawElements call
-    mode : PrimitiveType
+    mode       : PrimitiveType
     position   : Accessor
     indices    : Accessor
     material   : Material
@@ -354,12 +395,74 @@ class Gltf:
                     self.nodes.append(Node(self,n))
                     pass
                 pass
-            print(self.buffers)
-            print(self.buffer_views)
-            print(self.accessors)
-            print(self.materials)
-            print(self.meshes)
-            print(self.nodes)
+            # print(self.buffers)
+            # print(self.buffer_views)
+            # print(self.accessors)
+            # print(self.materials)
+            # print(self.meshes)
+            # print(self.nodes)
+            pass
+        pass
+    pass
+
+#a Map gltf to gjsgl
+#c PrimitiveForGl - GLTF Mesh maps to a gjsgl Mesh for now
+class PrimitiveForGl:
+    glid       : GL.VAO
+    # positions  : GL.Buffer
+    # normals    : GL.Buffer
+    # texcoords  : GL.Buffer
+    # weights    : GL.Buffer
+    # indices    : GL.Buffer
+    def __init__(self, shader:Shader, gltf:Gltf, primitive:Primitive) -> None:
+        self.primitive = primitive
+
+        self.glid = GL.glGenVertexArrays(1)
+        GL.glBindVertexArray(self.glid)
+
+        # attrib 0 is position
+        a = shader.get_attr("aVertexPosition")
+        b = GL.glGenBuffers(1)
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, b)
+        GL.glBufferData(GL.GL_ARRAY_BUFFER, primitive.position.as_np_data(), GL.GL_STATIC_DRAW)
+        GL.glEnableVertexAttribArray(a)
+        GL.glVertexAttribPointer(a, 3, GL.GL_FLOAT, False, 0, None)
+
+        # indices
+        b = GL.glGenBuffers(1)
+        GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, b)
+        GL.glBufferData(GL.GL_ELEMENT_ARRAY_BUFFER, primitive.indices.as_np_data(), GL.GL_STATIC_DRAW)
+        
+        pass
+    #f draw
+    def draw(self, shader:Shader, bones:List[Any]) -> None:
+        GL.glBindVertexArray(self.glid)
+        shader.set_uniform_if("uBonesScale", lambda u:GL.glUniform1f(u, 0.0))
+        GL.glDrawElements(self.primitive.mode.gl_type, self.primitive.indices.count, self.primitive.indices.comp_type.gl_type, ctypes.c_void_p(0));
+        pass
+    pass
+
+#c Mesh2Mesh - GLTF Mesh maps to a gjsgl Mesh for now
+class Mesh2Mesh(MeshBase):
+    glp : List[PrimitiveForGl]
+    #f __init__
+    def __init__(self, shader:Shader, gltf:Gltf, mesh_index:int):
+        print(len(gltf.meshes))
+        mesh = gltf.get_mesh(mesh_index)
+        print(mesh_index, mesh.name)
+        self.glp = []
+        for p in mesh.primitives:
+            self.glp.append(PrimitiveForGl(shader, gltf, p))
+            pass
+        pass
+    #f draw
+    def draw(self, shader:Shader, bones:List[Any], texture:OTexture) -> None:
+        GL.glActiveTexture(GL.GL_TEXTURE0)
+        GL.glBindTexture(GL.GL_TEXTURE_2D, texture.texture)
+        shader.set_uniform_if("uTexture",    lambda u:GL.glUniform1i(u, 0))
+
+        for p in self.glp:
+            p.draw(shader, bones)
             pass
         pass
     pass

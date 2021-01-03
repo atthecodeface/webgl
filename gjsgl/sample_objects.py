@@ -217,7 +217,7 @@ class Snake(Object):
             snake_weights.extend( [0, 0, 1, 0,  0, 0, 1, 0,  0, 0, 1, 0,  0, 0, 1, 0 ])
             pass
         endcap = 4*(snake_slices+1)
-        snake_indices.extend( [endcap, endcap, endcap+1,endcap+2,endcap+3,endcap+3 ])# now ccw winding
+        snake_indices.extend( [endcap, endcap, endcap+2,endcap+1,endcap+3,endcap+3 ])# now ccw winding
         snake_indices.extend( [endcap+4,endcap+4,endcap+5,endcap+6,endcap+7 ]) # now ccw winding
     
         self.positions = snake_positions
