@@ -66,7 +66,7 @@ class Bone:
     #f derive_matrices
     def derive_matrices(self) -> None:
         self.btp = self.transformation.mat4()
-        self.ptb = glm.inverse(self.btp)
+        self.ptb = glm.inverse(self.btp) # type: ignore
         pass
     #f derive_at_rest
     def derive_at_rest(self) -> None :

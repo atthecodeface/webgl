@@ -36,17 +36,18 @@ def quaternion_of_rotation(rotation:glm.Mat3) -> glm.Quat:
     v''' = normalize(RI' . v'') etc
     This gets closer and closer to the axis
     """
-    rot_min_id   : glm.Mat3 = rotation - (0.99999 * glm.mat3())
-    rot_min_id_i : glm.Mat3 = glm.inverse(rot_min_id)
+    rot_min_id   : glm.Mat3 = rotation - (0.99999 * glm.mat3()) # type: ignore
+    rot_min_id_i : glm.Mat3 = glm.inverse(rot_min_id) # type: ignore
     for j in range(3):
         v = glm.vec3()
         v[j] = 1.
         for i in range(10):
             last_v = v
-            v = glm.normalize(rot_min_id_i * v)
+            rid_i_v : glm.Vec3 = rot_min_id_i * v # type: ignore
+            v = glm.normalize(rid_i_v)
             pass
         axis = v
-        dist2 = glm.length2(v-last_v)
+        dist2 = glm.length2(v - last_v) # type: ignore
         if dist2<0.00001: break
         pass
 
@@ -56,8 +57,8 @@ def quaternion_of_rotation(rotation:glm.Mat3) -> glm.Quat:
     na1 : glm.Vec3 = glm.cross(axis, na0)
 
     # Rotate w_perp_n around the axis of rotation by angle A
-    na0_r : glm.Vec3 = rotation * na0
-    na1_r : glm.Vec3 = rotation * na1
+    na0_r : glm.Vec3 = rotation * na0 # type: ignore
+    na1_r : glm.Vec3 = rotation * na1 # type: ignore
 
     # Get angle of rotation
     cos_angle =  glm.dot(na0, na0_r)
@@ -134,7 +135,7 @@ class Transformation:
             v = glm.vec3([m[i][0], m[i][1], m[i][2]])
             l = glm.length(v)
             self.scale[i] = l
-            rotation[i] = v / l
+            rotation[i] = v / l # type: ignore
             pass
         self.quaternion = quaternion_of_rotation(rotation)
         pass
@@ -142,7 +143,8 @@ class Transformation:
     def distance(self, other:"Transformation") -> float:
         td = glm.distance(self.translation, other.translation)
         sd = glm.distance(self.scale, other.scale)
-        qn :glm.Quat = glm.inverse(self.quaternion)*other.quaternion
+        qn : glm.Quat = glm.inverse(self.quaternion)  # type: ignore
+        qn = qn * other.quaternion
         if qn.w<0: qn = -qn
         qd = glm.length(qn - glm.quat())
         return td+sd+qd
