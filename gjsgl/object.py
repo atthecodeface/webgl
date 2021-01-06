@@ -11,7 +11,7 @@ import math
 import glm
 from .texture import Texture
 from .bone import Bone
-from .shader import Shader
+from .shader import ShaderProgram
 from .transformation import Transformation
 
 from typing import *
@@ -59,7 +59,7 @@ class Submesh:
 #c MeshBase
 class MeshBase:
     #f draw
-    def draw(self, shader:Shader, bones:List[Any], texture:Texture) -> None:
+    def draw(self, shader:ShaderProgram, bones:List[Any], texture:Texture) -> None:
         pass
     #f All done
     pass
@@ -74,7 +74,7 @@ class Mesh(MeshBase):
     weights    : GL.Buffer
     indices    : GL.Buffer
     #f __init__
-    def __init__(self, shader:Shader, obj:Object) -> None:
+    def __init__(self, shader:ShaderProgram, obj:Object) -> None:
         self.obj = obj
         self.glid = GL.glGenVertexArrays(1)
         GL.glBindVertexArray(self.glid)
@@ -85,13 +85,13 @@ class Mesh(MeshBase):
         self.weights    = GL.glGenBuffers(1)
         self.indices    = GL.glGenBuffers(1)
 
-        a = shader.get_attr("aVertexPosition")
+        a = shader.get_attr("vPosition")
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.positions)
         GL.glBufferData(GL.GL_ARRAY_BUFFER, np.array(obj.positions,np.float32), GL.GL_STATIC_DRAW)
         GL.glEnableVertexAttribArray(a)
         GL.glVertexAttribPointer(a, 3, GL.GL_FLOAT, False, 0, None)
 
-        a = shader.get_attr("aVertexNormal")
+        a = shader.get_attr("vNormal")
         if a is not None:
             GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.normals)
             GL.glBufferData(GL.GL_ARRAY_BUFFER, np.array(obj.normals,np.float32), GL.GL_STATIC_DRAW)
@@ -99,7 +99,7 @@ class Mesh(MeshBase):
             GL.glVertexAttribPointer(a, 3, GL.GL_FLOAT, False, 0, None)
             pass
         
-        a = shader.get_attr("aVertexTexture")
+        a = shader.get_attr("vTexture")
         if a is not None:
             GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.texcoords)
             GL.glBufferData(GL.GL_ARRAY_BUFFER, np.array(obj.texcoords,np.float32), GL.GL_STATIC_DRAW)
@@ -107,7 +107,7 @@ class Mesh(MeshBase):
             GL.glVertexAttribPointer(a, 2, GL.GL_FLOAT, False, 0, None)
             pass
         
-        a = shader.get_attr("aVertexWeights")
+        a = shader.get_attr("vWeights")
         if a is not None:
             GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.weights)
             GL.glBufferData(GL.GL_ARRAY_BUFFER, np.array(obj.weights,np.float32), GL.GL_STATIC_DRAW)
@@ -120,11 +120,11 @@ class Mesh(MeshBase):
 
         pass
     #f bind
-    def bind(self, shader:Shader) -> None:
+    def bind(self, shader:ShaderProgram) -> None:
         GL.glBindVertexArray(self.glid)
         pass
     #f draw
-    def draw(self, shader:Shader, bones:List[Any], texture:Texture) -> None:
+    def draw(self, shader:ShaderProgram, bones:List[Any], texture:Texture) -> None:
         self.bind(shader)
 
         GL.glActiveTexture(GL.GL_TEXTURE0)
@@ -190,7 +190,7 @@ class MeshObject:
         self.bones[0].derive_animation()
         pass
     #f draw
-    def draw(self, shader:Shader) -> None:
+    def draw(self, shader:ShaderProgram) -> None:
         GL.glUniformMatrix4fv(shader.uniforms["uModelMatrix"], 1, False, glm.value_ptr(self.world_matrix))
         self.mesh.draw(shader, self.bones, self.texture)
         pass

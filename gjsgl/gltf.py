@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from .transformation import Transformation
 from .object import MeshBase
 from .texture import Texture as OTexture
-from .shader import Shader
+from .shader import ShaderProgram
 
 from typing import *
 Json = Dict[str,Any]
@@ -437,14 +437,14 @@ class PrimitiveForGl:
     # texcoords  : GL.Buffer
     # weights    : GL.Buffer
     # indices    : GL.Buffer
-    def __init__(self, shader:Shader, gltf:Gltf, primitive:Primitive) -> None:
+    def __init__(self, shader:ShaderProgram, gltf:Gltf, primitive:Primitive) -> None:
         self.primitive = primitive
 
         self.glid = GL.glGenVertexArrays(1)
         GL.glBindVertexArray(self.glid)
 
         # Position
-        a = shader.get_attr("aVertexPosition")
+        a = shader.get_attr("vPosition")
         b = GL.glGenBuffers(1)
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, b)
         GL.glBufferData(GL.GL_ARRAY_BUFFER, primitive.position.as_np_data(), GL.GL_STATIC_DRAW)
@@ -452,7 +452,7 @@ class PrimitiveForGl:
         GL.glVertexAttribPointer(a, 3, GL.GL_FLOAT, False, 0, None)
 
         # Normal
-        a = shader.get_attr("aVertexNormal")
+        a = shader.get_attr("vNormal")
         if a is not None and (primitive.normal!=[]):
             b = GL.glGenBuffers(1)
             GL.glBindBuffer(GL.GL_ARRAY_BUFFER, b)
@@ -462,7 +462,7 @@ class PrimitiveForGl:
             pass
 
         # TexCoord0
-        a = shader.get_attr("aVertexTexture")
+        a = shader.get_attr("vTexture")
         if a is not None and (primitive.tex_coords!=[]):
             b = GL.glGenBuffers(1)
             GL.glBindBuffer(GL.GL_ARRAY_BUFFER, b)
@@ -478,7 +478,7 @@ class PrimitiveForGl:
         
         pass
     #f draw
-    def draw(self, shader:Shader, bones:List[Any]) -> None:
+    def draw(self, shader:ShaderProgram, bones:List[Any]) -> None:
         GL.glBindVertexArray(self.glid)
         shader.set_uniform_if("uBonesScale", lambda u:GL.glUniform1f(u, 0.0))
         GL.glDrawElements(self.primitive.mode.gl_type, self.primitive.indices.count, self.primitive.indices.comp_type.gl_type, ctypes.c_void_p(0));
@@ -489,7 +489,7 @@ class PrimitiveForGl:
 class Mesh2Mesh(MeshBase):
     glp : List[PrimitiveForGl]
     #f __init__
-    def __init__(self, shader:Shader, gltf:Gltf, mesh_index:int):
+    def __init__(self, shader:ShaderProgram, gltf:Gltf, mesh_index:int):
         print(len(gltf.nodes),len(gltf.meshes))
         mesh = gltf.get_mesh(mesh_index)
         print(mesh_index, mesh.name)
@@ -499,7 +499,7 @@ class Mesh2Mesh(MeshBase):
             pass
         pass
     #f draw
-    def draw(self, shader:Shader, bones:List[Any], texture:OTexture) -> None:
+    def draw(self, shader:ShaderProgram, bones:List[Any], texture:OTexture) -> None:
         GL.glActiveTexture(GL.GL_TEXTURE0)
         GL.glBindTexture(GL.GL_TEXTURE_2D, texture.texture)
         shader.set_uniform_if("uTexture",    lambda u:GL.glUniform1i(u, 0))
