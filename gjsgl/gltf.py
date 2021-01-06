@@ -230,9 +230,21 @@ class Primitive: # Defines a drawElements call
         self.indices  = gltf.get_accessor(json.get("indices",0))
         self.material = gltf.get_material(json.get("material",0))
         self.normal  = []
+        if "NORMAL" in attributes:
+            self.normal.append( gltf.get_accessor(attributes["NORMAL"]) )
+            pass
         self.tangent = []
+        if "TANGENT" in attributes:
+            self.tangent.append( gltf.get_accessor(attributes["TANGENT"]) )
+            pass
         self.color   = []
         self.tex_coords = []
+        if "TEXCOORD_0" in attributes:
+            self.tex_coords.append( gltf.get_accessor(attributes["TEXCOORD_0"]) )
+            pass
+        if "TEXCOORD_1" in attributes:
+            self.tex_coords.append( gltf.get_accessor(attributes["TEXCOORD_1"]) )
+            pass
         self.joints  = []
         self.weights = []
         # if attributes has "self.material = gltf.get_accessor(json.get("material",0))
@@ -262,6 +274,11 @@ class Skin:
     ibms  : Optional[Accessor] # if None, then these are identity matrices
     root  : int # Index of root node
     joints: List[int] # same length as ibms (if that is defined)
+    def __init__(self, gltf:"Gltf", json:Json) -> None:
+        self.name   = json.get("name","")
+        self.joints = json.get("joints",[])
+        self.root   = json.get("skeleton",0)
+        self.ibms   = json.get("inverseBindMatrices",None)
     pass
 
 #c Node
@@ -364,6 +381,7 @@ class Gltf:
             self.buffer_views = []
             self.accessors = []
             self.materials = []
+            self.skins = []
             self.meshes = []
             self.nodes = []
             if "buffers" in self.json_data:
@@ -383,6 +401,11 @@ class Gltf:
             if "materials" in self.json_data:
                 for m in self.json_data['materials']:
                     self.materials.append(Material(self,m))
+                    pass
+                pass
+            if "skins" in self.json_data:
+                for s in self.json_data['skins']:
+                    self.skins.append(Skin(self,s))
                     pass
                 pass
             if "meshes" in self.json_data:
@@ -420,13 +443,33 @@ class PrimitiveForGl:
         self.glid = GL.glGenVertexArrays(1)
         GL.glBindVertexArray(self.glid)
 
-        # attrib 0 is position
+        # Position
         a = shader.get_attr("aVertexPosition")
         b = GL.glGenBuffers(1)
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, b)
         GL.glBufferData(GL.GL_ARRAY_BUFFER, primitive.position.as_np_data(), GL.GL_STATIC_DRAW)
         GL.glEnableVertexAttribArray(a)
         GL.glVertexAttribPointer(a, 3, GL.GL_FLOAT, False, 0, None)
+
+        # Normal
+        a = shader.get_attr("aVertexNormal")
+        if a is not None and (primitive.normal!=[]):
+            b = GL.glGenBuffers(1)
+            GL.glBindBuffer(GL.GL_ARRAY_BUFFER, b)
+            GL.glBufferData(GL.GL_ARRAY_BUFFER, primitive.normal[0].as_np_data(), GL.GL_STATIC_DRAW)
+            GL.glEnableVertexAttribArray(a)
+            GL.glVertexAttribPointer(a, 3, GL.GL_FLOAT, False, 0, None)
+            pass
+
+        # TexCoord0
+        a = shader.get_attr("aVertexTexture")
+        if a is not None and (primitive.tex_coords!=[]):
+            b = GL.glGenBuffers(1)
+            GL.glBindBuffer(GL.GL_ARRAY_BUFFER, b)
+            GL.glBufferData(GL.GL_ARRAY_BUFFER, primitive.tex_coords[0].as_np_data(), GL.GL_STATIC_DRAW)
+            GL.glEnableVertexAttribArray(a)
+            GL.glVertexAttribPointer(a, 2, GL.GL_FLOAT, False, 0, None)
+            pass
 
         # indices
         b = GL.glGenBuffers(1)
@@ -447,7 +490,7 @@ class Mesh2Mesh(MeshBase):
     glp : List[PrimitiveForGl]
     #f __init__
     def __init__(self, shader:Shader, gltf:Gltf, mesh_index:int):
-        print(len(gltf.meshes))
+        print(len(gltf.nodes),len(gltf.meshes))
         mesh = gltf.get_mesh(mesh_index)
         print(mesh_index, mesh.name)
         self.glp = []

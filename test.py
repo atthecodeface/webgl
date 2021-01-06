@@ -24,17 +24,19 @@ class F(Frontend):
     #f opengl_ready
     def opengl_ready(self) -> None:
         self.mesh_objects = []
-        # self.shader = BoneShader()
-        self.shader = UnbonedShader()
+        self.shader = BoneShader()
+        # self.shader = UnbonedShader()
 
-        # texture = loadTexture("wood.jpg")
-        texture = Texture("moon.png")
+        texture = Texture("wood_square.png")
+        # texture = Texture("wood.jpg")
+        # texture = Texture("moon.png")
 
         # g = Gltf(Path("."),Path("./test.gltf"))
         # g = Gltf(Path("."),Path("./cubeplus.gltf"))
         # g = Gltf(Path("."),Path("./house.gltf"))
-        g = Gltf(Path("."),Path("./simple_escape.gltf"))
-        gltf_mesh = Mesh2Mesh(self.shader, g, 28)
+        # g = Gltf(Path("."),Path("./simple_escape.gltf"))
+        g = Gltf(Path("."),Path("./milo.gltf"))
+        gltf_mesh = Mesh2Mesh(self.shader, g, 0)
         self.mesh_objects.append(MeshObject(gltf_mesh, texture, glm.vec3(-4.,0.,0.)))
 
         c : Object = DoubleCube2()
@@ -84,7 +86,7 @@ class F(Frontend):
         camera_matrix[3][1] -= 6.0
         camera_matrix[3][2] -= 20.0
         matrices.append(projection_matrix)
-        q = glm.angleAxis(-1.0, [0.1, 0.8, 0.0])
+        q = glm.angleAxis(-self.time*0.2, [0., 1.0, 0.0])
         camera_matrix     = Transformation(translation=[0.,-6.,-20.],quaternion=q).mat4()
         matrices.append(camera_matrix)
         GL.glUniformMatrix4fv(self.shader.uniforms["uProjectionMatrix"], 1, False, glm.value_ptr(matrices[0]))

@@ -29,7 +29,7 @@ class Texture:
         GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
         GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
         GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, image.size[0], image.size[1], 
-                     0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, image_data)
+                        0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, image_data)
 
         pass
     pass
