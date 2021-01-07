@@ -68,6 +68,23 @@ def quaternion_of_rotation(rotation:glm.Mat3) -> glm.Quat:
     # Set quaternion
     return glm.angleAxis(angle, axis)
 
+#c TransMat
+class TransMat:
+    mat : glm.Mat4
+    def __init__(self, mat:Optional[glm.Mat4]=None) -> None:
+        if mat is None:
+            self.mat = glm.mat4()
+            pass
+        else:
+            self.mat = mat
+            pass
+        pass
+    def mat4(self) -> glm.Mat4:
+        return self.mat
+    def mat_after(self, pre_mat:"TransMat") -> "TransMat":
+        return TransMat(mat=pre_mat.mat * self.mat)
+    pass
+    
 #c Transformation
 class Transformation:
     translation      : glm.Vec3
@@ -139,6 +156,9 @@ class Transformation:
             pass
         self.quaternion = quaternion_of_rotation(rotation)
         pass
+    #f trans_mat
+    def trans_mat(self) -> TransMat:
+        return TransMat(mat=self.mat4())
     #f distance
     def distance(self, other:"Transformation") -> float:
         td = glm.distance(self.translation, other.translation)

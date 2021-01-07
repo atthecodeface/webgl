@@ -1,8 +1,3 @@
-#a Changes
-"""
-function -> def
-gl[lower case] -> gl[upper case]
-"""
 #a Imports
 from OpenGL import GL
 import ctypes
@@ -10,7 +5,7 @@ import numpy as np
 import math
 import glm
 from .texture import Texture
-from .bone import Bone
+from .bone import Bone, BonePose
 from .shader import ShaderProgram
 from .transformation import Transformation
 
@@ -59,7 +54,7 @@ class Submesh:
 #c MeshBase
 class MeshBase:
     #f draw
-    def draw(self, shader:ShaderProgram, bones:List[Any], texture:Texture) -> None:
+    def draw(self, shader:ShaderProgram, poses:List[BonePose], texture:Texture) -> None:
         pass
     #f All done
     pass
@@ -86,6 +81,7 @@ class Mesh(MeshBase):
         self.indices    = GL.glGenBuffers(1)
 
         a = shader.get_attr("vPosition")
+        assert a is not None
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.positions)
         GL.glBufferData(GL.GL_ARRAY_BUFFER, np.array(obj.positions,np.float32), GL.GL_STATIC_DRAW)
         GL.glEnableVertexAttribArray(a)
@@ -124,7 +120,7 @@ class Mesh(MeshBase):
         GL.glBindVertexArray(self.glid)
         pass
     #f draw
-    def draw(self, shader:ShaderProgram, bones:List[Any], texture:Texture) -> None:
+    def draw(self, shader:ShaderProgram, poses:List[BonePose], texture:Texture) -> None:
         self.bind(shader)
 
         GL.glActiveTexture(GL.GL_TEXTURE0)
@@ -137,10 +133,10 @@ class Mesh(MeshBase):
         for sm  in self.obj.submeshes:
             for i in range(16):
                 (r,c) = (i//4, i%4)
-                mymatrix[ 0+i] = bones[sm.bone_indices[0]].animated_mtm[r][c]
-                mymatrix[16+i] = bones[sm.bone_indices[1]].animated_mtm[r][c]
-                mymatrix[32+i] = bones[sm.bone_indices[2]].animated_mtm[r][c]
-                mymatrix[48+i] = bones[sm.bone_indices[3]].animated_mtm[r][c]
+                mymatrix[ 0+i] = poses[sm.bone_indices[0]].animated_mtm[r][c]
+                mymatrix[16+i] = poses[sm.bone_indices[1]].animated_mtm[r][c]
+                mymatrix[32+i] = poses[sm.bone_indices[2]].animated_mtm[r][c]
+                mymatrix[48+i] = poses[sm.bone_indices[3]].animated_mtm[r][c]
                 pass
             shader.set_uniform_if("uBonesMatrices", lambda u:GL.glUniformMatrix4fv(u, 4, False, mymatrix))
             GL.glDrawElements(gl_types[sm.gl_type], sm.vindex_count, GL.GL_UNSIGNED_BYTE, ctypes.c_void_p(sm.vindex_offset))
@@ -158,14 +154,14 @@ class MeshObject:
         self.place(world_vec)
         self.mesh = mesh
         self.bones = []
-        self.bones.append(Bone())
-        self.bones.append(Bone(self.bones[0]))
-        self.bones.append(Bone(self.bones[1]))
-        self.bones[0].transform(Transformation(translation=(0.,0., 1.)))
-        self.bones[1].transform(Transformation(translation=(0.,0.,-2.)))
-        self.bones[2].transform(Transformation(translation=(0.,0.,-2.)))
-        self.bones[0].derive_at_rest()
-        self.bones[0].derive_animation()
+        self.bones.append(Bone(parent=None, transformation=Transformation(translation=(0.,0., 1.))))
+        self.bones.append(Bone(parent=self.bones[0], transformation=Transformation(translation=(0.,0.,-2.))))
+        self.bones.append(Bone(parent=self.bones[1], transformation=Transformation(translation=(0.,0.,-2.))))
+        self.bones[0].derive_matrices()
+        self.pose = BonePose.pose_bones(self.bones[0])
+        print(list(self.bones[0].iter_hierarchy()))
+        self.poses = list(self.pose.iter_hierarchy())
+        print(list(self.poses))
         pass
     #f place
     def place(self, world_vec:glm.Vec3) -> None:
@@ -176,23 +172,26 @@ class MeshObject:
         pass
     #f animate
     def animate(self, time:float) -> None:
+        self.poses[0].transformation_reset()
+        self.poses[1].transformation_reset()
+        self.poses[2].transformation_reset()
         angle = math.sin(time*0.2)*0.3
         q = glm.quat()
         q = glm.angleAxis(time*0.3, glm.vec3([0,0,1])) * q
         q = glm.angleAxis(1.85,     glm.vec3([1,0,0])) * q
-        self.bones[0].transform_from_rest(Transformation(translation=(0.,0.,0.), quaternion=q))
+        self.poses[0].transform(Transformation(translation=(0.,0.,0.), quaternion=q))
         q = glm.quat()
         q = glm.angleAxis(angle*4, glm.vec3([0,0,1])) * q
-        self.bones[1].transform_from_rest(Transformation(translation=(0.,0.,-math.cos(4*angle)), quaternion=q))
+        self.poses[1].transform(Transformation(translation=(0.,0.,-math.cos(4*angle)), quaternion=q))
         q = glm.quat()
         q = glm.angleAxis(angle*4, glm.vec3([0,0,1])) * q
-        self.bones[2].transform_from_rest(Transformation(translation=(0.,0.,+math.cos(4*angle)), quaternion=q))
-        self.bones[0].derive_animation()
+        self.poses[2].transform(Transformation(translation=(0.,0.,+math.cos(4*angle)), quaternion=q))
+        self.poses[0].derive_animation()
         pass
     #f draw
     def draw(self, shader:ShaderProgram) -> None:
         GL.glUniformMatrix4fv(shader.uniforms["uModelMatrix"], 1, False, glm.value_ptr(self.world_matrix))
-        self.mesh.draw(shader, self.bones, self.texture)
+        self.mesh.draw(shader, self.poses, self.texture)
         pass
     pass
 

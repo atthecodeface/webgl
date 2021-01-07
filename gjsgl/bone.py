@@ -10,7 +10,7 @@ if not TYPE_CHECKING:
     glm.Quat = object
     pass
     
-#a Bone class
+#a Bone and pose classes
 #c Bone
 class Bone:
     #d Documentation
@@ -28,60 +28,103 @@ class Bone:
     # root = A.btp * B.btp * C.btp * C_bone_relative
     # animated(t) = A.btp(t) * B.btp(t) * C.btp(t) * C.ptb * B.ptb * A.ptb * mesh
     #v Properties
-    parent : Optional["Bone"]
-    children : List["Bone"]
-    transformation      : Transformation
-    transformation_rest  : Transformation
-    btp              : glm.Mat4
-    ptb              : glm.Mat4
-    ptb_rest         : glm.Mat4
-    mtb_rest         : glm.Mat4
-    animated_btm     : glm.Mat4
-    animated_mtm     : glm.Mat4
+    parent         : Optional["Bone"]
+    children       : List["Bone"]
+    transformation : Transformation # at rest
+    ptb            : glm.Mat4
+    mtb            : glm.Mat4
     #f __init__
-    def __init__(self, parent:Optional["Bone"]=None) -> None:
+    def __init__(self, parent:Optional["Bone"], transformation:Transformation) -> None:
         self.parent = parent
         if parent is not None:
             parent.children.append(self)
             pass
         self.children = []
-        self.transformation      = Transformation()
-        self.transformation_rest = Transformation()
-
-        self.btp = glm.mat4()
-        self.ptb = glm.mat4()
-        self.ptb_rest = glm.mat4()
-        self.mtb_rest = glm.mat4() # mesh to bone
-        self.animated_btm = glm.mat4() # bone to mesh
-        self.animated_mtm = glm.mat4() # mesh to animated mesh
+        self.transformation = Transformation()
+        self.set_transformation(transformation)
         pass
-    #f transform_from_rest
-    def transform_from_rest(self, transform:Transformation) -> None:
-        self.transformation.set(self.transformation_rest, transform)
+    #f iter_hierarchy
+    def iter_hierarchy(self) -> Iterable["Bone"]:
+        yield(self)
+        for c in self.children:
+            for cc in c.iter_hierarchy():
+                yield(cc)
+                pass
+            pass
         pass
-    #f transform
-    def transform(self, transform:Transformation) -> None:
+    #f set_transformation
+    def set_transformation(self, transform:Transformation) -> None:
         self.transformation.set(self.transformation, transform)
         pass
     #f derive_matrices
     def derive_matrices(self) -> None:
-        self.btp = self.transformation.mat4()
-        self.ptb = glm.inverse(self.btp) # type: ignore
-        pass
-    #f derive_at_rest
-    def derive_at_rest(self) -> None :
-        self.derive_matrices()
-        self.transformation_rest.copy(self.transformation)
-        self.ptb_rest         = glm.mat4(self.ptb)
+        btp = self.transformation.mat4()
+        self.ptb = glm.inverse(btp) # type: ignore
         if self.parent is None:
-            self.mtb_rest = glm.mat4(self.ptb)
+            self.mtb = glm.mat4(self.ptb)
             pass
         else:
-            self.mtb_rest = self.ptb * self.parent.mtb_rest
+            self.mtb = self.ptb * self.parent.mtb
             pass
         for c in self.children:
-            c.derive_at_rest()
+            c.derive_matrices()
             pass
+        pass
+    #f All done
+    pass
+
+#c BonePose
+T = TypeVar('T', bound='BonePose')
+class BonePose:
+    #v Properties
+    bone             : Bone
+    parent           : Optional["BonePose"]
+    children         : List["BonePose"]
+    transformation   : Transformation # relative to bone rest
+    btp              : glm.Mat4
+    ptb              : glm.Mat4
+    animated_btm     : glm.Mat4
+    animated_mtm     : glm.Mat4
+    #f pose_bones
+    @classmethod
+    def pose_bones(cls:Type[T], bone:Bone, parent:Optional["BonePose"]=None) -> T:
+        pose = cls(bone, parent)
+        for b in bone.children:
+            cls.pose_bones(b, pose)
+            pass
+        return pose
+    #f __init__
+    def __init__(self, bone:Bone, parent:Optional["BonePose"]=None) -> None:
+        self.parent = parent
+        if parent is not None:
+            parent.children.append(self)
+            pass
+        self.children = []
+        self.bone = bone
+        self.transformation = Transformation()
+        self.transformation_reset()
+
+        self.btp = glm.mat4()
+        self.ptb = glm.mat4()
+        self.animated_btm = glm.mat4() # bone to mesh
+        self.animated_mtm = glm.mat4() # mesh to animated mesh
+        pass
+    #f iter_hierarchy
+    def iter_hierarchy(self) -> Iterable["BonePose"]:
+        yield(self)
+        for c in self.children:
+            for cc in c.iter_hierarchy():
+                yield(cc)
+                pass
+            pass
+        pass
+    #f transformation_reset
+    def transformation_reset(self) -> None:
+        self.transformation.copy(self.bone.transformation)
+        pass
+    #f transform
+    def transform(self, transform:Transformation) -> None:
+        self.transformation.set(self.transformation, transform)
         pass
     #f derive_animation
     def derive_animation(self) -> None:
@@ -92,10 +135,10 @@ class Bone:
         else:
             self.animated_btm = self.parent.animated_btm * self.btp
             pass
-        self.animated_mtm = self.animated_btm * self.mtb_rest
+        self.animated_mtm = self.animated_btm * self.bone.mtb
         for c in self.children:
             c.derive_animation()
             pass
         pass
     #f All done
-
+    pass

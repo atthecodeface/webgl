@@ -15,6 +15,19 @@ from .shader import ShaderProgram
 from typing import *
 Json = Dict[str,Any]
 
+if not TYPE_CHECKING:
+    GL.VAO          = object
+    GL.Program      = object
+    GL.Shader       = object
+    GL.ShaderType   = object
+    GL.Texture      = object
+    GL.Buffer       = object
+    GL.Uniform      = object
+    GL.Attribute    = object
+    GL.ValueTypeEnum = int
+    GL.ElementType = int
+    pass
+
 #a GLTF enumerations
 class Enum:
     name: ClassVar[str]
@@ -27,7 +40,7 @@ class Enum:
     def of_name(cls:Type["Enum"], name:str) -> Type["Enum"]: return cls.name_to_cls[name]
     pass
 
-class ValueType(Enum): size: int; pass
+class ValueType(Enum): size: int; gl_type:GL.ValueTypeEnum; pass
 class VTByte(ValueType):   enum=5120; size=1; gl_type=GL.GL_BYTE;           name="BYTE"
 class VTUByte(ValueType):  enum=5121; size=1; gl_type=GL.GL_UNSIGNED_BYTE;  name="UNSIGNED_BYTE"
 class VTShort(ValueType):  enum=5122; size=2; gl_type=GL.GL_SHORT;          name="SHORT"
@@ -66,7 +79,7 @@ class BViewTgt(Enum): pass
 class BVTArray(BViewTgt): enum=34962; name="ARRAY_BUFFER"
 class BVTIndex(BViewTgt): enum=34963; name="ELEMENT_ARRAY_BUFFER"
 
-class PrimitiveType(Enum): pass
+class PrimitiveType(Enum): gl_type:GL.ElementType; pass
 class PTPoints(PrimitiveType):        enum=0; gl_type=GL.GL_POINTS; name="POINTS"
 class PTLines(PrimitiveType):         enum=1; gl_type=GL.GL_LINES; name="LINES"
 class PTLineLoop(PrimitiveType):      enum=2; gl_type=GL.GL_LINE_LOOP; name="LINE_LOOP"
@@ -149,7 +162,7 @@ class Accessor:
         self.count = json.get("count",0)
         pass
     #f as_np_data
-    def as_np_data(self) -> bytes:
+    def as_np_data(self) -> Any:
         item_size = self.comp_type.size * self.acc_type.size
         stride = self.view.stride
         if stride==0: stride=item_size
@@ -445,6 +458,7 @@ class PrimitiveForGl:
 
         # Position
         a = shader.get_attr("vPosition")
+        assert a is not None
         b = GL.glGenBuffers(1)
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, b)
         GL.glBufferData(GL.GL_ARRAY_BUFFER, primitive.position.as_np_data(), GL.GL_STATIC_DRAW)
@@ -486,6 +500,62 @@ class PrimitiveForGl:
     pass
 
 #c Mesh2Mesh - GLTF Mesh maps to a gjsgl Mesh for now
+class Mesh2Mesh(MeshBase):
+    glp : List[PrimitiveForGl]
+    #f __init__
+    def __init__(self, shader:ShaderProgram, gltf:Gltf, mesh_index:int):
+        print(len(gltf.nodes),len(gltf.meshes))
+        mesh = gltf.get_mesh(mesh_index)
+        print(mesh_index, mesh.name)
+        self.glp = []
+        for p in mesh.primitives:
+            self.glp.append(PrimitiveForGl(shader, gltf, p))
+            pass
+        pass
+    #f draw
+    def draw(self, shader:ShaderProgram, bones:List[Any], texture:OTexture) -> None:
+        GL.glActiveTexture(GL.GL_TEXTURE0)
+        GL.glBindTexture(GL.GL_TEXTURE_2D, texture.texture)
+        shader.set_uniform_if("uTexture",    lambda u:GL.glUniform1i(u, 0))
+
+        for p in self.glp:
+            p.draw(shader, bones)
+            pass
+        pass
+    pass
+
+
+#c Node2ModelObject - GLTF Mesh maps to a gjsgl ModelObject
+"""
+class Node2ModelObject(MeshBase):
+    @staticmethod
+    #f node_to_model_object
+    def node_to_model_object(gltf:Gltf, node:Node, parent:Optional[ModelObject]=None):
+        model_object = ModelObject(parent=parent, transformation=node.transformation)
+        for c in node.children:
+            node_to_model_object(gltf, c, parent=self)
+            pass
+            
+        print(mesh_index, mesh.name)
+        self.glp = []
+        for p in mesh.primitives:
+            self.glp.append(PrimitiveForGl(shader, gltf, p))
+            pass
+        pass
+    #f draw
+    def draw(self, shader:ShaderProgram, bones:List[Any], texture:OTexture) -> None:
+        GL.glActiveTexture(GL.GL_TEXTURE0)
+        GL.glBindTexture(GL.GL_TEXTURE_2D, texture.texture)
+        shader.set_uniform_if("uTexture",    lambda u:GL.glUniform1i(u, 0))
+
+        for p in self.glp:
+            p.draw(shader, bones)
+            pass
+        pass
+    pass
+"""
+
+#c Mesh2ModeClass - GLTF Mesh maps to a gjsgl Mesh for now
 class Mesh2Mesh(MeshBase):
     glp : List[PrimitiveForGl]
     #f __init__

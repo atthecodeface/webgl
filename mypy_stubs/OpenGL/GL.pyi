@@ -19,8 +19,12 @@ GL_FRONT : faceEnum
 GL_BACK  : faceEnum
 
 class ValueTypeEnum: pass
-GL_FLOAT         : ValueTypeEnum
-GL_UNSIGNED_BYTE : ValueTypeEnum
+GL_FLOAT           : ValueTypeEnum
+GL_BYTE            : ValueTypeEnum
+GL_UNSIGNED_BYTE   : ValueTypeEnum
+GL_SHORT           : ValueTypeEnum
+GL_UNSIGNED_SHORT  : ValueTypeEnum
+GL_UNSIGNED_INT    : ValueTypeEnum
 
 GL_COLOR_BUFFER_BIT : int
 GL_DEPTH_BUFFER_BIT : int
@@ -122,9 +126,15 @@ class VAO:pass
 def glGenVertexArrays(n:int) -> VAO: pass
 def glBindVertexArray(vao:VAO) -> None: pass
 def glVertexAttribPointer(a:Attribute, n:int, vt:ValueTypeEnum, b:bool, z:int, p:Optional[Any]) -> None: pass
-def glEnableVertexAttribArray(n:int) -> None: pass
+def glEnableVertexAttribArray(a:Attribute) -> None: pass
 
 #a Drawing
 class ElementType: pass
-GL_TRIANGLE_STRIP : ElementType
+GL_POINTS           : ElementType
+GL_LINES            : ElementType
+GL_LINE_LOOP        : ElementType
+GL_LINE_STRIP       : ElementType
+GL_TRIANGLES        : ElementType
+GL_TRIANGLE_STRIP   : ElementType
+GL_TRIANGLE_FAN     : ElementType
 def glDrawElements(ele:ElementType, count:int, vt:ValueTypeEnum, p:ValuePtr) -> None: pass

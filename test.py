@@ -2,7 +2,7 @@ from pathlib import Path
 import glm
 from gjsgl.object import Object, Mesh, MeshObject
 from gjsgl.sample_objects import Cube, DoubleCube, DoubleCube2, Snake
-from gjsgl.bone import Bone
+from gjsgl.bone import Bone, BonePose
 from gjsgl.shader import BoneShader, FlatShader, UnbonedShader
 from gjsgl.frontend import Frontend
 from gjsgl.texture import Texture
@@ -37,7 +37,7 @@ class F(Frontend):
         # g = Gltf(Path("."),Path("./simple_escape.gltf"))
         g = Gltf(Path("."),Path("./milo.gltf"))
         gltf_mesh = Mesh2Mesh(self.shader, g, 0)
-        self.mesh_objects.append(MeshObject(gltf_mesh, texture, glm.vec3(-4.,0.,0.)))
+        self.mesh_objects.append(MeshObject(gltf_mesh, texture, glm.vec3((-4.,0.,0.))))
 
         c : Object = DoubleCube2()
         #c = Cube()
@@ -86,8 +86,8 @@ class F(Frontend):
         camera_matrix[3][1] -= 6.0
         camera_matrix[3][2] -= 20.0
         matrices.append(projection_matrix)
-        q = glm.angleAxis(-self.time*0.2, [0., 1.0, 0.0])
-        camera_matrix     = Transformation(translation=[0.,-6.,-20.],quaternion=q).mat4()
+        q = glm.angleAxis(-self.time*0.2, glm.vec3([0., 1.0, 0.0]))
+        camera_matrix     = Transformation(translation=(0.,-6.,-20.),quaternion=q).mat4()
         matrices.append(camera_matrix)
         GL.glUniformMatrix4fv(self.shader.uniforms["uProjectionMatrix"], 1, False, glm.value_ptr(matrices[0]))
         GL.glUniformMatrix4fv(self.shader.uniforms["uCameraMatrix"],     1, False, glm.value_ptr(matrices[1]))
@@ -98,8 +98,6 @@ class F(Frontend):
         pass
     pass
 
-a = Bone()
-a.derive_at_rest()
 p = F()
 p.run()
 
