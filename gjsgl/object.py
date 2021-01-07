@@ -5,7 +5,7 @@ import numpy as np
 import math
 import glm
 from .texture import Texture
-from .bone import Bone, BonePose
+from .bone import Bone, BonePose, BoneMatrixArray
 from .shader import ShaderProgram
 from .transformation import Transformation
 
@@ -54,7 +54,7 @@ class Submesh:
 #c MeshBase
 class MeshBase:
     #f draw
-    def draw(self, shader:ShaderProgram, poses:List[BonePose], texture:Texture) -> None:
+    def draw(self, shader:ShaderProgram, poses:BoneMatrixArray, texture:Texture) -> None:
         pass
     #f All done
     pass
@@ -120,7 +120,7 @@ class Mesh(MeshBase):
         GL.glBindVertexArray(self.glid)
         pass
     #f draw
-    def draw(self, shader:ShaderProgram, poses:List[BonePose], texture:Texture) -> None:
+    def draw(self, shader:ShaderProgram, poses:BoneMatrixArray, texture:Texture) -> None:
         self.bind(shader)
 
         GL.glActiveTexture(GL.GL_TEXTURE0)
@@ -128,17 +128,9 @@ class Mesh(MeshBase):
         shader.set_uniform_if("uTexture",    lambda u:GL.glUniform1i(u, 0))
         shader.set_uniform_if("uBonesScale", lambda u:GL.glUniform1f(u, 1.))
 
-        mymatrix = np.zeros(64,np.float32)
+        shader.set_uniform_if("uBonesMatrices", lambda u:GL.glUniformMatrix4fv(u, 4, False, poses.data))
         gl_types = {"TS":GL.GL_TRIANGLE_STRIP}
         for sm  in self.obj.submeshes:
-            for i in range(16):
-                (r,c) = (i//4, i%4)
-                mymatrix[ 0+i] = poses[sm.bone_indices[0]].animated_mtm[r][c]
-                mymatrix[16+i] = poses[sm.bone_indices[1]].animated_mtm[r][c]
-                mymatrix[32+i] = poses[sm.bone_indices[2]].animated_mtm[r][c]
-                mymatrix[48+i] = poses[sm.bone_indices[3]].animated_mtm[r][c]
-                pass
-            shader.set_uniform_if("uBonesMatrices", lambda u:GL.glUniformMatrix4fv(u, 4, False, mymatrix))
             GL.glDrawElements(gl_types[sm.gl_type], sm.vindex_count, GL.GL_UNSIGNED_BYTE, ctypes.c_void_p(sm.vindex_offset))
             pass
         pass
@@ -154,12 +146,13 @@ class MeshObject:
         self.place(world_vec)
         self.mesh = mesh
         self.bones = []
-        self.bones.append(Bone(parent=None, transformation=Transformation(translation=(0.,0., 1.))))
-        self.bones.append(Bone(parent=self.bones[0], transformation=Transformation(translation=(0.,0.,-2.))))
-        self.bones.append(Bone(parent=self.bones[1], transformation=Transformation(translation=(0.,0.,-2.))))
+        self.bones.append(Bone(parent=None, transformation=Transformation(translation=(0.,0., 1.)), matrix_index=0))
+        self.bones.append(Bone(parent=self.bones[0], transformation=Transformation(translation=(0.,0.,-2.)),matrix_index=1))
+        self.bones.append(Bone(parent=self.bones[1], transformation=Transformation(translation=(0.,0.,-2.)),matrix_index=2))
         self.bones[0].derive_matrices()
         self.pose = BonePose.pose_bones(self.bones[0])
         self.poses = list(self.pose.iter_hierarchy())
+        self.pose_array = self.pose.create_matrix_array()
         pass
     #f place
     def place(self, world_vec:glm.Vec3) -> None:
@@ -184,12 +177,12 @@ class MeshObject:
         q = glm.quat()
         q = glm.angleAxis(angle*4, glm.vec3([0,0,1])) * q
         self.poses[2].transform(Transformation(translation=(0.,0.,+math.cos(4*angle)), quaternion=q))
-        self.poses[0].derive_animation()
+        self.pose_array.update(time)
         pass
     #f draw
     def draw(self, shader:ShaderProgram) -> None:
         GL.glUniformMatrix4fv(shader.uniforms["uModelMatrix"], 1, False, glm.value_ptr(self.world_matrix))
-        self.mesh.draw(shader, self.poses, self.texture)
+        self.mesh.draw(shader, self.pose_array, self.texture)
         pass
     pass
 

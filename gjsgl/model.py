@@ -5,7 +5,7 @@ import numpy as np
 import math
 import glm
 from .texture import Texture
-from .bone import Bone, BonePose
+from .bone import Bone, BonePose, BoneMatrixArray
 from .shader import ShaderClass, ShaderProgram
 from .transformation import Transformation, TransMat
 
@@ -57,6 +57,8 @@ class ModelBufferData:
             self.gl_buffer = GL.glGenBuffers(1)
             GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.gl_buffer)
             GL.glBufferData(GL.GL_ARRAY_BUFFER, self.data[self.byte_offset:self.byte_offset+self.byte_length], GL.GL_STATIC_DRAW)
+            print(f"Bound {self.gl_buffer}")
+            print(f"Data {self.data[self.byte_offset:self.byte_offset+self.byte_length]}")
             pass
         pass
     
@@ -78,6 +80,8 @@ class ModelBufferIndices:
             self.gl_buffer = GL.glGenBuffers(1)
             GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.gl_buffer)
             GL.glBufferData(GL.GL_ELEMENT_ARRAY_BUFFER, self.data[self.byte_offset:self.byte_offset+self.byte_length], GL.GL_STATIC_DRAW)
+            print(f"Bound {self.gl_buffer}")
+            print(f"Data {self.data[self.byte_offset:self.byte_offset+self.byte_length]}")
             pass
         pass
     def gl_bind_program(self, shader:ShaderClass) -> None:
@@ -107,6 +111,7 @@ class ModelBufferView:
         if a is not None:
             GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.data.gl_buffer)
             GL.glEnableVertexAttribArray(a)
+            print(f"VAO {a} of {self.count} of {self.gl_type} {self.stride} {self.offset}")
             GL.glVertexAttribPointer(a, self.count, self.gl_type, False, self.stride, ctypes.c_void_p(self.offset))
             pass
         pass
@@ -123,6 +128,7 @@ class ModelPrimitiveView:
     tangent    : Optional[ModelBufferView]
     color      : Optional[ModelBufferView]
     gl_vao     : "GL.VAO"
+    #f __init__
     def __init__(self) -> None:
         self.tex_coords = None
         self.joints = None
@@ -130,7 +136,9 @@ class ModelPrimitiveView:
         self.tangent = None
         self.color = None
         pass
+    #f gl_create
     def gl_create(self) -> None:
+        GL.glBindVertexArray(0) # stops the indices messing up other VAO
         self.indices.gl_create()
         self.position.gl_create()
         self.normal.gl_create()
@@ -141,6 +149,7 @@ class ModelPrimitiveView:
         if self.color      is not None: self.color.gl_create()
         self.gl_vao = GL.glGenVertexArrays(1)
         pass
+    #f gl_bind_program
     def gl_bind_program(self, shader:ShaderClass) -> None:
         GL.glBindVertexArray(self.gl_vao)
         self.indices.gl_bind_program(shader)
@@ -152,6 +161,7 @@ class ModelPrimitiveView:
         if self.tangent    is not None: self.tangent.gl_bind_program(shader, "vTangent")
         if self.color      is not None: self.color.gl_bind_program(shader, "vColor")
         pass
+    #f All done
     pass
 
 #c ModelPrimitive
@@ -176,6 +186,7 @@ class ModelPrimitive:
     def gl_draw(self, program:ShaderProgram) -> None:
         GL.glBindVertexArray(self.view.gl_vao)
         self.material.gl_program_configure(program)
+        # print(f"Drawing {self.view.gl_vao} with {self.indices_count} indices")
         GL.glDrawElements(self.gl_type, self.indices_count, self.indices_gl_type, ctypes.c_void_p(self.indices_offset))
         pass
     pass
@@ -184,24 +195,29 @@ class ModelPrimitive:
 class ModelMesh:
     name       : str
     primitives : List[ModelPrimitive]
+    #f __init__
     def __init__(self) -> None:
         self.primitives = []
         pass
+    #f gl_create
     def gl_create(self) -> None:
         for p in self.primitives:
             p.gl_create()
             pass
         pass
+    #f gl_bind_program
     def gl_bind_program(self, shader:ShaderClass) -> None:
         for p in self.primitives:
             p.gl_bind_program(shader)
             pass
         pass
+    #f gl_draw
     def gl_draw(self, program:ShaderProgram) -> None:
         for p in self.primitives:
             p.gl_draw(program)
             pass
         pass
+    #f All done
     pass
 
 #c ModelObject
@@ -213,6 +229,7 @@ class ModelObject:
 
     In GLTF the ModelObject is a subset of the nodes, and the bone set is a skin.
     """
+    #v Properties
     transformation: Optional[Transformation]
     children      : List["ModelObject"]
     parent        : Optional["ModelObject"]
@@ -229,7 +246,9 @@ class ModelObject:
         pass
     #f iter_objects
     def iter_objects(self, trans_mat:TransMat) -> Iterable[Tuple[TransMat,"ModelObject"]]:
-        trans_mat = self.transformation.mat_after(trans_mat)
+        if self.transformation is not None:
+            trans_mat = self.transformation.mat_after(trans_mat)
+            pass
         yield(trans_mat, self)
         for c in self.children:
             c.iter_objects(trans_mat)
@@ -249,6 +268,18 @@ class ModelObject:
     def get_bones(self) -> Bone:
         assert self.bones is not None
         return self.bones
+    #f gl_create
+    def gl_create(self) -> None:
+        if self.mesh is not None: self.mesh.gl_create()
+        pass
+    #f gl_bind_program
+    def gl_bind_program(self, shader:ShaderClass) -> None:
+        if self.mesh is not None: self.mesh.gl_bind_program(shader)
+        pass
+    #f gl_draw
+    def gl_draw(self, program:ShaderProgram) -> None:
+        if self.mesh is not None: self.mesh.gl_draw(program)
+        pass
     #f All done
     pass
 
@@ -290,9 +321,12 @@ class ModelInstance:
     """
     trans_mat     : TransMat
     bone_poses    : List[BonePose]
+    bone_matrix_arrays : List[BoneMatrixArray]
     meshes        : List[Tuple[TransMat, ModelMesh, int]]
+    #f __init__
     def __init__(self, model_class:ModelClass) -> None:
         self.bone_poses = []
+        self.bone_matrix_arrays = []
         self.meshes = []
         bones_dict = {}
         for (trans_mat,model) in model_class.iter_objects():
@@ -303,11 +337,40 @@ class ModelInstance:
                 bone = model.get_bones() # get root bone
                 if bone not in bones_dict:
                     bones_dict[bone] = len(self.bone_poses)
-                    self.bone_poses.append(BonePose.pose_bones(bone))
+                    pose = BonePose.pose_bones(bone)
+                    self.bone_poses.append(pose)
+                    self.bone_matrix_arrays.append(pose.create_matrix_array())
                     pass
                 bone_index = bones_dict[bone]
                 pass
             self.meshes.append( (trans_mat, mesh_instance, bone_index) )
+            pass
+        pass
+    #f gl_create
+    def gl_create(self) -> None:
+        for (t,m,b) in self.meshes:
+            m.gl_create()
+            pass
+        pass
+    #f gl_bind_program
+    def gl_bind_program(self, shader:ShaderClass) -> None:
+        for (t,m,b) in self.meshes:
+            m.gl_bind_program(shader)
+            pass
+        pass
+    #f gl_draw
+    def gl_draw(self, program:ShaderProgram, tick:int) -> None:
+        for bma in self.bone_matrix_arrays:
+            bma.update(tick)
+            pass
+        for (t,m,b) in self.meshes:
+            if b>=0:
+                bma = self.bone_matrix_arrays[b]
+                program.set_uniform_if("uBonesMatrices",
+                                      lambda u:GL.glUniformMatrix4fv(u, bma.total_bones, False, bma.data))
+                pass
+            # Provide mesh matrix
+            m.gl_draw(program)
             pass
         pass
     pass

@@ -1,5 +1,6 @@
 #a Imports
 import glm
+import numpy as np
 from .transformation import Transformation
 
 from typing import *
@@ -11,6 +12,35 @@ if not TYPE_CHECKING:
     pass
     
 #a Bone and pose classes
+#c BoneMatrixArray
+FloatArray = Any
+class BoneMatrixArray:
+    root         : "BonePose"
+    total_bones  : int
+    data         : FloatArray
+    last_updated : int
+    #f __init__
+    def __init__(self, root:"BonePose", total_bones:int) -> None:
+        self.root = root
+        self.total_bones = total_bones
+        self.data = np.zeros(self.total_bones*16,np.float32)
+        self.last_updated = -1
+        pass
+    #f update
+    def update(self, tick:int) -> None:
+        if tick==self.last_updated: return
+        self.last_updated = tick
+        self.root.derive_animation()
+        for b in self.root.iter_hierarchy():
+            base = b.bone.matrix_index*16
+            for i in range(16):
+                (r,c) = (i//4, i%4)
+                self.data[base+i] = b.animated_mtm[r][c]
+                pass
+            pass
+        pass
+    #f All done
+    pass
 #c Bone
 class Bone:
     #d Documentation
@@ -31,15 +61,17 @@ class Bone:
     parent         : Optional["Bone"]
     children       : List["Bone"]
     transformation : Transformation # at rest
+    matrix_index   : int # Index into matrix array to put this bones animated mtm
     ptb            : glm.Mat4
     mtb            : glm.Mat4
     #f __init__
-    def __init__(self, parent:Optional["Bone"], transformation:Transformation) -> None:
+    def __init__(self, parent:Optional["Bone"], transformation:Transformation, matrix_index:int=0) -> None:
         self.parent = parent
         if parent is not None:
             parent.children.append(self)
             pass
         self.children = []
+        self.matrix_index = matrix_index
         self.transformation = Transformation()
         self.set_transformation(transformation)
         pass
@@ -50,6 +82,25 @@ class Bone:
             for cc in c.iter_hierarchy():
                 yield(cc)
                 pass
+            pass
+        pass
+    #f enumerate_hierarchy
+    def enumerate_hierarchy(self) -> Tuple[int,int]:
+        max_index = 0
+        bone_count = 0
+        for b in self.iter_hierarchy():
+            if b.matrix_index>=max_index:
+                max_index = b.matrix_index + 1
+                pass
+            bone_count += 1
+            pass
+        return (bone_count, max_index)
+    #f rewrite_indices
+    def rewrite_indices(self) -> None:
+        bone_count = 0
+        for b in self.iter_hierarchy():
+            b.matrix_index = bone_count
+            bone_count += 1
             pass
         pass
     #f set_transformation
@@ -140,5 +191,14 @@ class BonePose:
             c.derive_animation()
             pass
         pass
+    #f create_matrix_array
+    def create_matrix_array(self) -> BoneMatrixArray:
+        (cnt,max) = self.bone.enumerate_hierarchy()
+        if max<cnt:
+            self.bone.rewrite_indices()
+            (cnt,max) = self.bone.enumerate_hierarchy()
+            pass
+        array = BoneMatrixArray(self, max)
+        return array
     #f All done
     pass

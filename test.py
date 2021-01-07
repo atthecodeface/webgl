@@ -9,6 +9,7 @@ from gjsgl.texture import Texture
 from gjsgl.transformation import Transformation
 from gjsgl.gltf import Gltf, Mesh2Mesh
 from gjsgl.sample_models import CubeModel
+from gjsgl.model import ModelInstance
 
 from OpenGL import GL
 # import OpenGL
@@ -21,11 +22,16 @@ import traceback
 class F(Frontend):
     frame_delay = 0.02
     stop_at = 1000
+    # frame_delay = 0.2
+    # stop_at = 10
     time = 0.
+    tick = 0
     #f opengl_ready
     def opengl_ready(self) -> None:
         self.mesh_objects = []
+        self.model_objects = []
         self.shader = BoneShader()
+        self.tick = 0
         # self.shader = UnbonedShader()
 
         texture = Texture("wood_square.png")
@@ -46,6 +52,13 @@ class F(Frontend):
 
         mesh = Mesh(self.shader, c)
         self.mesh_objects.append(MeshObject(mesh, texture, glm.vec3()))
+
+        model = CubeModel("cube")
+        self.model_objects.append( ModelInstance(model) )
+        for o in self.model_objects:
+            o.gl_create()
+            o.gl_bind_program(self.shader.shader_class)
+            pass
         pass
     #f idle
     def idle(self) -> None:
@@ -69,6 +82,7 @@ class F(Frontend):
         pass
     #f draw
     def draw(self) -> None:
+        self.tick = self.tick + 1
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
         GL.glClearColor(0.7, 0.1, 0.1, 1.0)
         GL.glClearDepth(1.0)
@@ -95,6 +109,9 @@ class F(Frontend):
         self.shader.set_uniform_if("uTexture",    lambda u:GL.glUniform1i(u, 0))
         for m in self.mesh_objects:
             m.draw(self.shader)
+            pass
+        for o in self.model_objects:
+            o.gl_draw(self.shader, self.tick)
             pass
         pass
     pass

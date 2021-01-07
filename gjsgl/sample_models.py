@@ -20,7 +20,9 @@ class CubeModel(ModelClass):
     name = "cube"
     root_object = ModelObject(parent=None)
     bones = []
-    bones.append(Bone(parent=None, transformation=Transformation(translation=(0.,0., 1.))))
+    bones.append(Bone(parent=None, transformation=Transformation(translation=(0.,0.,-1.))))
+    bones.append(Bone(parent=None, transformation=Transformation(translation=(0.,0.,2.))))
+    bones[0].derive_matrices()
     cube = Cube
     buffer_data = []
     buffer_data.extend(cube.positions)
@@ -33,17 +35,19 @@ class CubeModel(ModelClass):
     o = 0
     view = ModelPrimitiveView()
     view.position    = ModelBufferView(data=model_data, count=3, gl_type=GL.GL_FLOAT, offset=o)
-    o += len(cube.positions) * 4 * 3
+    o += len(cube.positions) * 4
     view.normal      = ModelBufferView(data=model_data, count=3, gl_type=GL.GL_FLOAT, offset=o)
-    o += len(cube.normals) * 4 * 3
+    o += len(cube.normals) * 4
     view.tex_coords  = ModelBufferView(data=model_data, count=2, gl_type=GL.GL_FLOAT, offset=o)
-    o += len(cube.texcoords) * 4 * 2
+    o += len(cube.texcoords) * 4
     view.weights     = ModelBufferView(data=model_data, count=4, gl_type=GL.GL_FLOAT, offset=o)
-    o += len(cube.weights) * 4 * 4
+    o += len(cube.weights) * 4
     view.indices = model_indices
     material = ModelMaterial()
     material.color = (1.,5.,3.,1.)
     primitive = ModelPrimitive()
+    primitive.view = view
+    primitive.material = material
     primitive.gl_type = GL.GL_TRIANGLE_STRIP
     primitive.indices_offset  = 0
     primitive.indices_count   = len(cube.indices)
