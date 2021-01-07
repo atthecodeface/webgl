@@ -11,6 +11,7 @@ from .transformation import Transformation
 from .object import MeshBase
 from .texture import Texture as OTexture
 from .shader import ShaderProgram
+from gjsgl.model import ModelBufferData
 
 from typing import *
 Json = Dict[str,Any]
@@ -234,8 +235,8 @@ class Primitive: # Defines a drawElements call
     tangent    : List[Accessor]
     color      : List[Accessor]
     tex_coords : List[Accessor] # max of 2 needs to be supported
-    joints     : List[Accessor] # 4 joints in each
-    weights    : List[Accessor] # 4 weights in each, same length as joints
+    joints     : List[Accessor] # <=4 joints in each
+    weights    : List[Accessor] # <=4 weights in each, weight[n] is of bone[joint[n]]
     def __init__(self, gltf:"Gltf", mesh:"Mesh", json:Json) -> None:
         attributes = json.get("attributes",{"POSITION":0})
         self.mode     = cast(PrimitiveType, PrimitiveType.of_enum(json.get("mode",4)))

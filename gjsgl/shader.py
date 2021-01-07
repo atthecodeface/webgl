@@ -34,6 +34,10 @@ class ShaderClass:
                 continue
             raise Exception("Shader program does not conform to shader class {cls.name}")
         pass
+    #f get_attr
+    @classmethod
+    def get_attr(cls, name:str) -> Optional[GL.Attribute]:
+        return cls.attributes.get(name,None)
 
 #c ShaderProgram
 class ShaderProgram:

@@ -8,6 +8,7 @@ from gjsgl.frontend import Frontend
 from gjsgl.texture import Texture
 from gjsgl.transformation import Transformation
 from gjsgl.gltf import Gltf, Mesh2Mesh
+from gjsgl.sample_models import CubeModel
 
 from OpenGL import GL
 # import OpenGL

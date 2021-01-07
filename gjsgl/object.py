@@ -159,9 +159,7 @@ class MeshObject:
         self.bones.append(Bone(parent=self.bones[1], transformation=Transformation(translation=(0.,0.,-2.))))
         self.bones[0].derive_matrices()
         self.pose = BonePose.pose_bones(self.bones[0])
-        print(list(self.bones[0].iter_hierarchy()))
         self.poses = list(self.pose.iter_hierarchy())
-        print(list(self.poses))
         pass
     #f place
     def place(self, world_vec:glm.Vec3) -> None:
