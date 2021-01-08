@@ -8,7 +8,7 @@ from gjsgl.frontend import Frontend
 from gjsgl.texture import Texture
 from gjsgl.transformation import Transformation
 from gjsgl.gltf import Gltf, Mesh2Mesh
-from gjsgl.sample_models import CubeModel
+from gjsgl.sample_models import ObjectModel
 from gjsgl.model import ModelInstance
 
 from OpenGL import GL
@@ -53,7 +53,7 @@ class F(Frontend):
         mesh = Mesh(self.shader, c)
         self.mesh_objects.append(MeshObject(mesh, texture, glm.vec3((3.,0.,0.))))
 
-        model = CubeModel("cube")
+        model = ObjectModel("cube", Snake(16,8.))
         self.model_objects.append( ModelInstance(model) )
         for o in self.model_objects:
             o.gl_create()

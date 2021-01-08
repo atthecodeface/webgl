@@ -122,7 +122,6 @@ class Mesh(MeshBase):
 
         a = shader.get_attr("vJoints")
         if a is not None:
-            print(obj.joints)
             GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.joints)
             GL.glBufferData(GL.GL_ARRAY_BUFFER, np.array(obj.joints,np.int32), GL.GL_STATIC_DRAW)
             GL.glEnableVertexAttribArray(a)
