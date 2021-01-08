@@ -360,6 +360,9 @@ class ModelInstance:
         pass
     #f gl_draw
     def gl_draw(self, program:ShaderProgram, tick:int) -> None:
+        mat = glm.mat4()
+        GL.glUniformMatrix4fv(program.uniforms["uModelMatrix"], 1, False, glm.value_ptr(mat))
+        GL.glUniformMatrix4fv(program.uniforms["uMeshMatrix"], 1, False, glm.value_ptr(mat))
         for bma in self.bone_matrix_arrays:
             bma.update(tick)
             pass

@@ -96,7 +96,7 @@ class ShaderProgram:
 #c BoneshaderClass
 class BoneShaderClass(ShaderClass):
     name = "Simple shader class"
-    attrib_keys = ["vPosition", "vNormal", "vWeights", "vTexture", ]
+    attrib_keys = ["vPosition", "vNormal", "vJoints", "vWeights", "vTexture", "vColor",]
     pass
 
 #c BoneShader
@@ -108,11 +108,14 @@ class BoneShader(ShaderProgram):
     layout(location = 1) in vec3 vNormal;
     layout(location = 2) in vec4 vWeights;
     layout(location = 3) in vec2 vTexture;
+    layout(location = 4) in ivec4 vJoints;
+    layout(location = 5) in vec4 vColor;
 
     uniform mat4 uProjectionMatrix;
     uniform mat4 uCameraMatrix;
     uniform mat4 uModelMatrix;
-    uniform mat4 uBonesMatrices[4];
+    uniform mat4 uMeshMatrix;
+    uniform mat4 uBonesMatrices[16];
     uniform float uBonesScale;
 
     out vec3 color_pos;
@@ -120,15 +123,15 @@ class BoneShader(ShaderProgram):
     out vec2 tex_uv;
 
     void main() {
-      mat4 weightedMatrix = ( (uBonesMatrices[0] * vWeights.x) +
-                              (uBonesMatrices[1] * vWeights.y) +
-                              (uBonesMatrices[2] * vWeights.z) +
-                              (uBonesMatrices[3] * vWeights.w) );
+      mat4 weightedMatrix = ( (uBonesMatrices[vJoints.x] * vWeights.x) +
+                              (uBonesMatrices[vJoints.y] * vWeights.y) +
+                              (uBonesMatrices[vJoints.z] * vWeights.z) +
+                              (uBonesMatrices[vJoints.w] * vWeights.w) );
       weightedMatrix = weightedMatrix * uBonesScale + (mat4(1.) * (1.-uBonesScale));
       color_pos      = (normalize(vPosition) + 1.) / 2.0;
-      vec4 model_pos = weightedMatrix * vec4(vPosition.xyz, 1.0);
-      vec3 world_pos = (uModelMatrix * vec4(model_pos.xyz, 1.)).xyz;
-      normal         = (uModelMatrix * weightedMatrix * vec4(vNormal,0.)).xyz;
+      mat4 mesh_to_world = uModelMatrix * uMeshMatrix * weightedMatrix;
+      vec3 world_pos = (mesh_to_world * vec4(vPosition, 1.)).xyz;
+      normal         = (mesh_to_world * vec4(vNormal,   0.)).xyz;
       gl_Position    = uProjectionMatrix * uCameraMatrix * vec4(world_pos.xyz, 1.);
       tex_uv         = vTexture.xy;
     }
@@ -149,8 +152,8 @@ class BoneShader(ShaderProgram):
       outColor = vec4(c.xyz, 1.0);
     }
     """
-    attrib_keys = ["vPosition", "vNormal", "vWeights", "vTexture", ]
-    uniform_keys = ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix", "uBonesMatrices", "uBonesScale", "uTexture" ]
+    attrib_keys = ["vPosition", "vNormal", "vJoints", "vWeights", "vTexture", "vColor",]
+    uniform_keys = ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix", "uMeshMatrix", "uBonesMatrices", "uBonesScale", "uTexture" ]
     pass
     
 #c UnbonedShader

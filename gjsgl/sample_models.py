@@ -24,14 +24,22 @@ class CubeModel(ModelClass):
     bones.append(Bone(parent=None, transformation=Transformation(translation=(0.,0.,2.))))
     bones[0].derive_matrices()
     cube = Cube
+    num_pts = len(cube.weights)//4
     buffer_data = []
     buffer_data.extend(cube.positions)
     buffer_data.extend(cube.normals)
     buffer_data.extend(cube.texcoords)
-    buffer_data.extend(cube.weights)
+    for i in range(num_pts):
+        buffer_data.extend([0.5,0.5,0.,0.]) # cube.weights
+        pass
+    buffer_int_data = []
+    for i in range(len(cube.positions)//3):
+        buffer_int_data.extend([0,1,2,3])
+        pass
     buffer_size = len(buffer_data) * 4
-    model_data    = ModelBufferData(data=np.array(buffer_data,np.float32), byte_offset=0)
-    model_indices = ModelBufferIndices(data=np.array(cube.indices,np.uint8), byte_offset=0)
+    model_data      = ModelBufferData(data=np.array(buffer_data,np.float32), byte_offset=0)
+    model_int_data  = ModelBufferData(data=np.array(buffer_int_data,np.uint8), byte_offset=0)
+    model_indices   = ModelBufferIndices(data=np.array(cube.indices,np.uint8), byte_offset=0)
     o = 0
     view = ModelPrimitiveView()
     view.position    = ModelBufferView(data=model_data, count=3, gl_type=GL.GL_FLOAT, offset=o)
@@ -42,6 +50,9 @@ class CubeModel(ModelClass):
     o += len(cube.texcoords) * 4
     view.weights     = ModelBufferView(data=model_data, count=4, gl_type=GL.GL_FLOAT, offset=o)
     o += len(cube.weights) * 4
+    o = 0
+    view.joints      = ModelBufferView(data=model_int_data, count=4, gl_type=GL.GL_UNSIGNED_BYTE, offset=o)
+    o += len(cube.positions) * 4 / 3
     view.indices = model_indices
     material = ModelMaterial()
     material.color = (1.,5.,3.,1.)

@@ -44,14 +44,14 @@ class F(Frontend):
         # g = Gltf(Path("."),Path("./simple_escape.gltf"))
         g = Gltf(Path("."),Path("./milo.gltf"))
         gltf_mesh = Mesh2Mesh(self.shader, g, 0)
-        self.mesh_objects.append(MeshObject(gltf_mesh, texture, glm.vec3((-4.,0.,0.))))
+        # self.mesh_objects.append(MeshObject(gltf_mesh, texture, glm.vec3((-4.,0.,0.))))
 
         c : Object = DoubleCube2()
-        #c = Cube()
-        c = Snake(16,8.)
+        c = Cube()
+        # c = Snake(16,8.)
 
         mesh = Mesh(self.shader, c)
-        self.mesh_objects.append(MeshObject(mesh, texture, glm.vec3()))
+        self.mesh_objects.append(MeshObject(mesh, texture, glm.vec3((3.,0.,0.))))
 
         model = CubeModel("cube")
         self.model_objects.append( ModelInstance(model) )
@@ -106,6 +106,8 @@ class F(Frontend):
         matrices.append(camera_matrix)
         GL.glUniformMatrix4fv(self.shader.uniforms["uProjectionMatrix"], 1, False, glm.value_ptr(matrices[0]))
         GL.glUniformMatrix4fv(self.shader.uniforms["uCameraMatrix"],     1, False, glm.value_ptr(matrices[1]))
+        mat = glm.mat4()
+        GL.glUniformMatrix4fv(self.shader.uniforms["uMeshMatrix"], 1, False, glm.value_ptr(mat))
         self.shader.set_uniform_if("uTexture",    lambda u:GL.glUniform1i(u, 0))
         for m in self.mesh_objects:
             m.draw(self.shader)

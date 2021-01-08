@@ -29,6 +29,7 @@ class Object:
     normals   : List[float]
     texcoords : List[float]
     weights   : List[float]
+    joints    : List[int]
     indices   : List[int]
     submeshes : List["Submesh"]
     pass
@@ -71,6 +72,13 @@ class Mesh(MeshBase):
     #f __init__
     def __init__(self, shader:ShaderProgram, obj:Object) -> None:
         self.obj = obj
+        num_pts = len(obj.weights)//4
+        if not hasattr(obj,"joints"):
+            obj.joints = []
+            for i in range(num_pts*4):
+                obj.joints.append(i%4)
+                pass
+            pass
         self.glid = GL.glGenVertexArrays(1)
         GL.glBindVertexArray(self.glid)
 
@@ -78,6 +86,7 @@ class Mesh(MeshBase):
         self.normals    = GL.glGenBuffers(1)
         self.texcoords  = GL.glGenBuffers(1)
         self.weights    = GL.glGenBuffers(1)
+        self.joints     = GL.glGenBuffers(1)
         self.indices    = GL.glGenBuffers(1)
 
         a = shader.get_attr("vPosition")
@@ -109,6 +118,15 @@ class Mesh(MeshBase):
             GL.glBufferData(GL.GL_ARRAY_BUFFER, np.array(obj.weights,np.float32), GL.GL_STATIC_DRAW)
             GL.glEnableVertexAttribArray(a)
             GL.glVertexAttribPointer(a, 4, GL.GL_FLOAT, False, 0, None)
+            pass
+
+        a = shader.get_attr("vJoints")
+        if a is not None:
+            print(obj.joints)
+            GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.joints)
+            GL.glBufferData(GL.GL_ARRAY_BUFFER, np.array(obj.joints,np.int32), GL.GL_STATIC_DRAW)
+            GL.glEnableVertexAttribArray(a)
+            GL.glVertexAttribPointer(a, 4, GL.GL_INT, False, 0, None)
             pass
 
         GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.indices)
