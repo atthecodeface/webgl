@@ -194,7 +194,7 @@ class MeshObject:
         q = glm.quat()
         q = glm.angleAxis(angle*4, glm.vec3([0,0,1])) * q
         self.poses[2].transform(Transformation(translation=(0.,0.,+math.cos(4*angle)), quaternion=q))
-        self.pose_array.update(time)
+        self.pose_array.update(int(time*1E5))
         pass
     #f draw
     def draw(self, shader:ShaderProgram) -> None:

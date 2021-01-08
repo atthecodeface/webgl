@@ -159,6 +159,9 @@ class Transformation:
     #f trans_mat
     def trans_mat(self) -> TransMat:
         return TransMat(mat=self.mat4())
+    #f trans_mat_after
+    def trans_mat_after(self, pre_mat:TransMat) -> TransMat:
+        return TransMat(mat=pre_mat.mat * self.mat4())
     #f distance
     def distance(self, other:"Transformation") -> float:
         td = glm.distance(self.translation, other.translation)

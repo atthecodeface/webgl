@@ -2,7 +2,7 @@
 from OpenGL import GL
 import numpy as np
 from .bone import Bone
-from .sample_objects import Object
+from .object import Object
 from .transformation import Transformation
 from .model import ModelBufferData, ModelBufferIndices, ModelBufferView, ModelMaterial, ModelPrimitiveView, ModelPrimitive, ModelMesh, ModelObject, ModelClass
 
@@ -18,7 +18,6 @@ from typing import *
 # 3, 2, 1, 0, 4, 2, 6, 7, 4, 5, 1, 7, 3, 2
 class ObjectModel(ModelClass):
     def __init__(self, name:str, obj:Object) -> None:
-        root_object = ModelObject(parent=None)
         
         bones = []
         bones.append(Bone(parent=None, transformation=Transformation(translation=(0.,0.,-1.))))
@@ -53,7 +52,7 @@ class ObjectModel(ModelClass):
         o += len(obj.weights) * 4
         o = 0
         view.joints      = ModelBufferView(data=model_int_data, count=4, gl_type=GL.GL_UNSIGNED_BYTE, offset=o)
-        o += len(obj.positions) * 4 / 3
+        o += len(obj.positions) * 4 // 3
         view.indices = model_indices
         material = ModelMaterial()
         material.color = (1.,5.,3.,1.)
@@ -64,6 +63,8 @@ class ObjectModel(ModelClass):
         primitive.indices_offset  = 0
         primitive.indices_count   = len(obj.indices)
         primitive.indices_gl_type = GL.GL_UNSIGNED_BYTE
+
+        root_object = ModelObject(parent=None)
         root_object.bones = bones[0]
         root_object.mesh = ModelMesh()
         root_object.mesh.primitives.append(primitive)

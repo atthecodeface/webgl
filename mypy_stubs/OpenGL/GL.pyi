@@ -24,6 +24,7 @@ GL_BYTE            : ValueTypeEnum
 GL_UNSIGNED_BYTE   : ValueTypeEnum
 GL_SHORT           : ValueTypeEnum
 GL_UNSIGNED_SHORT  : ValueTypeEnum
+GL_INT             : ValueTypeEnum
 GL_UNSIGNED_INT    : ValueTypeEnum
 
 GL_COLOR_BUFFER_BIT : int
@@ -127,6 +128,7 @@ def glGenVertexArrays(n:int) -> VAO: pass
 def glBindVertexArray(vao:VAO) -> None: pass
 def glVertexAttribPointer(a:Attribute, n:int, vt:ValueTypeEnum, b:bool, z:int, p:Optional[Any]) -> None: pass
 def glEnableVertexAttribArray(a:Attribute) -> None: pass
+def glDisableVertexAttribArray(a:Attribute) -> None: pass
 
 #a Drawing
 class ElementType: pass

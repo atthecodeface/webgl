@@ -57,8 +57,8 @@ class ModelBufferData:
             self.gl_buffer = GL.glGenBuffers(1)
             GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.gl_buffer)
             GL.glBufferData(GL.GL_ARRAY_BUFFER, self.data[self.byte_offset:self.byte_offset+self.byte_length], GL.GL_STATIC_DRAW)
-            print(f"Bound {self.gl_buffer}")
-            print(f"Data {self.data[self.byte_offset:self.byte_offset+self.byte_length]}")
+            # print(f"Bound {self.gl_buffer}")
+            # print(f"Data {self.data[self.byte_offset:self.byte_offset+self.byte_length]}")
             pass
         pass
     
@@ -80,8 +80,8 @@ class ModelBufferIndices:
             self.gl_buffer = GL.glGenBuffers(1)
             GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.gl_buffer)
             GL.glBufferData(GL.GL_ELEMENT_ARRAY_BUFFER, self.data[self.byte_offset:self.byte_offset+self.byte_length], GL.GL_STATIC_DRAW)
-            print(f"Bound {self.gl_buffer}")
-            print(f"Data {self.data[self.byte_offset:self.byte_offset+self.byte_length]}")
+            # print(f"Bound {self.gl_buffer}")
+            # print(f"Data {self.data[self.byte_offset:self.byte_offset+self.byte_length]}")
             pass
         pass
     def gl_bind_program(self, shader:ShaderClass) -> None:
@@ -121,15 +121,24 @@ class ModelBufferView:
 class ModelPrimitiveView:
     indices    : ModelBufferIndices
     position   : ModelBufferView
-    normal     : ModelBufferView
+    normal     : Optional[ModelBufferView]
     tex_coords : Optional[ModelBufferView]
     joints     : Optional[ModelBufferView]
     weights    : Optional[ModelBufferView]
     tangent    : Optional[ModelBufferView]
     color      : Optional[ModelBufferView]
     gl_vao     : "GL.VAO"
+    attribute_mapping = { "vPosition":"position",
+                          "vNormal":"normal",
+                          "vTexture":"tex_coords",
+                          "vJoints":"joints",
+                          "vWeights":"weights",
+                          "vTangent":"tangent",
+                          "vColor":"color",
+                          }
     #f __init__
     def __init__(self) -> None:
+        self.normal = None
         self.tex_coords = None
         self.joints = None
         self.weights = None
@@ -138,28 +147,34 @@ class ModelPrimitiveView:
         pass
     #f gl_create
     def gl_create(self) -> None:
-        GL.glBindVertexArray(0) # stops the indices messing up other VAO
+        # stops the indices messing up other VAO
+        GL.glBindVertexArray(0) # type:ignore
         self.indices.gl_create()
-        self.position.gl_create()
-        self.normal.gl_create()
-        if self.tex_coords is not None: self.tex_coords.gl_create()
-        if self.joints     is not None: self.joints.gl_create()
-        if self.weights    is not None: self.weights.gl_create()
-        if self.tangent    is not None: self.tangent.gl_create()
-        if self.color      is not None: self.color.gl_create()
+        for (san,an) in self.attribute_mapping.items():
+            if hasattr(self, an):
+                mbv = getattr(self,an)
+                if mbv is not None: mbv.gl_create()
+                pass
+            pass
         self.gl_vao = GL.glGenVertexArrays(1)
         pass
     #f gl_bind_program
     def gl_bind_program(self, shader:ShaderClass) -> None:
         GL.glBindVertexArray(self.gl_vao)
         self.indices.gl_bind_program(shader)
-        self.position.gl_bind_program(shader, "vPosition")
-        self.normal.gl_bind_program(shader, "vNormal")
-        if self.tex_coords is not None: self.tex_coords.gl_bind_program(shader, "vTexture")
-        if self.joints     is not None: self.joints.gl_bind_program(shader, "vJoints")
-        if self.weights    is not None: self.weights.gl_bind_program(shader, "vWeights")
-        if self.tangent    is not None: self.tangent.gl_bind_program(shader, "vTangent")
-        if self.color      is not None: self.color.gl_bind_program(shader, "vColor")
+        for (san,an) in self.attribute_mapping.items():
+            if hasattr(self, an):
+                mbv = getattr(self,an)
+                if mbv is not None:
+                    mbv.gl_bind_program(shader, san)
+                    pass
+                else:
+                    sa = shader.get_attr(san)
+                    if (sa is not None) and (sa>=0): # type: ignore
+                        GL.glDisableVertexAttribArray(sa)
+                    pass
+                pass
+            pass
         pass
     #f All done
     pass
@@ -186,7 +201,6 @@ class ModelPrimitive:
     def gl_draw(self, program:ShaderProgram) -> None:
         GL.glBindVertexArray(self.view.gl_vao)
         self.material.gl_program_configure(program)
-        # print(f"Drawing {self.view.gl_vao} with {self.indices_count} indices")
         GL.glDrawElements(self.gl_type, self.indices_count, self.indices_gl_type, ctypes.c_void_p(self.indices_offset))
         pass
     pass
@@ -243,15 +257,18 @@ class ModelObject:
         if self.parent is not None:
             self.parent.children.append(self)
             pass
+        self.mesh = None
+        self.bones = None
         pass
     #f iter_objects
     def iter_objects(self, trans_mat:TransMat) -> Iterable[Tuple[TransMat,"ModelObject"]]:
         if self.transformation is not None:
-            trans_mat = self.transformation.mat_after(trans_mat)
+            trans_mat = self.transformation.trans_mat_after(trans_mat)
             pass
         yield(trans_mat, self)
         for c in self.children:
-            c.iter_objects(trans_mat)
+            for x in c.iter_objects(trans_mat):
+                yield x
             pass
         pass
     #f has_mesh
@@ -333,7 +350,7 @@ class ModelInstance:
             if not model.has_mesh(): continue
             mesh_instance = model.get_mesh()
             bone_index = -1
-            if model.has_bones:
+            if model.has_bones():
                 bone = model.get_bones() # get root bone
                 if bone not in bones_dict:
                     bones_dict[bone] = len(self.bone_poses)
@@ -362,7 +379,6 @@ class ModelInstance:
     def gl_draw(self, program:ShaderProgram, tick:int) -> None:
         mat = glm.mat4()
         GL.glUniformMatrix4fv(program.uniforms["uModelMatrix"], 1, False, glm.value_ptr(mat))
-        GL.glUniformMatrix4fv(program.uniforms["uMeshMatrix"], 1, False, glm.value_ptr(mat))
         for bma in self.bone_matrix_arrays:
             bma.update(tick)
             pass
@@ -372,7 +388,9 @@ class ModelInstance:
                 program.set_uniform_if("uBonesMatrices",
                                       lambda u:GL.glUniformMatrix4fv(u, bma.total_bones, False, bma.data))
                 pass
-            # Provide mesh matrix
+            # Provide mesh matrix and material uniforms
+            program.set_uniform_if("uMeshMatrix",
+                                   lambda u: GL.glUniformMatrix4fv(u, 1, False, glm.value_ptr(mat)) )
             m.gl_draw(program)
             pass
         pass

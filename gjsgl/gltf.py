@@ -11,7 +11,7 @@ from .transformation import Transformation
 from .object import MeshBase
 from .texture import Texture as OTexture
 from .shader import ShaderProgram
-from gjsgl.model import ModelBufferData
+from .model import ModelObject, ModelMesh, ModelPrimitive, ModelPrimitiveView, ModelBufferView, ModelBufferData, ModelMaterial, ModelBufferIndices
 
 from typing import *
 Json = Dict[str,Any]
@@ -174,6 +174,25 @@ class Accessor:
             b[dest_offset:dest_offset+item_size] = self.view.buffer.data[src_offset:src_offset+item_size]
             pass
         return b
+    #f to_model_buffer_view
+    def to_model_buffer_view(self) -> ModelBufferView:
+        data        = self.view.buffer.data
+        byte_offset = self.view.offset
+        byte_length = self.view.length
+        stride      = self.view.stride
+        offset      = self.offset
+        count       = self.acc_type.size # e.g. 3 for VEC3
+        gl_type     = self.comp_type.gl_type # e.g. of GL_FLOAT
+        print(f"Creating attributes of {byte_offset}, {byte_length}, {data[byte_offset:byte_offset+byte_length]}")
+        model_data  = ModelBufferData(data=data, byte_offset=byte_offset, byte_length=byte_length)
+        return ModelBufferView(data=model_data, count=count, gl_type=gl_type, offset=offset, stride=stride)
+    #f to_model_buffer_indices
+    def to_model_buffer_indices(self) -> ModelBufferIndices:
+        data        = self.view.buffer.data
+        byte_offset = self.view.offset
+        byte_length = self.view.length
+        print(f"Creating indices of {byte_offset}, {byte_length}, {data[byte_offset:byte_offset+byte_length]}")
+        return ModelBufferIndices(data=data, byte_offset=byte_offset, byte_length=byte_length)
     #f All done
     pass
 
@@ -199,6 +218,7 @@ class Texture:
 # Texture use is Texture and aan int is an index to the tex_coords list to use to index the texture
 TextureUse = Tuple[Texture,int]
 class Material:
+    #v Properties
     color    : Tuple[float,float,float,float] # Base color
     metallic : float # 0 is fully dielectric, 1.0 is fully metallic
     roughness: float # 0.5 is specular, no specular down to 0 full reflection, up to 1 fully matt
@@ -209,6 +229,7 @@ class Material:
     # alpha_mode:
     # occlusion_texture: Optional[Texture] # 0 for no occlusion, 1 to reduce final color value to 0
     # metallic_roughness_texture: Optional[Texture] # get metallic for G and roughness from B
+    #f __init__
     def __init__(self, gltf:"Gltf", json:Json) -> None:
         self.name   = json.get("name","")
         pbr : Json = json.get("pbrMetallicRoughness",[])
@@ -223,20 +244,28 @@ class Material:
             self.metallic  = json.get("metallicFactor",self.metallic)
             pass
         pass
+    #f to_model_material
+    def to_model_material(self) -> ModelMaterial:
+        m = ModelMaterial()
+        m.color = self.color
+        return m
+    #f All done
     pass
 
 #c Primitive - Add non-standard maps
 class Primitive: # Defines a drawElements call
+    #v Properties
     mode       : PrimitiveType
-    position   : Accessor
-    indices    : Accessor
     material   : Material
+    indices    : Accessor
+    position   : Accessor
     normal     : List[Accessor]
     tangent    : List[Accessor]
     color      : List[Accessor]
     tex_coords : List[Accessor] # max of 2 needs to be supported
     joints     : List[Accessor] # <=4 joints in each
     weights    : List[Accessor] # <=4 weights in each, weight[n] is of bone[joint[n]]
+    #f __init__
     def __init__(self, gltf:"Gltf", mesh:"Mesh", json:Json) -> None:
         attributes = json.get("attributes",{"POSITION":0})
         self.mode     = cast(PrimitiveType, PrimitiveType.of_enum(json.get("mode",4)))
@@ -263,13 +292,38 @@ class Primitive: # Defines a drawElements call
         self.weights = []
         # if attributes has "self.material = gltf.get_accessor(json.get("material",0))
         pass
+    #f to_model_primitive
+    def to_model_primitive(self) -> ModelPrimitive:
+        material = self.material.to_model_material()
+
+        view      = ModelPrimitiveView()
+        view.indices  = self.indices.to_model_buffer_indices()
+        view.position = self.position.to_model_buffer_view()
+        if self.normal!=[]:     view.normal     = self.normal[0].to_model_buffer_view()
+        if self.tangent!=[]:    view.tangent    = self.tangent[0].to_model_buffer_view()
+        if self.color!=[]:      view.color      = self.color[0].to_model_buffer_view()
+        if self.tex_coords!=[]: view.tex_coords = self.tex_coords[0].to_model_buffer_view()
+        if self.joints!=[]:     view.joints     = self.joints[0].to_model_buffer_view()
+        if self.weights!=[]:    view.weights    = self.weights[0].to_model_buffer_view()
+        primitive = ModelPrimitive()
+        primitive.material        = material
+        primitive.view            = view
+        primitive.gl_type         = self.mode.gl_type
+        primitive.indices_offset  = 0
+        primitive.indices_count   = 0
+        primitive.indices_gl_type = GL.GL_UNSIGNED_BYTE
+        print(f"Created model primitive {primitive}")
+        return primitive
+    #f All done
     pass
 
 #c Mesh
 class Mesh:
     # No support for morph targets, hence no weights
+    #v Properties
     name      : str # "" if none
     primitives: List[Primitive]
+    #f __init__
     def __init__(self, gltf:"Gltf", json:Json) -> None:
         self.name   = json.get("name","")
         self.primitives = []
@@ -279,6 +333,15 @@ class Mesh:
                 pass
             pass
         pass
+    #f to_model_mesh
+    def to_model_mesh(self, gltf:"Gltf") -> ModelMesh:
+        model_mesh = ModelMesh()
+        for p in self.primitives:
+            model_mesh.primitives.append(p.to_model_primitive())
+            pass
+        print(f"Created model mesh {model_mesh}")
+        return model_mesh
+    #f All done
     pass
 
 #c Skin
@@ -297,11 +360,13 @@ class Skin:
 
 #c Node
 class Node:
+    #v Properties
     name: str
     transformation: Transformation
     skin: Optional[Skin] #
     mesh: Optional[Mesh] # If skinned, all mesh.primitives must have joints and weights
     children: List[int]
+    #f __init__
     def __init__(self, gltf:"Gltf", json:Json) -> None:
         self.name   = json.get("name","")
         self.mesh = None
@@ -331,6 +396,19 @@ class Node:
             self.transformation.translation = glm.vec3(json["translation"])
             pass
         pass
+    #f to_model_object
+    def to_model_object(self, gltf:"Gltf", parent:Optional[ModelObject]=None) -> ModelObject:
+        model_object = ModelObject(parent=parent, transformation=self.transformation)
+        for ci in self.children:
+            cn = gltf.get_node(ci)
+            cn.to_model_object(gltf, parent=model_object)
+            pass
+        if self.mesh is not None:
+            model_object.mesh = self.mesh.to_model_mesh(gltf)
+            pass
+        print(f"Created model object {model_object}")
+        return model_object
+    #f All done
     pass
 
 #c Gltf
@@ -442,141 +520,3 @@ class Gltf:
         pass
     pass
 
-#a Map gltf to gjsgl
-#c PrimitiveForGl - GLTF Mesh maps to a gjsgl Mesh for now
-class PrimitiveForGl:
-    glid       : GL.VAO
-    # positions  : GL.Buffer
-    # normals    : GL.Buffer
-    # texcoords  : GL.Buffer
-    # weights    : GL.Buffer
-    # indices    : GL.Buffer
-    def __init__(self, shader:ShaderProgram, gltf:Gltf, primitive:Primitive) -> None:
-        self.primitive = primitive
-
-        self.glid = GL.glGenVertexArrays(1)
-        GL.glBindVertexArray(self.glid)
-
-        # Position
-        a = shader.get_attr("vPosition")
-        assert a is not None
-        b = GL.glGenBuffers(1)
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, b)
-        GL.glBufferData(GL.GL_ARRAY_BUFFER, primitive.position.as_np_data(), GL.GL_STATIC_DRAW)
-        GL.glEnableVertexAttribArray(a)
-        GL.glVertexAttribPointer(a, 3, GL.GL_FLOAT, False, 0, None)
-
-        # Normal
-        a = shader.get_attr("vNormal")
-        if a is not None and (primitive.normal!=[]):
-            b = GL.glGenBuffers(1)
-            GL.glBindBuffer(GL.GL_ARRAY_BUFFER, b)
-            GL.glBufferData(GL.GL_ARRAY_BUFFER, primitive.normal[0].as_np_data(), GL.GL_STATIC_DRAW)
-            GL.glEnableVertexAttribArray(a)
-            GL.glVertexAttribPointer(a, 3, GL.GL_FLOAT, False, 0, None)
-            pass
-
-        # TexCoord0
-        a = shader.get_attr("vTexture")
-        if a is not None and (primitive.tex_coords!=[]):
-            b = GL.glGenBuffers(1)
-            GL.glBindBuffer(GL.GL_ARRAY_BUFFER, b)
-            GL.glBufferData(GL.GL_ARRAY_BUFFER, primitive.tex_coords[0].as_np_data(), GL.GL_STATIC_DRAW)
-            GL.glEnableVertexAttribArray(a)
-            GL.glVertexAttribPointer(a, 2, GL.GL_FLOAT, False, 0, None)
-            pass
-
-        # indices
-        b = GL.glGenBuffers(1)
-        GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, b)
-        GL.glBufferData(GL.GL_ELEMENT_ARRAY_BUFFER, primitive.indices.as_np_data(), GL.GL_STATIC_DRAW)
-        
-        pass
-    #f draw
-    def draw(self, shader:ShaderProgram, bones:List[Any]) -> None:
-        GL.glBindVertexArray(self.glid)
-        shader.set_uniform_if("uBonesScale", lambda u:GL.glUniform1f(u, 0.0))
-        GL.glDrawElements(self.primitive.mode.gl_type, self.primitive.indices.count, self.primitive.indices.comp_type.gl_type, ctypes.c_void_p(0));
-        pass
-    pass
-
-#c Mesh2Mesh - GLTF Mesh maps to a gjsgl Mesh for now
-class Mesh2Mesh(MeshBase):
-    glp : List[PrimitiveForGl]
-    #f __init__
-    def __init__(self, shader:ShaderProgram, gltf:Gltf, mesh_index:int):
-        print(len(gltf.nodes),len(gltf.meshes))
-        mesh = gltf.get_mesh(mesh_index)
-        print(mesh_index, mesh.name)
-        self.glp = []
-        for p in mesh.primitives:
-            self.glp.append(PrimitiveForGl(shader, gltf, p))
-            pass
-        pass
-    #f draw
-    def draw(self, shader:ShaderProgram, bones:List[Any], texture:OTexture) -> None:
-        GL.glActiveTexture(GL.GL_TEXTURE0)
-        GL.glBindTexture(GL.GL_TEXTURE_2D, texture.texture)
-        shader.set_uniform_if("uTexture",    lambda u:GL.glUniform1i(u, 0))
-
-        for p in self.glp:
-            p.draw(shader, bones)
-            pass
-        pass
-    pass
-
-
-#c Node2ModelObject - GLTF Mesh maps to a gjsgl ModelObject
-"""
-class Node2ModelObject(MeshBase):
-    @staticmethod
-    #f node_to_model_object
-    def node_to_model_object(gltf:Gltf, node:Node, parent:Optional[ModelObject]=None):
-        model_object = ModelObject(parent=parent, transformation=node.transformation)
-        for c in node.children:
-            node_to_model_object(gltf, c, parent=self)
-            pass
-            
-        print(mesh_index, mesh.name)
-        self.glp = []
-        for p in mesh.primitives:
-            self.glp.append(PrimitiveForGl(shader, gltf, p))
-            pass
-        pass
-    #f draw
-    def draw(self, shader:ShaderProgram, bones:List[Any], texture:OTexture) -> None:
-        GL.glActiveTexture(GL.GL_TEXTURE0)
-        GL.glBindTexture(GL.GL_TEXTURE_2D, texture.texture)
-        shader.set_uniform_if("uTexture",    lambda u:GL.glUniform1i(u, 0))
-
-        for p in self.glp:
-            p.draw(shader, bones)
-            pass
-        pass
-    pass
-"""
-
-#c Mesh2ModeClass - GLTF Mesh maps to a gjsgl Mesh for now
-class Mesh2Mesh(MeshBase):
-    glp : List[PrimitiveForGl]
-    #f __init__
-    def __init__(self, shader:ShaderProgram, gltf:Gltf, mesh_index:int):
-        print(len(gltf.nodes),len(gltf.meshes))
-        mesh = gltf.get_mesh(mesh_index)
-        print(mesh_index, mesh.name)
-        self.glp = []
-        for p in mesh.primitives:
-            self.glp.append(PrimitiveForGl(shader, gltf, p))
-            pass
-        pass
-    #f draw
-    def draw(self, shader:ShaderProgram, bones:List[Any], texture:OTexture) -> None:
-        GL.glActiveTexture(GL.GL_TEXTURE0)
-        GL.glBindTexture(GL.GL_TEXTURE_2D, texture.texture)
-        shader.set_uniform_if("uTexture",    lambda u:GL.glUniform1i(u, 0))
-
-        for p in self.glp:
-            p.draw(shader, bones)
-            pass
-        pass
-    pass

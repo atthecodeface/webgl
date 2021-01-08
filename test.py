@@ -7,9 +7,9 @@ from gjsgl.shader import BoneShader, FlatShader, UnbonedShader
 from gjsgl.frontend import Frontend
 from gjsgl.texture import Texture
 from gjsgl.transformation import Transformation
-from gjsgl.gltf import Gltf, Mesh2Mesh
+from gjsgl.gltf import Gltf
 from gjsgl.sample_models import ObjectModel
-from gjsgl.model import ModelInstance
+from gjsgl.model import ModelClass, ModelInstance
 
 from OpenGL import GL
 # import OpenGL
@@ -42,8 +42,12 @@ class F(Frontend):
         # g = Gltf(Path("."),Path("./cubeplus.gltf"))
         # g = Gltf(Path("."),Path("./house.gltf"))
         # g = Gltf(Path("."),Path("./simple_escape.gltf"))
-        g = Gltf(Path("."),Path("./milo.gltf"))
-        gltf_mesh = Mesh2Mesh(self.shader, g, 0)
+        gltf = Gltf(Path("."),Path("./milo.gltf"))
+        gltf_node = 37
+
+        gltf = Gltf(Path("."),Path("./cubeplus.gltf"))
+        gltf_node = 0
+        # gltf_mesh = Mesh2Mesh(self.shader, g, 0)
         # self.mesh_objects.append(MeshObject(gltf_mesh, texture, glm.vec3((-4.,0.,0.))))
 
         c : Object = DoubleCube2()
@@ -53,8 +57,17 @@ class F(Frontend):
         mesh = Mesh(self.shader, c)
         self.mesh_objects.append(MeshObject(mesh, texture, glm.vec3((3.,0.,0.))))
 
+        gltf_root = gltf.get_node(gltf_node).to_model_object(gltf)
+        bones = []
+        bones.append(Bone(parent=None, transformation=Transformation(translation=(0.,0.,-1.))))
+        bones.append(Bone(parent=None, transformation=Transformation(translation=(0.,0.,2.))))
+        bones[0].derive_matrices()
+        gltf_root.bones = bones[0]
+        gltf_model = ModelClass("gltf", gltf_root)
+        
         model = ObjectModel("cube", Snake(16,8.))
         self.model_objects.append( ModelInstance(model) )
+        self.model_objects.append( ModelInstance(gltf_model) )
         for o in self.model_objects:
             o.gl_create()
             o.gl_bind_program(self.shader.shader_class)
