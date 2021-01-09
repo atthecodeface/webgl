@@ -95,6 +95,7 @@ def glUniform1f(u:Uniform, v0:float) -> None: pass
 def glUniform2f(u:Uniform, v0:float, v1:float) -> None: pass
 def glUniform3f(u:Uniform, v0:float, v1:float, v2:float) -> None: pass
 def glUniform4f(u:Uniform, v0:float, v1:float, v2:float, v3:float) -> None: pass
+def glUniformMatrix4f(u:Uniform, transpose:bool, ptr:ValuePtr) -> None: pass
 def glUniformMatrix4fv(u:Uniform, num:int, transpose:bool, ptr:ValuePtr) -> None: pass
 
 #a Shader

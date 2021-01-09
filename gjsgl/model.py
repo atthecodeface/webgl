@@ -4,6 +4,7 @@ import ctypes
 import numpy as np
 import math
 import glm
+from .hierarchy import Hierarchy
 from .texture import Texture
 from .bone import Bone, BonePose, BoneMatrixArray
 from .shader import ShaderClass, ShaderProgram
@@ -26,25 +27,34 @@ if not TYPE_CHECKING:
 #a Classes
 #c ModelMaterial
 class ModelMaterial:
+    #V Properties
     name     : str
     color    : Tuple[float,float,float,float] # Base color
     metallic : float # 0 is fully dielectric, 1.0 is fully metallic
     roughness: float # 0.5 is specular, no specular down to 0 full reflection, up to 1 fully matt
     base_texture: Optional[Texture]
     normal_texture: Optional[Texture]
+    #f gl_program_configure ?
     def gl_program_configure(self, program:ShaderProgram) -> None:
         # GL.glActiveTexture(GL.GL_TEXTURE0)
         # GL.glBindTexture(GL.GL_TEXTURE_2D, texture.texture)
         # shader.set_uniform_if("uTexture",    lambda u:GL.glUniform1i(u, 0))
         pass
+    #f __str__
+    def __str__(self) -> str:
+        r = str(self.__dict__)
+        return r
+    #f All done
     pass
 
 #c ModelBufferData
 class ModelBufferData:
+    #v Properties
     data        : ByteBuffer
     byte_offset : int
     byte_length : int
     gl_buffer   : GL.Buffer # if a gl buffer then bound to data[byte_offset] .. + byte_length
+    #f __init__
     def __init__(self, data:Any, byte_offset:int=0, byte_length:int=0) -> None:
         if byte_length==0: byte_length=len(data)
         self.data = data
@@ -52,6 +62,7 @@ class ModelBufferData:
         self.byte_offset = byte_offset
         self.gl_buffer = -1 # type: ignore
         pass
+    #f gl_create
     def gl_create(self) -> None:
         if self.gl_buffer < 0: # type: ignore
             self.gl_buffer = GL.glGenBuffers(1)
@@ -61,13 +72,21 @@ class ModelBufferData:
             # print(f"Data {self.data[self.byte_offset:self.byte_offset+self.byte_length]}")
             pass
         pass
+    #f __str__
+    def __str__(self) -> str:
+        r = str(self.__dict__)
+        return r
+    #f All done
+    pass
     
 #c ModelBufferIndices
 class ModelBufferIndices:
+    #v properties
     data: ByteBuffer
     byte_offset : int
     byte_length : int
     gl_buffer   : "GL.Buffer"
+    #f __init__
     def __init__(self, data:Any, byte_offset:int=0, byte_length:int=0) -> None:
         if byte_length==0: byte_length=len(data)
         self.data = data
@@ -75,6 +94,7 @@ class ModelBufferIndices:
         self.byte_offset = byte_offset
         self.gl_buffer = -1 # type: ignore
         pass
+    #f gl_create
     def gl_create(self) -> None:
         if self.gl_buffer < 0: # type: ignore
             self.gl_buffer = GL.glGenBuffers(1)
@@ -84,18 +104,30 @@ class ModelBufferIndices:
             # print(f"Data {self.data[self.byte_offset:self.byte_offset+self.byte_length]}")
             pass
         pass
+    #f gl_buffer
     def gl_bind_program(self, shader:ShaderClass) -> None:
         GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.gl_buffer)
         pass
+    #f hier_debug
+    def hier_debug(self, hier:Hierarchy) -> str:
+        hier.add(f"Indices {self.byte_offset} {self.byte_length}")
+        return hier
+    #f __str__
+    def __str__(self) -> str:
+        r = str(self.__dict__)
+        return r
+    #f All done
     pass
     
 #c ModelBufferView - for use in a vertex attribute pointer
 class ModelBufferView:
+    #v Properties
     data: ModelBufferData
     count: int # Number of <comp type> per vertex - 1 to 4
     gl_type : "GL.ValueTypeEnum" # e.g. GL_FLOAT
     offset : int # Offset from start of buffer to first byte of data
     stride : int # Stride of data in the buffer - 0 for count*sizeof(gl_type)
+    #f __init__
     def __init__(self, data:ModelBufferData, count:int, gl_type:"GL.ValueTypeEnum", offset:int, stride:int=0) -> None:
         self.data = data
         self.count = count
@@ -103,9 +135,11 @@ class ModelBufferView:
         self.offset = offset
         self.stride = stride
         pass
+    #f gl_create
     def gl_create(self) -> None:
         self.data.gl_create()
         pass
+    #f gl_bind_program
     def gl_bind_program(self, shader:ShaderClass, attr:str) -> None:
         a = shader.get_attr(attr)
         if a is not None:
@@ -114,11 +148,21 @@ class ModelBufferView:
             print(f"VAO {a} of {self.count} of {self.gl_type} {self.stride} {self.offset}")
             GL.glVertexAttribPointer(a, self.count, self.gl_type, False, self.stride, ctypes.c_void_p(self.offset))
             pass
-        pass
+        pass 
+    #f hier_debug
+    def hier_debug(self, hier:Hierarchy, use:str) -> str:
+        hier.add(f"BufferView {use} {self.gl_type} {self.count} {self.offset} {self.stride}")
+        return hier
+    #f __str__
+    def __str__(self) -> str:
+        r = str(self.__dict__)
+        return r
+   #f All done
     pass
 
 #c ModelPrimitiveView
 class ModelPrimitiveView:
+    #v Properties
     indices    : ModelBufferIndices
     position   : ModelBufferView
     normal     : Optional[ModelBufferView]
@@ -176,12 +220,22 @@ class ModelPrimitiveView:
                 pass
             pass
         pass
+    #f hier_debug
+    def hier_debug(self, hier:Hierarchy) -> Hierarchy:
+        self.indices.hier_debug(hier)
+        for (san,an) in self.attribute_mapping.items():
+            if hasattr(self, an):
+                mbv = getattr(self,an)
+                if mbv is not None: mbv.hier_debug(hier, an)
+                pass
+            pass
+        return hier
     #f All done
     pass
 
 #c ModelPrimitive
 class ModelPrimitive:
-    name       : str
+    name       : str = ""
     material   : ModelMaterial
     view       : ModelPrimitiveView
     gl_type          : "GL.ElementType"
@@ -203,6 +257,14 @@ class ModelPrimitive:
         self.material.gl_program_configure(program)
         GL.glDrawElements(self.gl_type, self.indices_count, self.indices_gl_type, ctypes.c_void_p(self.indices_offset))
         pass
+    #f hier_debug
+    def hier_debug(self, hier:Hierarchy) -> Hierarchy:
+        hier.add(f"Primitive '{self.name}' {self.gl_type} {self.indices_gl_type} {self.indices_count} {self.indices_offset}")
+        hier.push()
+        self.view.hier_debug(hier)
+        hier.pop()
+        return hier
+    #f All done
     pass
 
 #c ModelMesh
@@ -231,6 +293,15 @@ class ModelMesh:
             p.gl_draw(program)
             pass
         pass
+    #f hier_debug
+    def hier_debug(self, hier:Hierarchy) -> Hierarchy:
+        hier.add("ModelMesh")
+        hier.push()
+        for p in self.primitives:
+            p.hier_debug(hier)
+            pass
+        hier.pop()
+        return hier
     #f All done
     pass
 
@@ -297,6 +368,25 @@ class ModelObject:
     def gl_draw(self, program:ShaderProgram) -> None:
         if self.mesh is not None: self.mesh.gl_draw(program)
         pass
+    #f hier_debug
+    def hier_debug(self, hier:Hierarchy) -> Hierarchy:
+        hier.add("ModelObject")
+        hier.push()
+        hier.add(f"Transformation {self.transformation}")
+        if self.mesh is not None:
+            self.mesh.hier_debug(hier)
+            pass
+        if self.bones is not None:
+            # self.bones.hier_debug(hier)
+            pass
+        for c in self.children:
+            c.hier_debug(hier)
+            pass
+        hier.pop()
+        return hier
+    #f __str__
+    def __str__(self) -> str:
+        return str(self.hier_debug(Hierarchy()))
     #f All done
     pass
 
@@ -307,6 +397,7 @@ class ModelClass:
 
     It consists of a root ModelObject, and a list of bones
     """
+    #v Properties
     name       : str
     root_object: ModelObject
     bones      : List[Bone]
@@ -323,6 +414,20 @@ class ModelClass:
         for o in self.root_object.iter_objects(TransMat()):
             yield o
         pass
+    #f hier_debug
+    def hier_debug(self, hier:Hierarchy) -> Hierarchy:
+        hier.add(f"ModelClass '{self.name}'")
+        hier.push()
+        self.root_object.hier_debug(hier)
+        for bone in self.bones:
+            bone.hier_debug(hier)
+            pass
+        hier.pop()
+        return hier
+    #f __str__
+    def __str__(self) -> str:
+        return str(self.hier_debug(Hierarchy()))
+    #f All done
     pass
 
 #c ModelInstance
@@ -391,7 +496,28 @@ class ModelInstance:
             # Provide mesh matrix and material uniforms
             program.set_uniform_if("uMeshMatrix",
                                    lambda u: GL.glUniformMatrix4fv(u, 1, False, glm.value_ptr(mat)) )
+            program.set_uniform_if("uBonesScale",
+                                   lambda u: GL.glUniform1f(u, 0.) )
             m.gl_draw(program)
             pass
         pass
+    #f hier_debug
+    def hier_debug(self, hier:Hierarchy) -> Hierarchy:
+        hier.add(f"ModelInstance with {len(self.bone_poses)} poses")
+        hier.push()
+        for i in range(len(self.bone_poses)):
+            hier.add(f"Pose/Matrix {i}")
+            self.bone_poses[i].hier_debug(hier)
+            self.bone_matrix_arrays[i].hier_debug(hier)
+            pass
+        for (t,m,b) in self.meshes:
+            hier.add(f"Mesh transform {t} pose/matrix {b}")
+            m.hier_debug(hier)
+            pass
+        hier.pop()
+        return hier
+    #f __str__
+    def __str__(self) -> str:
+        return str(self.hier_debug(Hierarchy()))
+    #f All done
     pass

@@ -147,6 +147,7 @@ class BufferView:
 
 #c Accessor
 class Accessor:
+    #v Properties
     name: str
     view: BufferView
     offset: int # n'th item at byte view_offset+this.offset+view_stride*m
@@ -191,7 +192,7 @@ class Accessor:
         data        = self.view.buffer.data
         byte_offset = self.view.offset
         byte_length = self.view.length
-        print(f"Creating indices of {byte_offset}, {byte_length}, {data[byte_offset:byte_offset+byte_length]}")
+        print(f"Creating indices of {self.comp_type.gl_type} {byte_offset}, {byte_length}, {data[byte_offset:byte_offset+byte_length]}")
         return ModelBufferIndices(data=data, byte_offset=byte_offset, byte_length=byte_length)
     #f All done
     pass
@@ -309,9 +310,9 @@ class Primitive: # Defines a drawElements call
         primitive.material        = material
         primitive.view            = view
         primitive.gl_type         = self.mode.gl_type
-        primitive.indices_offset  = 0
-        primitive.indices_count   = 0
-        primitive.indices_gl_type = GL.GL_UNSIGNED_BYTE
+        primitive.indices_offset  = self.indices.offset
+        primitive.indices_count   = self.indices.count
+        primitive.indices_gl_type = self.indices.comp_type.gl_type
         print(f"Created model primitive {primitive}")
         return primitive
     #f All done

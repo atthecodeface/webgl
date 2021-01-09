@@ -1,6 +1,7 @@
 #a Imports
 import glm
 import numpy as np
+from .hierarchy import Hierarchy
 from .transformation import Transformation
 
 from typing import *
@@ -10,6 +11,9 @@ if not TYPE_CHECKING:
     glm.Mat4 = Tuple[glm.Vec4,glm.Vec4,glm.Vec4,glm.Vec4]
     glm.Quat = object
     pass
+
+def mat4_str(mat):
+    return "[" + ("   ".join([" ".join([str(v) for v in col]) for col in mat])) + "]"
     
 #a Bone and pose classes
 #c BoneMatrixArray
@@ -39,6 +43,10 @@ class BoneMatrixArray:
                 pass
             pass
         pass
+    #f hier_debug
+    def hier_debug(self, hier:Hierarchy) -> Hierarchy:
+        hier.add(f"BoneMatrices {self.total_bones} {self.last_updated} {self.data}")
+        return hier
     #f All done
     pass
 #c Bone
@@ -121,6 +129,21 @@ class Bone:
             c.derive_matrices()
             pass
         pass
+    #f hier_debug
+    def hier_debug(self, hier:Hierarchy) -> Hierarchy:
+        hier.add(f"Bone {self.matrix_index}")
+        hier.push()
+        hier.add(f"{self.transformation}")
+        hier.add(f"parent-to-bone: {self.ptb}")
+        hier.add(f"mesh-to-bone  : {self.mtb}")
+        for c in self.children:
+            c.hier_debug(hier)
+            pass
+        hier.pop()
+        return hier
+    #f __str__
+    def __str__(self) -> str:
+        return str(self.hier_debug(Hierarchy()))
     #f All done
     pass
 
@@ -200,5 +223,22 @@ class BonePose:
             pass
         array = BoneMatrixArray(self, max)
         return array
+    #f hier_debug
+    def hier_debug(self, hier:Hierarchy) -> Hierarchy:
+        hier.add(f"Pose {self.bone.matrix_index}")
+        hier.push()
+        hier.add(f"{self.transformation}")
+        hier.add(f"parent-to-bone: {mat4_str(self.ptb)}")
+        hier.add(f"bone-to-parent: {mat4_str(self.btp)}")
+        hier.add(f"bone-to-mesh  : {mat4_str(self.animated_btm)}")
+        hier.add(f"mesh-to-mesh  : {mat4_str(self.animated_mtm)}")
+        for c in self.children:
+            c.hier_debug(hier)
+            pass
+        hier.pop()
+        return hier
+    #f __str__
+    def __str__(self) -> str:
+        return str(self.hier_debug(Hierarchy()))
     #f All done
     pass

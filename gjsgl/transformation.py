@@ -83,6 +83,9 @@ class TransMat:
         return self.mat
     def mat_after(self, pre_mat:"TransMat") -> "TransMat":
         return TransMat(mat=pre_mat.mat * self.mat)
+    #f __str__
+    def __str__(self) -> str:
+        return "[" + ("   ".join([" ".join([str(v) for v in col]) for col in self.mat])) + "]"
     pass
     
 #c Transformation

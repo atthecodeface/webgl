@@ -37,12 +37,15 @@ class F(Frontend):
         # g = Gltf(Path("."),Path("./test.gltf"))
         # g = Gltf(Path("."),Path("./cubeplus.gltf"))
         # g = Gltf(Path("."),Path("./house.gltf"))
-        # g = Gltf(Path("."),Path("./simple_escape.gltf"))
+        # gltf = Gltf(Path("."),Path("./simple_escape.gltf"))
         gltf = Gltf(Path("."),Path("./milo.gltf"))
         gltf_node = 37
 
-        gltf = Gltf(Path("."),Path("./cubeplus.gltf"))
-        gltf_node = 0
+        gltf = Gltf(Path("."),Path("./milo2.gltf"))
+        gltf_node = 16
+
+        # gltf = Gltf(Path("."),Path("./cubeplus.gltf"))
+        # gltf_node = 0
         # gltf_mesh = Mesh2Mesh(self.shader, g, 0)
         # self.mesh_objects.append(MeshObject(gltf_mesh, texture, glm.vec3((-4.,0.,0.))))
 
@@ -60,10 +63,13 @@ class F(Frontend):
         bones[0].derive_matrices()
         gltf_root.bones = bones[0]
         gltf_model = ModelClass("gltf", gltf_root)
+        print(gltf_model)
+        self.model_objects.append( ModelInstance(gltf_model) )
+        print(self.model_objects[-1])
+        self.mesh_objects = []
         
         model = ObjectModel("cube", Snake(16,8.))
-        self.model_objects.append( ModelInstance(model) )
-        self.model_objects.append( ModelInstance(gltf_model) )
+        # self.model_objects.append( ModelInstance(model) )
         for o in self.model_objects:
             o.gl_create()
             o.gl_bind_program(self.shader.shader_class)

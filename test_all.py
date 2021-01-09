@@ -18,6 +18,11 @@ class Transform(unittest.TestCase):
         b = Transformation()
         b.from_mat4(m)
         self.assertTrue(b.distance(a)<self.eps, f"failed with {a}, {b}")
+        # c = Transformation()
+        # c.from_mat4(m*m)
+        # print(c)
+        # print(m*m)
+        # print(c.mat4())
         pass
     def test_transformation(self):
         for (i,axis) in [ (0, [1.,0.,0.],),
@@ -33,6 +38,7 @@ class Transform(unittest.TestCase):
             axis = glm.normalize(axis)
             angle = i*36.0 * 3.1415/180.0
             scale = glm.vec3([1,2,3])*(i+1)
+            # scale = glm.vec3([1,1,1])*(i+1)
             translation = glm.vec3([-1,1,9])*(i+1)
             self.int_test_transformation_of_mat(angle, axis, scale, translation)
             pass
