@@ -20,10 +20,6 @@ import time
 import traceback
 
 class F(Frontend):
-    frame_delay = 0.02
-    stop_at = 1000
-    # frame_delay = 0.2
-    # stop_at = 10
     time = 0.
     tick = 0
     #f opengl_ready
@@ -75,7 +71,6 @@ class F(Frontend):
         pass
     #f idle
     def idle(self) -> None:
-        time.sleep(self.frame_delay)
         if self.finished:
             return
         try:
@@ -90,8 +85,6 @@ class F(Frontend):
             print(f"Failed: {traceback.format_exc()}")
             self.finished = True
             pass
-        self.stop_at = self.stop_at-1
-        if self.stop_at<0: self.finished=True
         pass
     #f draw
     def draw(self) -> None:

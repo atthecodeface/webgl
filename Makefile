@@ -5,6 +5,10 @@ help:
 	@echo "py     - run python GUI"
 	@echo "py_all - run python unittest"
 
+help_install:
+	@echo "Help install"
+	@echo "pip3 install pyglm PyOpenGL Pillow glfw"
+
 httpd:
 	python3 -m http.server
 
