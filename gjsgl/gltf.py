@@ -465,6 +465,13 @@ class Gltf:
     def get_node(self, index:int) -> Node:
         if index<0 or index>=len(self.nodes): raise Exception("Bad node number")
         return self.nodes[index]
+    #f get_node_by_name
+    def get_node_by_name(self, name:str) -> Optional[Tuple[int,Node]]:
+        for i in range(len(self.nodes)):
+            if name == self.nodes[i].name:
+                return (i, self.nodes[i])
+            pass
+        return None
     #f __init__
     def __init__(self, root:Path, path:Path) -> None:
         with path.open() as f:
@@ -511,13 +518,8 @@ class Gltf:
                     self.nodes.append(Node(self,n))
                     pass
                 pass
-            # print(self.buffers)
-            # print(self.buffer_views)
-            # print(self.accessors)
-            # print(self.materials)
-            # print(self.meshes)
-            # print(self.nodes)
             pass
         pass
+    #f All done
     pass
 

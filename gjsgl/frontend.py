@@ -1,5 +1,6 @@
 #a Imports
 import glfw
+import traceback
 from OpenGL import GL
 from typing import *
 
@@ -36,6 +37,11 @@ class Frontend:
     def run(self) -> None:
         self.finished = False
         self.time_last = glfw.get_time()
+        self.keys_down = set()
+        self.key_mods = 0
+        self.buttons_down = 0
+        self.mouse_pos_drag_start = (0.,0.)
+        self.mouse_pos = (0.,0.)
         while not self.finished and not glfw.window_should_close(self.main_window):
             time_now = glfw.get_time()
             timeout = self.time_last + self.frame_delay - time_now
@@ -56,19 +62,52 @@ class Frontend:
         pass
     #f key
     def key(self, window, key:int, scancode:int, action:int, mods:int) -> None:
-        print(f"{window} {key} {scancode} {action} {mods}")
         if key==81: self.finished=True
+        press = (action==glfw.PRESS) or (action==glfw.REPEAT)
+        if press: self.keys_down.add(key)
+        else: self.keys_down.discard(key)
+        self.key_fn(key, scancode, press, mods)
+        pass
+    #f key_fn
+    def key_fn(self, key:int, scancode:int, press:bool, mods:int) -> None:
+        print(f"{key} {scancode} {action} {mods}")
         pass
     #f cursor_pos
     def cursor_pos(self, window, xpos:float, ypos:float) -> None:
-        print(f"{window} {xpos} {ypos}")
+        self.mouse_pos = (xpos,ypos)
+        self.cursor_fn(xpos, ypos)
+        pass
+    #f cursor_fn
+    def cursor_fn(self, xpos:float, ypos:float) -> None:
+        print(f"{self.mouse_pos}, {self.mouse_pos_drag_start} {self.buttons_down} {self.key_mods}")
         pass
     #f mouse_button
     def mouse_button(self, window, button:int, action:int, mods:int) -> None:
-        print(f"{window} {button} {action} {mods}")
+        (xpos, ypos) = glfw.get_cursor_pos(window)
+        if action==glfw.PRESS:
+            self.buttons_down |= 1<<button
+            self.mouse_pos_drag_start = (xpos, ypos)
+            pass
+        elif action==glfw.RELEASE:
+            self.buttons_down &= ~(1<<button)
+            pass
+        self.key_mods = mods
+        self.mouse_button_fn(xpos, ypos, button, action, mods)
+        pass
+    #f mouse_button_fn
+    def mouse_button_fn(self, xpos:float, ypos:float, button:int, action:int, mods:int) -> None:
+        print(f"{self.mouse_pos}, {self.mouse_pos_drag_start} {self.buttons_down} {self.key_mods} {button} {action} {mods}")
         pass
     #f idle
     def idle(self) -> None:
+        try:
+            self.idle_fn()
+            pass
+        except Exception as e:
+            print(f"Failed: {e}")
+            print(f"Failed: {traceback.format_exc()}")
+            self.finished = True
+            pass
         pass
     #f opengl_ready - override
     def opengl_ready(self) -> None:

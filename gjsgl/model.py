@@ -495,7 +495,7 @@ class ModelInstance:
                 pass
             # Provide mesh matrix and material uniforms
             program.set_uniform_if("uMeshMatrix",
-                                   lambda u: GL.glUniformMatrix4fv(u, 1, False, glm.value_ptr(mat)) )
+                                   lambda u: GL.glUniformMatrix4fv(u, 1, False, glm.value_ptr(t.mat4())) )
             program.set_uniform_if("uBonesScale",
                                    lambda u: GL.glUniform1f(u, 0.) )
             m.gl_draw(program)

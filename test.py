@@ -1,4 +1,5 @@
 from pathlib import Path
+from OpenGL import GL
 import glm
 from gjsgl.object import Object, Mesh, MeshObject
 from gjsgl.sample_objects import Cube, DoubleCube, DoubleCube2, Snake
@@ -11,43 +12,34 @@ from gjsgl.gltf import Gltf
 from gjsgl.sample_models import ObjectModel
 from gjsgl.model import ModelClass, ModelInstance
 
-from OpenGL import GL
-# import OpenGL
-# OpenGL.USE_ACCELERATE = False
-# OpenGL.ERROR_CHECKING = False
-import time
-
-import traceback
-
+#a Frontend
+def axis(mat:glm.Mat4, n:int) -> glm.Vec3:
+    return glm.vec3(mat[n][0],mat[n][1],mat[n][2])
 class F(Frontend):
     time = 0.
     tick = 0
+    motions = 0
     #f opengl_ready
     def opengl_ready(self) -> None:
         self.mesh_objects = []
         self.model_objects = []
         self.shader = BoneShader()
         self.tick = 0
-        # self.shader = UnbonedShader()
+        self.camera = Transformation(translation=(0.,-6.,-20.))
+        self.motions = 0
 
         texture = Texture("wood_square.png")
         # texture = Texture("wood.jpg")
         # texture = Texture("moon.png")
 
-        # g = Gltf(Path("."),Path("./test.gltf"))
-        # g = Gltf(Path("."),Path("./cubeplus.gltf"))
-        # g = Gltf(Path("."),Path("./house.gltf"))
-        # gltf = Gltf(Path("."),Path("./simple_escape.gltf"))
-        gltf = Gltf(Path("."),Path("./milo.gltf"))
-        gltf_node = 37
+        gltf_data = (Path("./milo.gltf"), "Body.001")
+        gltf_data = (Path("./milo2.gltf"), "Head.001")
+        gltf_data = (Path("./cubeplus.gltf"), "Cube")
+        gltf_data = (Path("./simple_escape.gltf"), "RoomExport")
 
-        gltf = Gltf(Path("."),Path("./milo2.gltf"))
-        gltf_node = 16
-
-        # gltf = Gltf(Path("."),Path("./cubeplus.gltf"))
-        # gltf_node = 0
-        # gltf_mesh = Mesh2Mesh(self.shader, g, 0)
-        # self.mesh_objects.append(MeshObject(gltf_mesh, texture, glm.vec3((-4.,0.,0.))))
+        gltf_file = Gltf(Path("."), gltf_data[0])
+        (_, gltf_node) = gltf_file.get_node_by_name(gltf_data[1]) 
+        gltf_root = gltf_node.to_model_object(gltf_file)
 
         c : Object = DoubleCube2()
         c = Cube()
@@ -56,7 +48,6 @@ class F(Frontend):
         mesh = Mesh(self.shader, c)
         self.mesh_objects.append(MeshObject(mesh, texture, glm.vec3((3.,0.,0.))))
 
-        gltf_root = gltf.get_node(gltf_node).to_model_object(gltf)
         bones = []
         bones.append(Bone(parent=None, transformation=Transformation(translation=(0.,0.,-1.))))
         bones.append(Bone(parent=None, transformation=Transformation(translation=(0.,0.,2.))))
@@ -75,22 +66,44 @@ class F(Frontend):
             o.gl_bind_program(self.shader.shader_class)
             pass
         pass
-    #f idle
-    def idle(self) -> None:
-        if self.finished:
-            return
-        try:
-            for m in self.mesh_objects:
-                m.animate(self.time)
-                pass
-            self.time += 0.08
-            self.draw()
+    #f mouse_button_fn
+    def xmouse_button_fn(self, xpos:float, ypos:float, button:int, action:int, mods:int) -> None:
+        pass
+    #f key_fn
+    motion_of_keys = { 87:1, 83:2,
+                       65:4, 68:8,
+                       90:16, 88:32,
+                       59:256, 46:512,
+                       78:1024, 77:2048,
+                       76:4096, 44:8192,
+    }
+    def key_fn(self, key:int, scancode:int, press:bool, mods:int) -> None:
+        motion = self.motion_of_keys.get(key,0)
+        if press: self.motions = self.motions | motion
+        else: self.motions = self.motions & ~motion
+        pass
+    #f idle_fn
+    def idle_fn(self) -> None:
+        mat = glm.mat4()
+        axes = self.camera.mat4()
+        axes = mat
+        if   self.motions &   1: self.camera.translate(axis(axes,2),  0.1)
+        elif self.motions &   2: self.camera.translate(axis(axes,2), -0.1)
+        elif self.motions &   4: self.camera.translate(axis(axes,0),  0.1)
+        elif self.motions &   8: self.camera.translate(axis(axes,0), -0.1)
+        elif self.motions &  16: self.camera.translate(axis(axes,1),  0.1)
+        elif self.motions &  32: self.camera.translate(axis(axes,1), -0.1)
+        elif self.motions & 256: self.camera.rotate(axis(mat,0), -0.1)
+        elif self.motions & 512: self.camera.rotate(axis(mat,0),  0.1)
+        elif self.motions &1024: self.camera.rotate(axis(mat,1), -0.1)
+        elif self.motions &2048: self.camera.rotate(axis(mat,1),  0.1)
+        elif self.motions &4096: self.camera.rotate(axis(mat,2), -0.1)
+        elif self.motions &8192: self.camera.rotate(axis(mat,2),  0.1)
+        for m in self.mesh_objects:
+            m.animate(self.time)
             pass
-        except Exception as e:
-            print(f"Failed: {e}")
-            print(f"Failed: {traceback.format_exc()}")
-            self.finished = True
-            pass
+        self.time += 0.08
+        self.draw()
         pass
     #f draw
     def draw(self) -> None:
@@ -109,12 +122,8 @@ class F(Frontend):
         GL.glUseProgram(self.shader.program)
         matrices = []
         projection_matrix = glm.perspective(45.*3.1415/180., 1.0, 0.1, 100.0)
-        camera_matrix     = glm.mat4()
-        camera_matrix[3][1] -= 6.0
-        camera_matrix[3][2] -= 20.0
+        camera_matrix     = self.camera.mat4()
         matrices.append(projection_matrix)
-        q = glm.angleAxis(-self.time*0.2, glm.vec3([0., 1.0, 0.0]))
-        camera_matrix     = Transformation(translation=(0.,-6.,-20.),quaternion=q).mat4()
         matrices.append(camera_matrix)
         GL.glUniformMatrix4fv(self.shader.uniforms["uProjectionMatrix"], 1, False, glm.value_ptr(matrices[0]))
         GL.glUniformMatrix4fv(self.shader.uniforms["uCameraMatrix"],     1, False, glm.value_ptr(matrices[1]))

@@ -135,6 +135,16 @@ class Transformation:
             self.scale[i] = base.scale[i] * other.scale[i]
             pass
         pass
+    #f translate
+    def translate(self, t:glm.Vec3, scale:float) -> None:
+        self.translation = self.translation + (t * scale)
+        pass
+    #f rotate
+    def rotate(self, axis:glm.Vec3, angle:float) -> None:
+        q = glm.angleAxis(angle, axis)
+        self.quaternion  = q * self.quaternion
+        self.translation = q * self.translation
+        pass
     #f mat4
     def mat4(self) -> glm.Mat4:
         m = glm.mat4_cast(self.quaternion)
