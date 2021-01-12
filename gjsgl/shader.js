@@ -1,4 +1,73 @@
- const vertex_bone4 = `
+class ShaderClass {
+    attributes = {};
+    validate(program) {
+        console.log(program.attributes);
+        for (const sm in program.attributes) {
+            this.attributes[sm] = program.attributes[sm];
+        }
+        //program.attributes;
+    }
+    get_attr(name) {
+        return this.attributes[name];
+    }
+}
+
+class BoneShaderClass extends ShaderClass {
+    name = "Simple shader class";
+    attrib_keys = ["vPosition", "vNormal", "vJoints", "vWeights", "vTexture", "vColor",];
+}
+bone_shader_class = new BoneShaderClass();
+
+class ShaderProgram {
+    //f init - invoke post-constructor to get class properties defined
+    init(gl) {
+        this.vertex_shader   = this.compile(gl, gl.VERTEX_SHADER, this.vertex_source);
+        this.fragment_shader = this.compile(gl, gl.FRAGMENT_SHADER, this.fragment_source);
+        this.program = gl.createProgram();
+        gl.attachShader(this.program, this.vertex_shader)
+        gl.attachShader(this.program, this.fragment_shader)
+        gl.linkProgram(this.program)
+        if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
+            alert('Unable to initialize the shader program: ' + gl.getProgramInfoLog(this.program));
+            return null;
+        }
+        this.attributes = {};
+        this.uniforms   = {};
+        for (const k of this.attrib_keys) {
+            this.attributes[k] = gl.getAttribLocation(this.program, k);
+        }
+        for (const k of this.uniform_keys) {
+            this.uniforms[k]   = gl.getUniformLocation(this.program, k);
+        }
+        this.shader_class.validate(this);
+        return this;
+    }
+    //f compile
+    compile(gl, shader_type, source) {
+        const shader = gl.createShader(shader_type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            alert('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
+            gl.deleteShader(shader);
+            return null;
+        }
+        return shader;
+    }
+    //f get_attr
+    get_attr(name) {
+        return this.attributes.get(name,None);
+    }
+    //f set_uniform_if
+    set_uniform_if(name, fn) {
+        if (name in this.uniforms) {
+            fn(this.uniforms[name]);
+        }
+    }
+    //f All done
+}
+
+const vertex_bone4 = `
     attribute vec3 aVertexPosition;
     attribute vec3 aVertexNormal;
     attribute vec4 aVertexWeights;
@@ -45,46 +114,20 @@
     }
   `;
 
-//
-// Initialize a shader program, so WebGL knows how to draw our data
-//
-function initShaderProgram(gl, vsSource, fsSource) {
-  const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
-  const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
-
-  // Create the shader program
-
-  const shaderProgram = gl.createProgram();
-  gl.attachShader(shaderProgram, vertexShader);
-  gl.attachShader(shaderProgram, fragmentShader);
-  gl.linkProgram(shaderProgram);
-
-  // If creating the shader program failed, alert
-
-  if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-    alert('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
-    return null;
-  }
-
-  return shaderProgram;
-}
-
-function loadShader(gl, type, source) {
-  const shader = gl.createShader(type);
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    alert('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
-    gl.deleteShader(shader);
-    return null;
-  }
-  return shader;
+//c BoneShader
+class BoneShader extends ShaderProgram {
+    shader_class = bone_shader_class;
+    vertex_source = vertex_bone4;
+    fragment_source = frag;
+    attrib_keys = ["vPosition", "vNormal", "vJoints", "vWeights", "vTexture", "vColor",];
+    uniform_keys = ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix", "uMeshMatrix", "uBonesMatrices", "uBonesScale", "uTexture" ];
 }
 
 function shader_compile(gl) {
-    const shaderProgram = initShaderProgram(gl, vertex_bone4, frag);
+    const bs = (new BoneShader()).init(gl);
+    const shaderProgram = bs.program;
     const programInfo = {
-        program: shaderProgram,
+        program: bs.program,
         attributes: {
             vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
             vertexNormal:   gl.getAttribLocation(shaderProgram, 'aVertexNormal'),
