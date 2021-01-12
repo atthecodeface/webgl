@@ -82,7 +82,9 @@ def quaternion_of_rotation(rotation:glm.Mat3) -> glm.Quat:
 
 #c TransMat
 class TransMat:
+    #v properties
     mat : glm.Mat4
+    #f __init__
     def __init__(self, mat:Optional[glm.Mat4]=None) -> None:
         if mat is None:
             self.mat = glm.mat4()
@@ -91,13 +93,16 @@ class TransMat:
             self.mat = mat
             pass
         pass
+    #f mat4
     def mat4(self) -> glm.Mat4:
         return self.mat
+    #f mat_after
     def mat_after(self, pre_mat:"TransMat") -> "TransMat":
         return TransMat(mat=pre_mat.mat * self.mat)
     #f __str__
     def __str__(self) -> str:
         return "[" + ("   ".join([" ".join([str(v) for v in col]) for col in self.mat])) + "]" # type: ignore
+    #f All done
     pass
     
 #c Transformation

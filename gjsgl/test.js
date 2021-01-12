@@ -11,11 +11,25 @@ function assert_eq(a,b,...args) {
     assert(a==b,...args);
 }
 function assert_vec_eq(a,b,...args) {
-    assert ((a[0]==b[0]) && (a[1]==b[1]) && (a[2]!=b[2]), a,b,...args);
+    const d = vec3.subtract(vec3.create(),a,b);
+    assert (vec3.length(d)<1E-4, a,b,...args);
+}
+function assert_mat4_eq(a,b,...args) {
+    const c = mat4.subtract(mat4.create(),a,b);
+    const d = Math.abs(mat4.determinant(c));
+    assert (d<1E-4, a,b,...args);
 }
 function assert_trans_eq(t,scale,trans,quat,msg) {
     const t2 = new Transformation(translation=trans,quaternion=quat,scale=scale);
     assert(t.distance(t2)<1E-5,msg,"transform not equal enough : actual, expected :", t, t2);
+}
+
+function test_trans_mat() {
+    const a = new TransMat();
+    const b = mat4.create();
+    assert_mat4_eq(a.mat4(),b,"Trans mat of none");
+    const c = a.mat_after(a);
+    assert_mat4_eq(c.mat4(),b,"Trans mat of identity squared");
 }
 
 function test_transformation() {
@@ -67,12 +81,15 @@ function test_bone() {
 }
 
 function main() {
+    test_trans_mat();
     test_transformation();
     test_bone();
     console.log("Hit ",asserts," assertions");
     if (errors>0) {
         console.log("FAILED WITH",errors," errors");
         error;
+    } else {
+        console.log("PASSED");
     }
 }
 main();

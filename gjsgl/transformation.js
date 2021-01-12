@@ -34,6 +34,27 @@ function quaternion_of_rotation(rotation) {
     return quat.setAxisAngle(quat.create(), axis, angle);
 }
 
+//a TransMat
+class TransMat {
+    //f constructor
+    constructor(mat) {
+        if (mat === undefined) {
+            this.mat = mat4.create();
+        } else {
+            this.mat = mat;
+        }
+    }
+    //f mat4
+    mat4() {
+        return this.mat;
+    }
+    //f mat_after
+    mat_after(pre_mat) {
+        return new TransMat(mat4.multiply(mat4.create(),pre_mat.mat,this.mat));
+    }
+    //f All done
+}
+
 //a Transformation
 class Transformation {
     constructor(translation, quaternion, scale) {
@@ -70,6 +91,16 @@ class Transformation {
             this.scale[i] = base.scale[i] * other.scale[i];
         }
     }
+    //f translate
+    translate(t, scale) {
+        vec3.scaleAndAdd(this.translation, this.translation, t, scale);
+    }
+    //f rotate
+    rotate(self, axis, angle) {
+        const q = quat.setAxisAngle(quat.create(), axis, angle);
+        quat.multiply(this.quaternion , this.quaternion);
+        quat.multiply(this.translation, this.translation);
+    }
     //f mat4
     mat4() {
         var m = mat4.create();
@@ -98,6 +129,14 @@ class Transformation {
         }
         this.quaternion = quaternion_of_rotation(rotation);
     }
+    //f trans_mat
+    trans_mat() {
+        return new TransMat(this.mat4());
+    }
+    //f trans_mat_after
+    trans_mat_after(pre_mat) {
+        return new TransMat(mat4.multiply(mat4.create(),pre_mat.mat,this.mat4()));
+    }
     //f distance
     distance(other) {
         const td = vec3.distance(this.translation, other.translation);
@@ -107,5 +146,6 @@ class Transformation {
         const qd = quat.length(quat.add(quat.create(),qn,quat.create()));
         return td+sd+qd;
     }
+    //f All done
 }
 
