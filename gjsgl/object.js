@@ -11,7 +11,7 @@ class Submesh {
 //c Mesh
 class Mesh {
     //f constructor
-    constructor(obj) {
+    constructor(shader, obj) {
 
         const num_pts = obj.weights.length/4;
         obj.joints = []
@@ -24,55 +24,66 @@ class Mesh {
 
         this.obj        = obj;
         
-        this.positions  = GL.createBuffer();
-        this.normals    = GL.createBuffer();
+        this.glid = GL.createVertexArray(1);
+        GL.bindVertexArray(this.glid);
+
         this.texcoords  = GL.createBuffer();
         this.weights    = GL.createBuffer();
         this.joints     = GL.createBuffer();
         this.indices    = GL.createBuffer();
-        
-        GL.bindBuffer(GL.ARRAY_BUFFER, this.positions);
-        GL.bufferData(GL.ARRAY_BUFFER, new Float32Array(obj.positions), GL.STATIC_DRAW);
-        
-        GL.bindBuffer(GL.ARRAY_BUFFER, this.normals);
-        GL.bufferData(GL.ARRAY_BUFFER, new Float32Array(obj.normals), GL.STATIC_DRAW);
-        
-        GL.bindBuffer(GL.ARRAY_BUFFER, this.texcoords);
-        GL.bufferData(GL.ARRAY_BUFFER, new Float32Array(obj.texcoords), GL.STATIC_DRAW);
-        
-        GL.bindBuffer(GL.ARRAY_BUFFER, this.weights);
-        GL.bufferData(GL.ARRAY_BUFFER, new Float32Array(obj.weights), GL.STATIC_DRAW);
 
-        GL.bindBuffer(GL.ARRAY_BUFFER, this.joints);
-        GL.bufferData(GL.ARRAY_BUFFER, new Int32Array(obj.joints), GL.STATIC_DRAW);
-
+        var a;
+        a = shader.get_attr("vPosition");
+        if (a !== undefined) {
+            this.positions  = GL.createBuffer();
+            GL.bindBuffer(GL.ARRAY_BUFFER, this.positions);
+            GL.bufferData(GL.ARRAY_BUFFER, new Float32Array(obj.positions), GL.STATIC_DRAW);
+            GL.enableVertexAttribArray(a);
+            GL.vertexAttribPointer(a, 3, GL.FLOAT, false, 0, 0);
+        }
+        
+        a = shader.get_attr("vNormal");
+        if (a !== undefined) {
+            this.normals  = GL.createBuffer();
+            GL.bindBuffer(GL.ARRAY_BUFFER, this.normals);
+            GL.bufferData(GL.ARRAY_BUFFER, new Float32Array(obj.normals), GL.STATIC_DRAW);
+            GL.enableVertexAttribArray(a);
+            GL.vertexAttribPointer(a, 3, GL.FLOAT, false, 0, 0);
+        }
+        
+        a = shader.get_attr("vTexture");
+        if (a !== undefined) {
+            this.texcoords  = GL.createBuffer();
+            GL.bindBuffer(GL.ARRAY_BUFFER, this.texcoords);
+            GL.bufferData(GL.ARRAY_BUFFER, new Float32Array(obj.texcoords), GL.STATIC_DRAW);
+            GL.enableVertexAttribArray(a);
+            GL.vertexAttribPointer(a, 2, GL.FLOAT, false, 0, 0);
+        }
+        
+        a = shader.get_attr("vWeights");
+        if (a !== undefined) {
+            this.weights  = GL.createBuffer();
+            GL.bindBuffer(GL.ARRAY_BUFFER, this.weights);
+            GL.bufferData(GL.ARRAY_BUFFER, new Float32Array(obj.weights), GL.STATIC_DRAW);
+            GL.enableVertexAttribArray(a);
+            GL.vertexAttribPointer(a, 4, GL.FLOAT, false, 0, 0);
+        }
+        
+        a = shader.get_attr("vJoints");
+        if (a !== undefined) {
+            this.joints  = GL.createBuffer();
+            GL.bindBuffer(GL.ARRAY_BUFFER, this.joints);
+            GL.bufferData(GL.ARRAY_BUFFER, new Int32Array(obj.joints), GL.STATIC_DRAW);
+            GL.enableVertexAttribArray(a);
+            GL.vertexAttribPointer(a, 4, GL.INT, false, 0, 0);
+        }
+        
         GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, this.indices);
         GL.bufferData(GL.ELEMENT_ARRAY_BUFFER, new Uint8Array(obj.indices), GL.STATIC_DRAW);
     }
     //f bind
     bind(shader) {
-        GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, this.indices);
-
-        GL.bindBuffer(GL.ARRAY_BUFFER,         this.positions);
-        GL.enableVertexAttribArray(shader.attributes["vPosition"]);
-        GL.vertexAttribPointer(shader.attributes["vPosition"], 3, GL.FLOAT, false, 0, 0);
-
-        GL.bindBuffer(GL.ARRAY_BUFFER,         this.normals);
-        GL.enableVertexAttribArray(shader.attributes["vNormal"]);
-        GL.vertexAttribPointer(shader.attributes["vNormal"], 3, GL.FLOAT, false, 0, 0);
-
-        GL.bindBuffer(GL.ARRAY_BUFFER,         this.texcoords);
-        GL.enableVertexAttribArray(shader.attributes["vTexture"]);
-        GL.vertexAttribPointer(shader.attributes["vTexture"], 2, GL.FLOAT, false, 0, 0);
-
-        GL.bindBuffer(GL.ARRAY_BUFFER,         this.weights);
-        GL.enableVertexAttribArray(shader.attributes["vWeights"]);
-        GL.vertexAttribPointer(shader.attributes["vWeights"], 4, GL.FLOAT, false, 0, 0);
-
-        GL.bindBuffer(GL.ARRAY_BUFFER,         this.joints);
-        GL.enableVertexAttribArray(shader.attributes["vJoints"]);
-        GL.vertexAttribPointer(shader.attributes["vJoints"], 4, GL.INT, false, 0, 0);
-
+        GL.bindVertexArray(this.glid);
     }
     //f draw
     draw(shader, bones, texture) {
@@ -102,11 +113,11 @@ class Mesh {
 //c MeshObject
 class MeshObject {
     //f constructor
-    constructor(obj, texture, world_vec) {
+    constructor(shader, obj, texture, world_vec) {
         this.texture = texture;
         this.world_matrix = mat4.create();
         this.place(world_vec);
-        this.mesh = new Mesh(obj);
+        this.mesh = new Mesh(shader, obj);
         this.bones = []
         this.bones.push(new Bone());
         this.bones.push(new Bone(this.bones[0]));

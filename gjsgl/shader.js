@@ -56,7 +56,7 @@ class ShaderProgram {
     }
     //f get_attr
     get_attr(name) {
-        return this.attributes.get(name,None);
+        return this.attributes[name];
     }
     //f set_uniform_if
     set_uniform_if(name, fn) {
