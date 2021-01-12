@@ -12,6 +12,18 @@ if not TYPE_CHECKING:
     pass
 
 #a Useful functions
+#f mat4_str
+def mat4_str(mat:glm.Mat4) -> str:
+    return "[" + ("   ".join([" ".join([str(v) for v in col]) for col in mat])) + "]" # type: ignore
+
+#f vec3_str
+def vec3_str(vec:glm.Vec3) -> str:
+    return "["+" ".join([str(v) for v in vec])+"]" # type: ignore
+
+#f quat_str
+def quat_str(quat:glm.Quat) -> str:
+    return "q("+" ".join([str(v) for v in quat])+")" # type: ignore
+
 #f quaternion_of_rotation
 def quaternion_of_rotation(rotation:glm.Mat3) -> glm.Quat:
     """
@@ -85,7 +97,7 @@ class TransMat:
         return TransMat(mat=pre_mat.mat * self.mat)
     #f __str__
     def __str__(self) -> str:
-        return "[" + ("   ".join([" ".join([str(v) for v in col]) for col in self.mat])) + "]"
+        return "[" + ("   ".join([" ".join([str(v) for v in col]) for col in self.mat])) + "]" # type: ignore
     pass
     
 #c Transformation
@@ -119,7 +131,7 @@ class Transformation:
         pass
     #f __str__
     def __str__(self) -> str:
-        r = f"{self.translation}:{self.quaternion}:{self.scale}"
+        r = f"{vec3_str(self.translation)}:{quat_str(self.quaternion)}:{vec3_str(self.scale)}"
         return r
     #f copy
     def copy(self, other:"Transformation") -> None:
@@ -137,13 +149,13 @@ class Transformation:
         pass
     #f translate
     def translate(self, t:glm.Vec3, scale:float) -> None:
-        self.translation = self.translation + (t * scale)
+        self.translation = self.translation + (t * scale) # type: ignore
         pass
     #f rotate
     def rotate(self, axis:glm.Vec3, angle:float) -> None:
         q = glm.angleAxis(angle, axis)
         self.quaternion  = q * self.quaternion
-        self.translation = q * self.translation
+        self.translation = q * self.translation # type: ignore
         pass
     #f mat4
     def mat4(self) -> glm.Mat4:

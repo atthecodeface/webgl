@@ -6,7 +6,7 @@ import math
 import glm
 from .hierarchy import Hierarchy
 from .texture import Texture
-from .bone import Bone, BonePose, BoneMatrixArray
+from .bone import Bone, BonePose, BoneMatrixArray, BoneSet, BonePoseSet
 from .shader import ShaderClass, ShaderProgram
 from .transformation import Transformation, TransMat
 
@@ -109,7 +109,7 @@ class ModelBufferIndices:
         GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.gl_buffer)
         pass
     #f hier_debug
-    def hier_debug(self, hier:Hierarchy) -> str:
+    def hier_debug(self, hier:Hierarchy) -> Hierarchy:
         hier.add(f"Indices {self.byte_offset} {self.byte_length}")
         return hier
     #f __str__
@@ -145,12 +145,12 @@ class ModelBufferView:
         if a is not None:
             GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.data.gl_buffer)
             GL.glEnableVertexAttribArray(a)
-            print(f"VAO {a} of {self.count} of {self.gl_type} {self.stride} {self.offset}")
+            # print(f"VAO {a} of {self.count} of {self.gl_type} {self.stride} {self.offset}")
             GL.glVertexAttribPointer(a, self.count, self.gl_type, False, self.stride, ctypes.c_void_p(self.offset))
             pass
         pass 
     #f hier_debug
-    def hier_debug(self, hier:Hierarchy, use:str) -> str:
+    def hier_debug(self, hier:Hierarchy, use:str) -> Hierarchy:
         hier.add(f"BufferView {use} {self.gl_type} {self.count} {self.offset} {self.stride}")
         return hier
     #f __str__
@@ -319,7 +319,7 @@ class ModelObject:
     children      : List["ModelObject"]
     parent        : Optional["ModelObject"]
     mesh          : Optional[ModelMesh]
-    bones         : Optional[Bone]
+    bones         : Optional[BoneSet]
     #f __init__
     def __init__(self, parent:Optional["ModelObject"], transformation:Optional[Transformation]=None):
         self.transformation = transformation
@@ -353,7 +353,7 @@ class ModelObject:
     def has_bones(self) -> bool:
         return self.bones is not None
     #f get_bones
-    def get_bones(self) -> Bone:
+    def get_bones(self) -> BoneSet:
         assert self.bones is not None
         return self.bones
     #f gl_create
@@ -377,7 +377,7 @@ class ModelObject:
             self.mesh.hier_debug(hier)
             pass
         if self.bones is not None:
-            # self.bones.hier_debug(hier)
+            self.bones.hier_debug(hier)
             pass
         for c in self.children:
             c.hier_debug(hier)
@@ -441,31 +441,28 @@ class ModelInstance:
     Each model object instance inside the model has a transformation relative to that
     In addition, the model object instances may have a bone pose hierarchy
     """
-    trans_mat     : TransMat
-    bone_poses    : List[BonePose]
-    bone_matrix_arrays : List[BoneMatrixArray]
-    meshes        : List[Tuple[TransMat, ModelMesh, int]]
+    trans_mat       : TransMat
+    bone_set_poses  : List[BonePoseSet]
+    meshes          : List[Tuple[TransMat, ModelMesh, int]]
     #f __init__
     def __init__(self, model_class:ModelClass) -> None:
-        self.bone_poses = []
-        self.bone_matrix_arrays = []
+        self.bone_set_poses = []
         self.meshes = []
-        bones_dict = {}
+        bone_set_dict = {}
         for (trans_mat,model) in model_class.iter_objects():
             if not model.has_mesh(): continue
             mesh_instance = model.get_mesh()
-            bone_index = -1
+            bone_set_index = -1
             if model.has_bones():
-                bone = model.get_bones() # get root bone
-                if bone not in bones_dict:
-                    bones_dict[bone] = len(self.bone_poses)
-                    pose = BonePose.pose_bones(bone)
-                    self.bone_poses.append(pose)
-                    self.bone_matrix_arrays.append(pose.create_matrix_array())
+                bone_set = model.get_bones() # get bone set
+                if bone_set not in bone_set_dict:
+                    bone_set_dict[bone_set] = len(self.bone_set_poses)
+                    pose = BonePoseSet(bone_set)
+                    self.bone_set_poses.append(pose)
                     pass
-                bone_index = bones_dict[bone]
+                bone_set_index = bone_set_dict[bone_set]
                 pass
-            self.meshes.append( (trans_mat, mesh_instance, bone_index) )
+            self.meshes.append( (trans_mat, mesh_instance, bone_set_index) )
             pass
         pass
     #f gl_create
@@ -484,31 +481,30 @@ class ModelInstance:
     def gl_draw(self, program:ShaderProgram, tick:int) -> None:
         mat = glm.mat4()
         GL.glUniformMatrix4fv(program.uniforms["uModelMatrix"], 1, False, glm.value_ptr(mat))
-        for bma in self.bone_matrix_arrays:
-            bma.update(tick)
+        for bone_set_pose in self.bone_set_poses:
+            bone_set_pose.update(tick)
             pass
         for (t,m,b) in self.meshes:
             if b>=0:
-                bma = self.bone_matrix_arrays[b]
+                bma = self.bone_set_poses[b]
                 program.set_uniform_if("uBonesMatrices",
-                                      lambda u:GL.glUniformMatrix4fv(u, bma.total_bones, False, bma.data))
+                                      lambda u:GL.glUniformMatrix4fv(u, bma.max_index, False, bma.data))
                 pass
             # Provide mesh matrix and material uniforms
             program.set_uniform_if("uMeshMatrix",
                                    lambda u: GL.glUniformMatrix4fv(u, 1, False, glm.value_ptr(t.mat4())) )
             program.set_uniform_if("uBonesScale",
-                                   lambda u: GL.glUniform1f(u, 0.) )
+                                   lambda u: GL.glUniform1f(u, 1.0) )
             m.gl_draw(program)
             pass
         pass
     #f hier_debug
     def hier_debug(self, hier:Hierarchy) -> Hierarchy:
-        hier.add(f"ModelInstance with {len(self.bone_poses)} poses")
+        hier.add(f"ModelInstance with {len(self.bone_set_poses)} poses")
         hier.push()
-        for i in range(len(self.bone_poses)):
+        for i in range(len(self.bone_set_poses)):
             hier.add(f"Pose/Matrix {i}")
-            self.bone_poses[i].hier_debug(hier)
-            self.bone_matrix_arrays[i].hier_debug(hier)
+            self.bone_set_poses[i].hier_debug(hier)
             pass
         for (t,m,b) in self.meshes:
             hier.add(f"Mesh transform {t} pose/matrix {b}")

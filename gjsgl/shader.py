@@ -108,7 +108,7 @@ class BoneShader(ShaderProgram):
     layout(location = 1) in vec3 vNormal;
     layout(location = 2) in vec4 vWeights;
     layout(location = 3) in vec2 vTexture;
-    layout(location = 4) in ivec4 vJoints;
+    layout(location = 4) in vec4 vJoints;
     layout(location = 5) in vec4 vColor;
 
     uniform mat4 uProjectionMatrix;
@@ -123,12 +123,14 @@ class BoneShader(ShaderProgram):
     out vec2 tex_uv;
 
     void main() {
-      mat4 weightedMatrix = ( (uBonesMatrices[vJoints.x] * vWeights.x) +
-                              (uBonesMatrices[vJoints.y] * vWeights.y) +
-                              (uBonesMatrices[vJoints.z] * vWeights.z) +
-                              (uBonesMatrices[vJoints.w] * vWeights.w) );
+      mat4 weightedMatrix = ( (uBonesMatrices[int(vJoints.x)] * vWeights.x) +
+                              (uBonesMatrices[int(vJoints.y)] * vWeights.y) +
+                              (uBonesMatrices[int(vJoints.z)] * vWeights.z) +
+                              (uBonesMatrices[int(vJoints.w)] * vWeights.w) );
       weightedMatrix = weightedMatrix * uBonesScale + (mat4(1.) * (1.-uBonesScale));
       color_pos      = (normalize(vPosition) + 1.) / 2.0;
+      color_pos = vJoints.xyz/14.0;
+
       mat4 mesh_to_world = uModelMatrix * uMeshMatrix * weightedMatrix;
       vec3 world_pos = (mesh_to_world * vec4(vPosition, 1.)).xyz;
       normal         = (mesh_to_world * vec4(vNormal,   0.)).xyz;
@@ -147,9 +149,10 @@ class BoneShader(ShaderProgram):
     void main() {
       vec4 t = texture( uTexture, tex_uv );
       vec3 light_direction = -normalize(vec3(-0.2, -1., -1.));
-      float n = clamp( dot(light_direction, normalize(normal)), 0., 1. );
+      float n = clamp( abs(dot(light_direction, normalize(normal))), 0., 1. );
       vec4 c = vec4((n*0.8 + vec3(0.2)).xyz,1.) * t;
       outColor = vec4(c.xyz, 1.0);
+    // outColor.xyz = color_pos;
     }
     """
     attrib_keys = ["vPosition", "vNormal", "vJoints", "vWeights", "vTexture", "vColor",]

@@ -12,6 +12,7 @@ class Frontend:
     finished : bool
     main_window : int
     frame_delay = 0.02
+    keys_down : Set[int]
     #f __init__
     def __init__(self) -> None:
         glfw.init()
@@ -61,7 +62,7 @@ class Frontend:
         glfw.terminate()
         pass
     #f key
-    def key(self, window, key:int, scancode:int, action:int, mods:int) -> None:
+    def key(self, window:Any, key:int, scancode:int, action:int, mods:int) -> None:
         if key==81: self.finished=True
         press = (action==glfw.PRESS) or (action==glfw.REPEAT)
         if press: self.keys_down.add(key)
@@ -70,10 +71,10 @@ class Frontend:
         pass
     #f key_fn
     def key_fn(self, key:int, scancode:int, press:bool, mods:int) -> None:
-        print(f"{key} {scancode} {action} {mods}")
+        print(f"{key} {scancode} {press} {mods}")
         pass
     #f cursor_pos
-    def cursor_pos(self, window, xpos:float, ypos:float) -> None:
+    def cursor_pos(self, window:Any, xpos:float, ypos:float) -> None:
         self.mouse_pos = (xpos,ypos)
         self.cursor_fn(xpos, ypos)
         pass
@@ -82,7 +83,7 @@ class Frontend:
         print(f"{self.mouse_pos}, {self.mouse_pos_drag_start} {self.buttons_down} {self.key_mods}")
         pass
     #f mouse_button
-    def mouse_button(self, window, button:int, action:int, mods:int) -> None:
+    def mouse_button(self, window:Any, button:int, action:int, mods:int) -> None:
         (xpos, ypos) = glfw.get_cursor_pos(window)
         if action==glfw.PRESS:
             self.buttons_down |= 1<<button

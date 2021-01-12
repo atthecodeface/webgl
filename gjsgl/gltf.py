@@ -9,6 +9,7 @@ from pathlib import Path
 from dataclasses import dataclass
 from .transformation import Transformation
 from .object import MeshBase
+from .bone import Bone, BoneSet
 from .texture import Texture as OTexture
 from .shader import ShaderProgram
 from .model import ModelObject, ModelMesh, ModelPrimitive, ModelPrimitiveView, ModelBufferView, ModelBufferData, ModelMaterial, ModelBufferIndices
@@ -184,7 +185,7 @@ class Accessor:
         offset      = self.offset
         count       = self.acc_type.size # e.g. 3 for VEC3
         gl_type     = self.comp_type.gl_type # e.g. of GL_FLOAT
-        print(f"Creating attributes of {byte_offset}, {byte_length}, {data[byte_offset:byte_offset+byte_length]}")
+        print(f"Creating attributes of {gl_type} {byte_offset}, {byte_length}, {data[byte_offset:byte_offset+byte_length]}")
         model_data  = ModelBufferData(data=data, byte_offset=byte_offset, byte_length=byte_length)
         return ModelBufferView(data=model_data, count=count, gl_type=gl_type, offset=offset, stride=stride)
     #f to_model_buffer_indices
@@ -289,8 +290,17 @@ class Primitive: # Defines a drawElements call
         if "TEXCOORD_1" in attributes:
             self.tex_coords.append( gltf.get_accessor(attributes["TEXCOORD_1"]) )
             pass
+        if "TEXCOORD_1" in attributes:
+            self.tex_coords.append( gltf.get_accessor(attributes["TEXCOORD_1"]) )
+            pass
         self.joints  = []
+        if "JOINTS_0" in attributes:
+            self.joints.append( gltf.get_accessor(attributes["JOINTS_0"]) )
+            pass
         self.weights = []
+        if "WEIGHTS_0" in attributes:
+            self.weights.append( gltf.get_accessor(attributes["WEIGHTS_0"]) )
+            pass
         # if attributes has "self.material = gltf.get_accessor(json.get("material",0))
         pass
     #f to_model_primitive
@@ -346,17 +356,45 @@ class Mesh:
     pass
 
 #c Skin
-@dataclass
 class Skin:
+    #v Properties
     name  : str # "" if none
     ibms  : Optional[Accessor] # if None, then these are identity matrices
     root  : int # Index of root node
     joints: List[int] # same length as ibms (if that is defined)
+    #f __init__
     def __init__(self, gltf:"Gltf", json:Json) -> None:
         self.name   = json.get("name","")
         self.joints = json.get("joints",[])
         self.root   = json.get("skeleton",0)
         self.ibms   = json.get("inverseBindMatrices",None)
+        pass
+    #f to_bones
+    def to_bones(self, gltf:"Gltf") -> BoneSet:
+        bone_set = BoneSet()
+        nodes = []
+        for j in self.joints:
+            n = gltf.get_node(j)
+            nodes.append(n)
+            pass
+        nodes.sort(key=lambda x:x.depth)
+        bones = {}
+        for j in self.joints:
+            n = gltf.get_node(j)
+            if n in bones: continue
+            def add_bone(n:"Node",b:Bone)->None: bones[n]=b
+            bone = n.to_bone(gltf, add_callback=add_bone)
+            bone_set.add_bone_hierarchy(bone)
+            pass
+        for i in range(len(self.joints)):
+            j = self.joints[i]
+            n = gltf.get_node(j)
+            b = bones[n]
+            b.matrix_index = i
+            pass
+        bone_set.derive_matrices()
+        return bone_set
+    #f All done
     pass
 
 #c Node
@@ -367,6 +405,7 @@ class Node:
     skin: Optional[Skin] #
     mesh: Optional[Mesh] # If skinned, all mesh.primitives must have joints and weights
     children: List[int]
+    depth: int # Depth below top of tree - from 0 (root) to N-1 (N = number of nodes in gltf)
     #f __init__
     def __init__(self, gltf:"Gltf", json:Json) -> None:
         self.name   = json.get("name","")
@@ -374,6 +413,7 @@ class Node:
         self.skin = None
         self.children = json.get("children",[])
         self.transformation = Transformation()
+        self.depth = -1
         if "mesh" in json:
             self.mesh = gltf.get_mesh(json["mesh"])
             pass
@@ -397,6 +437,24 @@ class Node:
             self.transformation.translation = glm.vec3(json["translation"])
             pass
         pass
+    #f calculate_depth
+    def calculate_depth(self, gltf:"Gltf", depth:int) -> None:
+        if depth<=self.depth: return
+        self.depth = depth
+        for ci in self.children:
+            cn = gltf.get_node(ci)
+            cn.calculate_depth(gltf, depth+1)
+            pass
+        pass
+    #f to_bone
+    def to_bone(self, gltf:"Gltf", add_callback:Callable[["Node",Bone],None], parent:Optional[Bone]=None) -> Bone:
+        bone = Bone(parent=parent, transformation=self.transformation)
+        add_callback(self, bone)
+        for ci in self.children:
+            cn = gltf.get_node(ci)
+            cn.to_bone(gltf, add_callback=add_callback, parent=bone)
+            pass
+        return bone
     #f to_model_object
     def to_model_object(self, gltf:"Gltf", parent:Optional[ModelObject]=None) -> ModelObject:
         model_object = ModelObject(parent=parent, transformation=self.transformation)
@@ -406,6 +464,9 @@ class Node:
             pass
         if self.mesh is not None:
             model_object.mesh = self.mesh.to_model_mesh(gltf)
+            pass
+        if self.skin is not None:
+            model_object.bones = gltf.bones_of_skin(self.skin)
             pass
         print(f"Created model object {model_object}")
         return model_object
@@ -425,6 +486,8 @@ class Gltf:
     skins:         List[Skin]
     meshes:        List[Mesh]
     nodes:         List[Node]
+
+    bone_sets   : Dict[Skin,BoneSet]
     #f get_buffer
     def get_buffer(self, index:int) -> Buffer:
         if index<0 or index>=len(self.buffers): raise Exception("Bad buffer number")
@@ -518,8 +581,18 @@ class Gltf:
                     self.nodes.append(Node(self,n))
                     pass
                 pass
+            for n in self.nodes:
+                n.calculate_depth(self, 0)
+                pass
+            self.bone_sets = {}
+            for s in self.skins:
+                self.bone_sets[s] = s.to_bones(self)
+                pass
             pass
         pass
+    #f bones_of_skin
+    def bones_of_skin(self, skin:Skin) -> BoneSet:
+        return self.bone_sets[skin]
     #f All done
     pass
 

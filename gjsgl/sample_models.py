@@ -1,7 +1,7 @@
 #a Imports
 from OpenGL import GL
 import numpy as np
-from .bone import Bone
+from .bone import Bone, BoneSet
 from .object import Object
 from .transformation import Transformation
 from .model import ModelBufferData, ModelBufferIndices, ModelBufferView, ModelMaterial, ModelPrimitiveView, ModelPrimitive, ModelMesh, ModelObject, ModelClass
@@ -19,10 +19,12 @@ from typing import *
 class ObjectModel(ModelClass):
     def __init__(self, name:str, obj:Object) -> None:
         
-        bones = []
-        bones.append(Bone(parent=None, transformation=Transformation(translation=(0.,0.,-1.))))
-        bones.append(Bone(parent=None, transformation=Transformation(translation=(0.,0.,2.))))
-        bones[0].derive_matrices()
+        bones = BoneSet()
+        b = Bone(parent=None, transformation=Transformation(translation=(0.,0.,-1.)))
+        bones.add_bone(b)
+        b = Bone(parent=bones.bones[0], transformation=Transformation(translation=(0.,0.,2.)))
+        bones.add_bone(b)
+        bones.rewrite_indices()
         
         num_pts = len(obj.weights)//4
         buffer_data = []
@@ -65,7 +67,7 @@ class ObjectModel(ModelClass):
         primitive.indices_gl_type = GL.GL_UNSIGNED_BYTE
 
         root_object = ModelObject(parent=None)
-        root_object.bones = bones[0]
+        root_object.bones = bones
         root_object.mesh = ModelMesh()
         root_object.mesh.primitives.append(primitive)
         super().__init__(name, root_object)

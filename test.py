@@ -1,6 +1,7 @@
 from pathlib import Path
 from OpenGL import GL
 import glm
+import math
 from gjsgl.object import Object, Mesh, MeshObject
 from gjsgl.sample_objects import Cube, DoubleCube, DoubleCube2, Snake
 from gjsgl.bone import Bone, BonePose
@@ -11,10 +12,52 @@ from gjsgl.transformation import Transformation
 from gjsgl.gltf import Gltf
 from gjsgl.sample_models import ObjectModel
 from gjsgl.model import ModelClass, ModelInstance
+from gjsgl.animate import Cubic, Linear, LinearQuat
 
 #a Frontend
 def axis(mat:glm.Mat4, n:int) -> glm.Vec3:
-    return glm.vec3(mat[n][0],mat[n][1],mat[n][2])
+    return glm.vec3((mat[n][0],mat[n][1],mat[n][2]))
+class AnimatedBonePose:
+    def __init__(self, pose:BonePose) -> None:
+        self.pose = pose
+        # self.animatable = Linear(0.)
+        self.animatable = Cubic(0.,1.)
+        self.animatable.set_target( t1=1., tgt=(0.,1.), callback=self.animation_callback )
+        pass
+    def interpolate_to_time(self, t:float) -> None:
+        z = self.animatable.interpolate_to_time(t)
+        # print(t, z)
+        self.pose.transformation_reset()
+        self.pose.transform(Transformation(translation=(0.,0.,z[0])))
+        pass
+    def animation_callback(self, t:float) -> None:
+        t_sec = math.floor(t)
+        t_int = int(t_sec)
+        tgt = 1.0
+        if (t_int&1): tgt=-1.
+        self.animatable.set_target( t1=t_sec+1., tgt=(0.,tgt), callback=self.animation_callback )
+        pass
+    pass
+class AnimatedBonePose:
+    def __init__(self, pose:BonePose) -> None:
+        self.pose = pose
+        self.animatable = LinearQuat(glm.quat())
+        self.animatable.set_target( t1=1., tgt=glm.angleAxis(0.3,glm.vec3(1.,0.,0.)), callback=self.animation_callback )
+        pass
+    def interpolate_to_time(self, t:float) -> None:
+        z = self.animatable.interpolate_to_time(t)
+        # print(t, z)
+        self.pose.transformation_reset()
+        self.pose.transform(Transformation(quaternion=z))
+        pass
+    def animation_callback(self, t:float) -> None:
+        t_sec = math.floor(t)
+        t_int = int(t_sec)
+        tgt = 1.0
+        if (t_int&1): tgt=-1.
+        self.animatable.set_target( t1=t_sec+1., tgt=glm.angleAxis(0.3*tgt,glm.vec3(1.,0.,0.)), callback=self.animation_callback )
+        pass
+    pass
 class F(Frontend):
     time = 0.
     tick = 0
@@ -25,7 +68,7 @@ class F(Frontend):
         self.model_objects = []
         self.shader = BoneShader()
         self.tick = 0
-        self.camera = Transformation(translation=(0.,-6.,-20.))
+        self.camera = Transformation(translation=(-0.2,-1.2,-5.))
         self.motions = 0
 
         texture = Texture("wood_square.png")
@@ -33,9 +76,9 @@ class F(Frontend):
         # texture = Texture("moon.png")
 
         gltf_data = (Path("./milo.gltf"), "Body.001")
-        gltf_data = (Path("./milo2.gltf"), "Head.001")
-        gltf_data = (Path("./cubeplus.gltf"), "Cube")
-        gltf_data = (Path("./simple_escape.gltf"), "RoomExport")
+        #gltf_data = (Path("./cubeplus.gltf"), "Cube")
+        #gltf_data = (Path("./simple_escape.gltf"), "RoomExport")
+        #gltf_data = (Path("./milo2.gltf"), "Head.001")
 
         gltf_file = Gltf(Path("."), gltf_data[0])
         (_, gltf_node) = gltf_file.get_node_by_name(gltf_data[1]) 
@@ -48,15 +91,12 @@ class F(Frontend):
         mesh = Mesh(self.shader, c)
         self.mesh_objects.append(MeshObject(mesh, texture, glm.vec3((3.,0.,0.))))
 
-        bones = []
-        bones.append(Bone(parent=None, transformation=Transformation(translation=(0.,0.,-1.))))
-        bones.append(Bone(parent=None, transformation=Transformation(translation=(0.,0.,2.))))
-        bones[0].derive_matrices()
-        gltf_root.bones = bones[0]
         gltf_model = ModelClass("gltf", gltf_root)
-        print(gltf_model)
-        self.model_objects.append( ModelInstance(gltf_model) )
-        print(self.model_objects[-1])
+        gltf_inst = ModelInstance(gltf_model)
+        self.pose = gltf_inst.bone_set_poses[0]
+        self.animatables = []
+        self.animatables.append(AnimatedBonePose(self.pose.poses[1]))
+        self.model_objects.append( gltf_inst )
         self.mesh_objects = []
         
         model = ObjectModel("cube", Snake(16,8.))
@@ -81,6 +121,7 @@ class F(Frontend):
         motion = self.motion_of_keys.get(key,0)
         if press: self.motions = self.motions | motion
         else: self.motions = self.motions & ~motion
+        if press and key==80: print(self.camera)
         pass
     #f idle_fn
     def idle_fn(self) -> None:
@@ -102,7 +143,10 @@ class F(Frontend):
         for m in self.mesh_objects:
             m.animate(self.time)
             pass
-        self.time += 0.08
+        self.time += 0.01
+        for a in self.animatables:
+            a.interpolate_to_time(self.time)
+            pass
         self.draw()
         pass
     #f draw
@@ -113,7 +157,7 @@ class F(Frontend):
         GL.glClearDepth(1.0)
         GL.glEnable(GL.GL_DEPTH_TEST)
         GL.glDepthFunc(GL.GL_LEQUAL)
-        GL.glEnable(GL.GL_CULL_FACE)
+        # GL.glEnable(GL.GL_CULL_FACE)
         GL.glCullFace(GL.GL_BACK)
         self.draw_objects()
         self.swap_buffers()
