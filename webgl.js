@@ -4,7 +4,7 @@
 var GL;
 function main() {
     const canvas = document.querySelector("#glcanvas");
-    const gl     = canvas.getContext("webgl");
+    const gl     = canvas.getContext("webgl2");
     if (!gl) {
         alert("Unable to start webgl");
         return;
@@ -52,9 +52,9 @@ function drawScene(shader, mesh_objects, time, matrices) {
     GL.clearDepth(1.0);                 // Clear everything
     GL.enable(GL.DEPTH_TEST);           // Enable depth testing
     GL.depthFunc(GL.LEQUAL);            // Near things obscure far things
-    GL.enable(GL.CULL_FACE);
-    GL.cullFace(GL.BACK);
-    //GL.cullFace(GL.FRONT);
+    // GL.enable(GL.CULL_FACE);
+    // GL.cullFace(GL.BACK);
+    // GL.cullFace(GL.FRONT);
 
     GL.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
 
@@ -68,6 +68,7 @@ function draw_objects(shader, meshes, matrices) {
     GL.useProgram(shader.program);
     GL.uniformMatrix4fv(shader.uniforms["uProjectionMatrix"],false, matrices[0]);
     GL.uniformMatrix4fv(shader.uniforms["uCameraMatrix"], false, matrices[1]);
+    GL.uniformMatrix4fv(shader.uniforms["uMeshMatrix"], false, mat4.create());
 
     for (const m of meshes) {
         m.draw(shader);

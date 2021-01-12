@@ -12,12 +12,23 @@ class Submesh {
 class Mesh {
     //f constructor
     constructor(obj) {
+
+        const num_pts = obj.weights.length/4;
+        obj.joints = []
+        for (var i=0; i<num_pts; i++) {
+            obj.joints.push(0);
+            obj.joints.push(1);
+            obj.joints.push(2);
+            obj.joints.push(3);
+        }
+
         this.obj        = obj;
         
         this.positions  = GL.createBuffer();
         this.normals    = GL.createBuffer();
         this.texcoords  = GL.createBuffer();
         this.weights    = GL.createBuffer();
+        this.joints     = GL.createBuffer();
         this.indices    = GL.createBuffer();
         
         GL.bindBuffer(GL.ARRAY_BUFFER, this.positions);
@@ -31,6 +42,9 @@ class Mesh {
         
         GL.bindBuffer(GL.ARRAY_BUFFER, this.weights);
         GL.bufferData(GL.ARRAY_BUFFER, new Float32Array(obj.weights), GL.STATIC_DRAW);
+
+        GL.bindBuffer(GL.ARRAY_BUFFER, this.joints);
+        GL.bufferData(GL.ARRAY_BUFFER, new Int32Array(obj.joints), GL.STATIC_DRAW);
 
         GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, this.indices);
         GL.bufferData(GL.ELEMENT_ARRAY_BUFFER, new Uint8Array(obj.indices), GL.STATIC_DRAW);
@@ -55,6 +69,10 @@ class Mesh {
         GL.enableVertexAttribArray(shader.attributes["vWeights"]);
         GL.vertexAttribPointer(shader.attributes["vWeights"], 4, GL.FLOAT, false, 0, 0);
 
+        GL.bindBuffer(GL.ARRAY_BUFFER,         this.joints);
+        GL.enableVertexAttribArray(shader.attributes["vJoints"]);
+        GL.vertexAttribPointer(shader.attributes["vJoints"], 4, GL.INT, false, 0, 0);
+
     }
     //f draw
     draw(shader, bones, texture) {
@@ -63,6 +81,7 @@ class Mesh {
         GL.activeTexture(GL.TEXTURE0);
         GL.bindTexture(GL.TEXTURE_2D, texture);
         GL.uniform1i(shader.uniforms["uTexture"], 0);
+        GL.uniform1f(shader.uniforms["uBonesScale"], 1.);
 
         const mymatrix = Array(64);
         const gl_types = {"TS":GL.TRIANGLE_STRIP};

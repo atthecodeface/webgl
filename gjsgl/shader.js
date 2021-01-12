@@ -67,52 +67,60 @@ class ShaderProgram {
     //f All done
 }
 
-const vertex_bone4 = `
-    attribute vec3 vPosition;
-    attribute vec3 vNormal;
-    attribute vec4 vWeights;
-    attribute vec2 vTexture;
+const vertex_bone4 = `#version 300 es
+    layout(location = 0) in vec3 vPosition;
+    layout(location = 1) in vec3 vNormal;
+    layout(location = 2) in vec4 vWeights;
+    layout(location = 3) in vec2 vTexture;
+    layout(location = 4) in vec4 vJoints;
+    layout(location = 5) in vec4 vColor;
 
     uniform mat4 uProjectionMatrix;
     uniform mat4 uCameraMatrix;
     uniform mat4 uModelMatrix;
-    uniform mat4 uBonesMatrices[4];
+    uniform mat4 uMeshMatrix;
+    uniform mat4 uBonesMatrices[16];
+    uniform float uBonesScale;
 
-    varying vec3 color_pos;
-    varying vec3 normal;
-    varying vec2 tex_uv;
+    out vec3 color_pos;
+    out vec3 normal;
+    out vec2 tex_uv;
 
     void main() {
-      mat4 weightedMatrix = ( (uBonesMatrices[0] * vWeights.x) +
-                              (uBonesMatrices[1] * vWeights.y) +
-                              (uBonesMatrices[2] * vWeights.z) +
-                              (uBonesMatrices[3] * vWeights.w) );
+      mat4 weightedMatrix = ( (uBonesMatrices[int(vJoints.x)] * vWeights.x) +
+                              (uBonesMatrices[int(vJoints.y)] * vWeights.y) +
+                              (uBonesMatrices[int(vJoints.z)] * vWeights.z) +
+                              (uBonesMatrices[int(vJoints.w)] * vWeights.w) );
+      weightedMatrix = weightedMatrix * uBonesScale + (mat4(1.) * (1.-uBonesScale));
       color_pos      = (normalize(vPosition) + 1.) / 2.0;
-      vec4 model_pos = weightedMatrix * vec4(vPosition.xyz, 1.0);
-      vec3 world_pos = (uModelMatrix * vec4(model_pos.xyz, 1.)).xyz;
-      normal         = (uModelMatrix * weightedMatrix * vec4(vNormal,0.)).xyz;
+      color_pos = vJoints.xyz/14.0;
+
+      mat4 mesh_to_world = uModelMatrix * uMeshMatrix * weightedMatrix;
+      vec3 world_pos = (mesh_to_world * vec4(vPosition, 1.)).xyz;
+      normal         = (mesh_to_world * vec4(vNormal,   0.)).xyz;
       gl_Position    = uProjectionMatrix * uCameraMatrix * vec4(world_pos.xyz, 1.);
       tex_uv         = vTexture.xy;
     }
   `;
 
-  const frag = `
+  const frag = `#version 300 es
     precision mediump float;
     uniform sampler2D uTexture;
 
-    varying vec3 color_pos;
-    varying vec3 normal;
-    varying vec2 tex_uv;
+    in vec3 color_pos;
+    in vec3 normal;
+    in vec2 tex_uv;
+    out vec4 outColor;
     void main() {
-      vec4 t = texture2D(uTexture, tex_uv);
+      vec4 t = texture( uTexture, tex_uv );
       vec3 light_direction = -normalize(vec3(-0.2, -1., -1.));
-      float n = clamp( dot(light_direction, normalize(normal)), 0., 1. );
+      float n = clamp( abs(dot(light_direction, normalize(normal))), 0., 1. );
       vec4 c = vec4((n*0.8 + vec3(0.2)).xyz,1.) * t;
-      gl_FragColor = vec4(c.xyz, 1.0);
-    //gl_FragColor = t;
-      // gl_FragColor = vec4((normalize(normal.xyz)+1.)/2., 1.0);
+      outColor = vec4(c.xyz, 1.0);
+    // outColor.xyz = color_pos;
     }
   `;
+
 
 //c BoneShader
 class BoneShader extends ShaderProgram {
