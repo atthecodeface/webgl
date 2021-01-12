@@ -13,16 +13,17 @@ function main() {
 
     moon = loadTexture("./moon.png");
     wood = loadTexture("./wood.jpg");
-    shaders = shader_compile(gl);
+    shader = (new BoneShader()).init(gl);
+    console.log(shader);
     const mesh_objects = []
     mesh_objects.push(new MeshObject(dbl_cube,          moon, [3,0,0]));
     mesh_objects.push(new MeshObject(cube,              wood, [-3,0,0]));
     mesh_objects.push(new MeshObject(dbl_cube2,         wood, [0,0,0]));
     mesh_objects.push(new MeshObject(make_snake(16, 6), moon, [-6,0,0]));
-    run_animation(shaders, mesh_objects);
+    run_animation(shader, mesh_objects);
 }
 
-function run_animation(shaders, mesh_objects) {
+function run_animation(shader, mesh_objects) {
     const fieldOfView = 45 * Math.PI / 180;   // in radians
     const aspect = GL.canvas.clientWidth / GL.canvas.clientHeight;
     const zNear = 0.1;
@@ -39,14 +40,14 @@ function run_animation(shaders, mesh_objects) {
     mat4.rotateX(cameraMatrix, cameraMatrix, 0.3);
     matrices = [projectionMatrix, cameraMatrix];
     step_animation = function() {
-        drawScene(shaders, mesh_objects, time, matrices);
+        drawScene(shader, mesh_objects, time, matrices);
         time+=0.1;
         requestAnimationFrame(step_animation);
     }
     requestAnimationFrame(step_animation);
 }
 
-function drawScene(shaders, mesh_objects, time, matrices) {
+function drawScene(shader, mesh_objects, time, matrices) {
     GL.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
     GL.clearDepth(1.0);                 // Clear everything
     GL.enable(GL.DEPTH_TEST);           // Enable depth testing
@@ -60,13 +61,13 @@ function drawScene(shaders, mesh_objects, time, matrices) {
     for (const m of mesh_objects) {
         m.animate(time);
     }    
-    draw_objects(shaders[0], mesh_objects, matrices);
+    draw_objects(shader, mesh_objects, matrices);
 }
 
 function draw_objects(shader, meshes, matrices) {
     GL.useProgram(shader.program);
-    GL.uniformMatrix4fv(shader.uniforms.projectionMatrix,false, matrices[0]);
-    GL.uniformMatrix4fv(shader.uniforms.cameraMatrix, false, matrices[1]);
+    GL.uniformMatrix4fv(shader.uniforms["uProjectionMatrix"],false, matrices[0]);
+    GL.uniformMatrix4fv(shader.uniforms["uCameraMatrix"], false, matrices[1]);
 
     for (const m of meshes) {
         m.draw(shader);

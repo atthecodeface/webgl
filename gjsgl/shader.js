@@ -68,10 +68,10 @@ class ShaderProgram {
 }
 
 const vertex_bone4 = `
-    attribute vec3 aVertexPosition;
-    attribute vec3 aVertexNormal;
-    attribute vec4 aVertexWeights;
-    attribute vec2 aVertexTexture;
+    attribute vec3 vPosition;
+    attribute vec3 vNormal;
+    attribute vec4 vWeights;
+    attribute vec2 vTexture;
 
     uniform mat4 uProjectionMatrix;
     uniform mat4 uCameraMatrix;
@@ -83,16 +83,16 @@ const vertex_bone4 = `
     varying vec2 tex_uv;
 
     void main() {
-      mat4 weightedMatrix = ( (uBonesMatrices[0] * aVertexWeights.x) +
-                              (uBonesMatrices[1] * aVertexWeights.y) +
-                              (uBonesMatrices[2] * aVertexWeights.z) +
-                              (uBonesMatrices[3] * aVertexWeights.w) );
-      color_pos      = (normalize(aVertexPosition) + 1.) / 2.0;
-      vec4 model_pos = weightedMatrix * vec4(aVertexPosition.xyz, 1.0);
+      mat4 weightedMatrix = ( (uBonesMatrices[0] * vWeights.x) +
+                              (uBonesMatrices[1] * vWeights.y) +
+                              (uBonesMatrices[2] * vWeights.z) +
+                              (uBonesMatrices[3] * vWeights.w) );
+      color_pos      = (normalize(vPosition) + 1.) / 2.0;
+      vec4 model_pos = weightedMatrix * vec4(vPosition.xyz, 1.0);
       vec3 world_pos = (uModelMatrix * vec4(model_pos.xyz, 1.)).xyz;
-      normal         = (uModelMatrix * weightedMatrix * vec4(aVertexNormal,0.)).xyz;
+      normal         = (uModelMatrix * weightedMatrix * vec4(vNormal,0.)).xyz;
       gl_Position    = uProjectionMatrix * uCameraMatrix * vec4(world_pos.xyz, 1.);
-      tex_uv         = aVertexTexture.xy;
+      tex_uv         = vTexture.xy;
     }
   `;
 
@@ -123,24 +123,3 @@ class BoneShader extends ShaderProgram {
     uniform_keys = ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix", "uMeshMatrix", "uBonesMatrices", "uBonesScale", "uTexture" ];
 }
 
-function shader_compile(gl) {
-    const bs = (new BoneShader()).init(gl);
-    const shaderProgram = bs.program;
-    const programInfo = {
-        program: bs.program,
-        attributes: {
-            vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
-            vertexNormal:   gl.getAttribLocation(shaderProgram, 'aVertexNormal'),
-            vertexWeights:  gl.getAttribLocation(shaderProgram, 'aVertexWeights'),
-            vertexTexture:   gl.getAttribLocation(shaderProgram, 'aVertexTexture'),
-        },
-        uniforms: {
-            projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
-            cameraMatrix:     gl.getUniformLocation(shaderProgram, 'uCameraMatrix'),
-            modelMatrix:      gl.getUniformLocation(shaderProgram, 'uModelMatrix'),
-            boneMatrices:     gl.getUniformLocation(shaderProgram, 'uBonesMatrices'),
-            Texture:          gl.getUniformLocation(shaderProgram, 'uTexture'),
-        },
-    };
-    return [programInfo];
-}
