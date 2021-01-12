@@ -30,6 +30,7 @@ function test_trans_mat() {
     assert_mat4_eq(a.mat4(),b,"Trans mat of none");
     const c = a.mat_after(a);
     assert_mat4_eq(c.mat4(),b,"Trans mat of identity squared");
+    
 }
 
 function test_transformation() {
@@ -80,7 +81,18 @@ function test_bone() {
     assert_trans_eq(a.transformation,[9.,1.,4],[2.,4.,6.],q,"bone a trans again v3");
 }
 
+function test_hierarchy() {
+    a = new Hierarchy();
+    a.add("fred");
+    a.push();
+    a.add("joe");
+    a.pop();
+    a_str = a.str();
+    assert(a_str=="fred\n  joe\n","Blah");
+}
+
 function main() {
+    test_hierarchy();
     test_trans_mat();
     test_transformation();
     test_bone();
