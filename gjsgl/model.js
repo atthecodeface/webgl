@@ -93,7 +93,6 @@ class ModelBufferView {
             GL.bindBuffer(GL.ARRAY_BUFFER, this.data.gl_buffer);
             GL.enableVertexAttribArray(a);
             GL.vertexAttribPointer(a, this.count, this.gl_type, false, this.stride, this.offset);
-            console.log(a, this);
         }
     }
     //f hier_debug

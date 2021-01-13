@@ -16,10 +16,10 @@ function main() {
     shader = (new BoneShader()).init(gl);
     console.log(shader);
     const mesh_objects = [];
-    //mesh_objects.push(new MeshObject(shader, dbl_cube,          moon, [3,0,0]));
+    mesh_objects.push(new MeshObject(shader, dbl_cube,          moon, [3,0,0]));
     mesh_objects.push(new MeshObject(shader, cube,              wood, [-3,0,0]));
-    //mesh_objects.push(new MeshObject(shader, dbl_cube2,         wood, [0,0,0]));
-    //mesh_objects.push(new MeshObject(shader, make_snake(16, 6), moon, [-6,0,0]));
+    mesh_objects.push(new MeshObject(shader, dbl_cube2,         wood, [0,0,0]));
+    mesh_objects.push(new MeshObject(shader, make_snake(16, 6), moon, [-6,0,0]));
 
     const model_objects = [];
     const model = new ObjectModel("cube", make_snake(16,8.));
