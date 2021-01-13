@@ -167,6 +167,7 @@ class BoneSet:
         return hier
     #f All done
     pass
+
 #c BonePose
 T = TypeVar('T', bound='BonePose')
 class BonePose:

@@ -58,22 +58,16 @@ class TransMat {
 //a Transformation
 class Transformation {
     constructor(translation, quaternion, scale) {
-        if (translation === undefined) {
-            this.translation = vec3.create();
-        } else {
-            this.translation = vec3.create();
+        this.translation = vec3.create();
+        this.quaternion  = quat.create();
+        this.scale       = vec3.set(vec3.create(),1.,1.,1.);
+        if (translation !== undefined) {
             vec3.copy(this.translation, translation);
         }
-        if (quaternion === undefined) {
-            this.quaternion  = quat.create();
-        } else {
-            this.quaternion  = quat.create();
+        if (quaternion !== undefined) {
             quat.copy(this.quaternion, quaternion);
         }
-        if (scale === undefined) {
-            this.scale       = vec3.set(vec3.create(),1.,1.,1.);
-        } else {
-            this.scale = vec3.create();
+        if (scale !== undefined) {
             vec3.copy(this.scale,scale);
         }
     }
@@ -145,6 +139,10 @@ class Transformation {
         if (qn[3]>0) {quat.scale(qn,qn,-1);}
         const qd = quat.length(quat.add(quat.create(),qn,quat.create()));
         return td+sd+qd;
+    }
+    //f str
+    str() {
+        return "trans "+this.translation+":"+this.scale+":"+this.quaternion;
     }
     //f All done
 }

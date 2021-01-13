@@ -12,7 +12,7 @@ class Hierarchy {
     add(d){
         this.data.push( [this.depth, d] );
     }
-    iter_items = function*() {
+    *iter_items() {
         for (var x of this.data) {
             yield x;
         }

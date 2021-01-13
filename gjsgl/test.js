@@ -7,8 +7,11 @@ function assert(a,...args) {
         console.log("ASSERTION FAILED: ",...args);
     }
 }
+function assert_id(a,b,...args) {
+    assert(a===b,a,b,...args);
+}
 function assert_eq(a,b,...args) {
-    assert(a==b,...args);
+    assert(a==b,a,b,...args);
 }
 function assert_vec_eq(a,b,...args) {
     const d = vec3.subtract(vec3.create(),a,b);
@@ -62,23 +65,42 @@ function test_transformation() {
 function test_bone() {
     const a = new Bone();
     const b = new Bone(a);
+    const bs = new BoneSet();
+    bs.add_bone_hierarchy(a);
+    bs.derive_matrices();
+    bs.rewrite_indices();
+    const bps=  new BonePoseSet(bs);
     const q = quat.create();
-    assert_eq(a,b.parent,"b parent");
+
+    assert_id(a,b.parent,"b parent");
+    assert_id(a,bs.bones[0],"bone set 0");
+    assert_id(b,bs.bones[1],"bone set 1");
+    assert_eq(bs.roots[0],0,"bone set 0 root is 0");
+
+    // console.log(bps.str());
     assert_trans_eq(a.transformation,[1.,1.,1],[0.,0.,0.],q,"bone a trans");
-    a.transform(new Transformation([1.,2.,3.],q,[3.,-1.,-2.]));
-    assert_trans_eq(a.transformation,[3.,-1.,-2],[1.,2.,3.],q,"bone a trans");
-    a.transform(new Transformation([1.,2.,3.],undefined,[3.,-1.,-2.]));
-    assert_trans_eq(a.transformation,[9.,1.,4],[2.,4.,6.],q,"bone a trans");
-    assert_trans_eq(a.transformation_rest,[1.,1.,1],[0.,0.,0.],q,"bone a trans rest");
-    a.derive_at_rest();
-    assert_trans_eq(a.transformation,[9.,1.,4],[2.,4.,6.],q,"bone a trans after at rest");
-    assert_trans_eq(a.transformation_rest,[9.,1.,4],[2.,4.,6.],q,"bone a trans rest after at rest");
-    a.transform(new Transformation([-1.,-2.,-3.],undefined,[1./3.,-1.,-1./2.]));
+
+    bps.poses[0].transform(new Transformation([1.,2.,3.],q,[3.,-1.,-2.]));
+    assert_trans_eq(bps.poses[0].transformation,[3.,-1.,-2],[1.,2.,3.],q,"posed bone a trans");
+
+    bps.poses[0].transform(new Transformation([1.,2.,3.],undefined,[3.,-1.,-2.]));
+    assert_trans_eq(bps.poses[0].transformation,[9.,1.,4],[2.,4.,6.],q,"posed bone a trans");
+    
+    assert_trans_eq(a.transformation,[1.,1.,1],[0.,0.,0.],q,"bone a trans rest");
+    a.derive_matrices();
+
+    a.set_transformation(bps.poses[0].transformation);
+    assert_trans_eq(bps.poses[0].transformation,[9.,1.,4],[2.,4.,6.],q,"bone a trans after at rest");
+    assert_trans_eq(a.transformation,[9.,1.,4],[2.,4.,6.],q,"bone a trans rest after at rest");
+
+    a.set_transformation(new Transformation([-1.,-2.,-3.],undefined,[1./3.,-1.,-1./2.]));
     assert_trans_eq(a.transformation,[3.,-1.,-2],[1.,2.,3.],q,"bone a trans again");
-    a.transform(new Transformation(undefined,undefined,undefined));
+
+    a.set_transformation(new Transformation(undefined,undefined,undefined));
     assert_trans_eq(a.transformation,[3.,-1.,-2],[1.,2.,3.],q,"bone a trans again v2");
-    a.transform_from_rest(new Transformation(undefined,undefined,undefined));
-    assert_trans_eq(a.transformation,[9.,1.,4],[2.,4.,6.],q,"bone a trans again v3");
+    
+    bps.poses[0].transform(new Transformation(undefined,undefined,undefined));
+    assert_trans_eq(a.transformation,[3.,-1.,-2],[1.,2.,3.],q,"bone a trans again v3");
 }
 
 function test_hierarchy() {
