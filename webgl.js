@@ -15,11 +15,19 @@ function main() {
     wood = loadTexture("./wood.jpg");
     shader = (new BoneShader()).init(gl);
     console.log(shader);
-    const mesh_objects = []
+    const mesh_objects = [];
     mesh_objects.push(new MeshObject(shader, dbl_cube,          moon, [3,0,0]));
     mesh_objects.push(new MeshObject(shader, cube,              wood, [-3,0,0]));
     mesh_objects.push(new MeshObject(shader, dbl_cube2,         wood, [0,0,0]));
     mesh_objects.push(new MeshObject(shader, make_snake(16, 6), moon, [-6,0,0]));
+
+    const model_objects = [];
+    model = new ObjectModel("cube", make_snake(16,8.));
+    model_objects.push( new ModelInstance(model) );
+    for (const o of model_objects) {
+        o.gl_create();
+        o.gl_bind_program(shader.shader_class);
+    }
     run_animation(shader, mesh_objects);
 }
 

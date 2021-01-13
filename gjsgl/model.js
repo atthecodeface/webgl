@@ -3,8 +3,8 @@
 class ModelMaterial {
     //f gl_program_configure ?
     gl_program_configure(program) {
-        //# GL.glActiveTexture(GL.GL_TEXTURE0)
-        //# GL.glBindTexture(GL.GL_TEXTURE_2D, texture.texture)
+        //# GL.glActiveTexture(GL.TEXTURE0)
+        //# GL.glBindTexture(GL.TEXTURE_2D, texture.texture)
         //# shader.set_uniform_if("uTexture",    lambda u:GL.glUniform1i(u, 0))
     }
     //f str
@@ -28,8 +28,8 @@ class ModelBufferData {
     gl_create() {
         if (this.gl_buffer===undefined) {
             this.gl_buffer = GL.createBuffer();
-            GL.bindBuffer(GL.GL_ARRAY_BUFFER, this.gl_buffer);
-            GL.bufferData(GL.GL_ARRAY_BUFFER, this.data.slice(this.byte_offset,self.byte_offset+self.byte_length), GL.GL_STATIC_DRAW);
+            GL.bindBuffer(GL.ARRAY_BUFFER, this.gl_buffer);
+            GL.bufferData(GL.ARRAY_BUFFER, this.data.slice(this.byte_offset,self.byte_offset+self.byte_length), GL.STATIC_DRAW);
         }
     }
     //f str
@@ -53,15 +53,15 @@ class ModelBufferIndices {
     gl_create() {
         if (this.gl_buffer===undefined) {
             this.gl_buffer = GL.createBuffer();
-            GL.bindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, this.gl_buffer)
-            GL.bufferData(GL.GL_ELEMENT_ARRAY_BUFFER, this.data.slice(this.byte_offset, this.byte_offset+this.byte_length), GL.GL_STATIC_DRAW)
+            GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, this.gl_buffer)
+            GL.bufferData(GL.ELEMENT_ARRAY_BUFFER, this.data.slice(this.byte_offset, this.byte_offset+this.byte_length), GL.STATIC_DRAW)
             // print(f"Bound {this.gl_buffer}")
             // print(f"Data {this.data[this.byte_offset:this.byte_offset+this.byte_length]}");
         }
     }
     //f gl_buffer
     gl_bind_program(shader) {
-        GL.bindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, this.gl_buffer);
+        GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, this.gl_buffer);
     }
     //f hier_debug
     hier_debug(hier) {
@@ -69,7 +69,7 @@ class ModelBufferIndices {
         return hier;
     }
     //f str
-    str() {return str(this.hier_debug(Hierarchy()));}
+    str() {return this.hier_debug(new Hierarchy()).str();}
     //f All done
 }
     
@@ -90,12 +90,12 @@ class ModelBufferView {
     }
     //f gl_bind_program
     gl_bind_program(shader, attr) {
-        a = shader.get_attr(attr)
+        const a = shader.get_attr(attr)
         if (a !== undefined) {
-            GL.bindBuffer(GL.GL_ARRAY_BUFFER, this.data.gl_buffer);
+            GL.bindBuffer(GL.ARRAY_BUFFER, this.data.gl_buffer);
             GL.enableVertexAttribArray(a);
             // print(f"VAO {a} of {this.count} of {this.gl_type} {this.stride} {this.offset}")
-            GL.vertexAttribPointer(a, this.count, this.gl_type, False, this.stride, ctypes.c_void_p(this.offset));
+            GL.vertexAttribPointer(a, this.count, this.gl_type, false, this.stride, this.offset);
         }
     }
     //f hier_debug
@@ -104,7 +104,7 @@ class ModelBufferView {
         return hier;
     }
     //f str
-    str() {return str(this.hier_debug(Hierarchy()));}
+    str() {return this.hier_debug(new Hierarchy()).str();}
     //f All done
 }
 
@@ -129,12 +129,12 @@ class ModelPrimitiveView {
     }
     //f gl_create
     gl_create() {
-        this.gl_vao = GL.glGenVertexArrays(1);
+        this.gl_vao = GL.createVertexArray();
         GL.bindVertexArray(this.gl_vao);
         this.indices.gl_create()
-        for (san in this.attribute_mapping) {
-            an = this.attribute_mapping[san];
-            mbv = this[an];
+        for (const san in this.attribute_mapping) {
+            const an = this.attribute_mapping[san];
+            const mbv = this[an];
             if (mbv!==undefined) { mbv.gl_create(); }
         }
     }
@@ -142,13 +142,13 @@ class ModelPrimitiveView {
     gl_bind_program(shader_class) {
         GL.bindVertexArray(this.gl_vao);
         this.indices.gl_bind_program(shader_class);
-        for (san in this.attribute_mapping) {
-            an = this.attribute_mapping[san];
-            mbv = this[an];
+        for (const san in this.attribute_mapping) {
+            const an = this.attribute_mapping[san];
+            const mbv = this[an];
             if (mbv!==undefined) {
                 mbv.gl_bind_program(shader_class, san);
             } else {
-                sa = shader.get_attr(san);
+                const sa = shader.get_attr(san);
                 if ((sa !== undefined) && (sa>=0)) {
                     GL.disableVertexAttribArray(sa);
                 }
@@ -158,15 +158,15 @@ class ModelPrimitiveView {
     //f hier_debug
     hier_debug(hier) {
         this.indices.hier_debug(hier);
-        for (san in this.attribute_mapping) {
-            an = this.attribute_mapping[san];
-            mbv = this[an];
+        for (const san in this.attribute_mapping) {
+            const an = this.attribute_mapping[san];
+            const mbv = this[an];
             if (mbv !== undefined) { mbv.hier_debug(hier, an); }
         }
         return hier;
     }
     //f str
-    str() {return str(this.hier_debug(Hierarchy()));}
+    str() {return this.hier_debug(new Hierarchy()).str();}
     //f All done
 }
 
@@ -183,7 +183,7 @@ class ModelPrimitive {
     gl_draw(shader_program) {
         GL.bindVertexArray(this.view.gl_vao);
         this.material.gl_program_configure(shader_program);
-        GL.drawElements(this.gl_type, this.indices_count, this.indices_gl_type, ctypes.c_void_p(this.indices_offset));
+        GL.drawElements(this.gl_type, this.indices_count, this.indices_gl_type, this.indices_offset);
     }
     //f hier_debug
     hier_debug(hier) {
@@ -194,7 +194,7 @@ class ModelPrimitive {
         return hier;
     }
     //f str
-    str() {return str(this.hier_debug(Hierarchy()));}
+    str() {return this.hier_debug(new Hierarchy()).str();}
     //f All done
 }
 
@@ -212,13 +212,13 @@ class ModelMesh {
     }
     //f gl_bind_program
     gl_bind_program(shader_class) {
-        for (p of this.primitives) {
+        for (const p of this.primitives) {
             p.gl_bind_program(shader_class);
         }
     }
     //f gl_draw
     gl_draw(shader_program) {
-        for (p of this.primitives) {
+        for (const p of this.primitives) {
             p.gl_draw(shader_program);
         }
     }
@@ -233,7 +233,7 @@ class ModelMesh {
         return hier;
     }
     //f str
-    str() {return str(this.hier_debug(Hierarchy()));}
+    str() {return this.hier_debug(new Hierarchy()).str();}
     //f All done
 }
 
@@ -296,7 +296,7 @@ class ModelObject {
         return hier;
     }
     //f str
-    str() {return str(this.hier_debug(Hierarchy()));}
+    str() {return this.hier_debug(new Hierarchy()).str();}
     //f All done
 }
 
@@ -310,7 +310,7 @@ class ModelClass {
     }
     //f iter_objects
     iter_objects = function*() {
-        for (o of this.root_object.iter_objects(TransMat())) {
+        for (const o of this.root_object.iter_objects(new TransMat())) {
             yield(o);
         }
     }
@@ -326,7 +326,7 @@ class ModelClass {
         return hier;
     }
     //f str
-    str() {return str(this.hier_debug(Hierarchy()));}
+    str() {return this.hier_debug(new Hierarchy()).str();}
     //f All done
 }
 
@@ -336,32 +336,32 @@ class ModelInstance {
     constructor(model_class) {
         this.bone_set_poses = [];
         this.meshes = [];
-        bone_set_dict = {};
-        for ([trans_mat,model] of model_class.iter_objects()) {
+        const bone_set_dict = new Map();
+        for (const [trans_mat,model] of model_class.iter_objects()) {
             if (!model.has_mesh()) {continue;}
-            mesh_instance = model.get_mesh();
-            bone_set_index = -1;
+            const mesh_instance = model.get_mesh();
+            var bone_set_index = -1;
             if (model.has_bones()) {
-                bone_set = model.get_bones(); // get bone set
-                if (bone_set_dict[bone_set]===undefined) {
-                    bone_set_dict[bone_set] = len(this.bone_set_poses);
-                    pose = BonePoseSet(bone_set);
-                    this.bone_set_poses.append(pose);
+                const bone_set = model.get_bones(); // get bone set
+                if (bone_set_dict.get(bone_set)===undefined) {
+                    bone_set_dict.set(bone_set,this.bone_set_poses.length);
+                    const pose = new BonePoseSet(bone_set);
+                    this.bone_set_poses.push(pose);
                 }
-                bone_set_index = bone_set_dict[bone_set];
+                bone_set_index = bone_set_dict.get(bone_set);
             }
-            this.meshes.append( [trans_mat, mesh_instance, bone_set_index] );
+            this.meshes.push( [trans_mat, mesh_instance, bone_set_index] );
         }
     }
     //f gl_create
     gl_create() {
-        for ([t,m,b] of this.meshes) {
+        for (const [t,m,b] of this.meshes) {
             m.gl_create();
         }
     }
     //f gl_bind_program
     gl_bind_program(shader_class) {
-        for ([t,m,b] of this.meshes) {
+        for (const [t,m,b] of this.meshes) {
             m.gl_bind_program(shader_class);
         }
     }
@@ -369,12 +369,12 @@ class ModelInstance {
     gl_draw(shader_program, tick) {
         mat = mat4.create();
         GL.uniformMatrix4fv(shader_program.uniforms["uModelMatrix"], 1, False, mat);
-        for (bone_set_pose of this.bone_set_poses) {
+        for (const bone_set_pose of this.bone_set_poses) {
             bone_set_pose.update(tick);
         }
-        for ([t,m,b] of this.meshes) {
+        for (const [t,m,b] of this.meshes) {
             if (b>=0) {
-                bma = this.bone_set_poses[b]
+                const bma = this.bone_set_poses[b]
                 shader_program.set_uniform_if("uBonesMatrices",
                                               (u) => GL.glUniformMatrix4fv(u, bma.max_index, False, bma.data))
             }
@@ -402,6 +402,6 @@ class ModelInstance {
         return hier;
     }
     //f str
-    str() {return str(this.hier_debug(Hierarchy()));}
+    str() {return this.hier_debug(new Hierarchy()).str();}
     //f All done
 }
