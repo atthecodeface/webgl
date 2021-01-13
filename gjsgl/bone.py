@@ -11,44 +11,12 @@ if not TYPE_CHECKING:
     glm.Mat4 = Tuple[glm.Vec4,glm.Vec4,glm.Vec4,glm.Vec4]
     glm.Quat = object
     pass
+FloatArray = Any
 
 def mat4_str(mat:glm.Mat4) -> str:
     return "[" + ("   ".join([" ".join([str(v) for v in col]) for col in mat])) + "]" # type: ignore
     
 #a Bone and pose classes
-#c BoneMatrixArray
-FloatArray = Any
-class BoneMatrixArray:
-    root         : "BonePose"
-    total_bones  : int
-    data         : FloatArray
-    last_updated : int
-    #f __init__
-    def __init__(self, root:"BonePose", total_bones:int) -> None:
-        self.root = root
-        self.total_bones = total_bones
-        self.data = np.zeros(self.total_bones*16,np.float32)
-        self.last_updated = -1
-        pass
-    #f update
-    def update(self, tick:int) -> None:
-        if tick==self.last_updated: return
-        self.last_updated = tick
-        self.root.derive_animation()
-        for b in self.root.iter_hierarchy():
-            base = b.bone.matrix_index*16
-            for i in range(16):
-                (r,c) = (i//4, i%4)
-                self.data[base+i] = b.animated_mtm[r][c]
-                pass
-            pass
-        pass
-    #f hier_debug
-    def hier_debug(self, hier:Hierarchy) -> Hierarchy:
-        hier.add(f"BoneMatrices {self.total_bones} {self.last_updated} {self.data}")
-        return hier
-    #f All done
-    pass
 #c Bone
 class Bone:
     #d Documentation
@@ -272,15 +240,6 @@ class BonePose:
             c.derive_animation()
             pass
         pass
-    #f create_matrix_array
-    def create_matrix_array(self) -> BoneMatrixArray:
-        (cnt,max) = self.bone.enumerate_hierarchy()
-        if max<cnt:
-            self.bone.rewrite_indices()
-            (cnt,max) = self.bone.enumerate_hierarchy()
-            pass
-        array = BoneMatrixArray(self, max)
-        return array
     #f hier_debug
     def hier_debug(self, hier:Hierarchy) -> Hierarchy:
         hier.add(f"Pose {self.bone.matrix_index}")

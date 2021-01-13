@@ -6,7 +6,7 @@ import math
 import glm
 from .hierarchy import Hierarchy
 from .texture import Texture
-from .bone import Bone, BonePose, BoneMatrixArray, BoneSet, BonePoseSet
+from .bone import Bone, BonePose, BoneSet, BonePoseSet
 from .shader import ShaderClass, ShaderProgram
 from .transformation import Transformation, TransMat
 
