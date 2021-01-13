@@ -105,7 +105,7 @@ class ModelBufferIndices:
             pass
         pass
     #f gl_buffer
-    def gl_bind_program(self, shader:ShaderClass) -> None:
+    def gl_bind_program(self, shader_class:Type[ShaderClass]) -> None:
         GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.gl_buffer)
         pass
     #f hier_debug
@@ -140,8 +140,8 @@ class ModelBufferView:
         self.data.gl_create()
         pass
     #f gl_bind_program
-    def gl_bind_program(self, shader:ShaderClass, attr:str) -> None:
-        a = shader.get_attr(attr)
+    def gl_bind_program(self, shader_class:Type[ShaderClass], attr:str) -> None:
+        a = shader_class.get_attr(attr)
         if a is not None:
             GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.data.gl_buffer)
             GL.glEnableVertexAttribArray(a)
@@ -203,17 +203,17 @@ class ModelPrimitiveView:
         self.gl_vao = GL.glGenVertexArrays(1)
         pass
     #f gl_bind_program
-    def gl_bind_program(self, shader:ShaderClass) -> None:
+    def gl_bind_program(self, shader_class:Type[ShaderClass]) -> None:
         GL.glBindVertexArray(self.gl_vao)
-        self.indices.gl_bind_program(shader)
+        self.indices.gl_bind_program(shader_class)
         for (san,an) in self.attribute_mapping.items():
             if hasattr(self, an):
                 mbv = getattr(self,an)
                 if mbv is not None:
-                    mbv.gl_bind_program(shader, san)
+                    mbv.gl_bind_program(shader_class, san)
                     pass
                 else:
-                    sa = shader.get_attr(san)
+                    sa = shader_class.get_attr(san)
                     if (sa is not None) and (sa>=0): # type: ignore
                         GL.glDisableVertexAttribArray(sa)
                     pass
@@ -235,6 +235,7 @@ class ModelPrimitiveView:
 
 #c ModelPrimitive
 class ModelPrimitive:
+    #v Properties
     name       : str = ""
     material   : ModelMaterial
     view       : ModelPrimitiveView
@@ -242,16 +243,18 @@ class ModelPrimitive:
     indices_count   : int
     indices_offset  : int
     indices_gl_type : "GL.ValueTypeEnum"
+    #f __init__
     def __init__(self) -> None:
         pass
-    def clone(self) -> None:
-        pass
+    #f gl_create
     def gl_create(self) -> None:
         self.view.gl_create()
         pass
-    def gl_bind_program(self, shader:ShaderClass) -> None:
-        self.view.gl_bind_program(shader)
+    #f gl_bind_program
+    def gl_bind_program(self, shader_class:Type[ShaderClass]) -> None:
+        self.view.gl_bind_program(shader_class)
         pass
+    #f gl_draw
     def gl_draw(self, program:ShaderProgram) -> None:
         GL.glBindVertexArray(self.view.gl_vao)
         self.material.gl_program_configure(program)
@@ -282,9 +285,9 @@ class ModelMesh:
             pass
         pass
     #f gl_bind_program
-    def gl_bind_program(self, shader:ShaderClass) -> None:
+    def gl_bind_program(self, shader_class:Type[ShaderClass]) -> None:
         for p in self.primitives:
-            p.gl_bind_program(shader)
+            p.gl_bind_program(shader_class)
             pass
         pass
     #f gl_draw
@@ -361,8 +364,8 @@ class ModelObject:
         if self.mesh is not None: self.mesh.gl_create()
         pass
     #f gl_bind_program
-    def gl_bind_program(self, shader:ShaderClass) -> None:
-        if self.mesh is not None: self.mesh.gl_bind_program(shader)
+    def gl_bind_program(self, shader_class:Type[ShaderClass]) -> None:
+        if self.mesh is not None: self.mesh.gl_bind_program(shader_class)
         pass
     #f gl_draw
     def gl_draw(self, program:ShaderProgram) -> None:
@@ -472,9 +475,9 @@ class ModelInstance:
             pass
         pass
     #f gl_bind_program
-    def gl_bind_program(self, shader:ShaderClass) -> None:
+    def gl_bind_program(self, shader_class:Type[ShaderClass]) -> None:
         for (t,m,b) in self.meshes:
-            m.gl_bind_program(shader)
+            m.gl_bind_program(shader_class)
             pass
         pass
     #f gl_draw

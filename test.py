@@ -42,7 +42,7 @@ class AnimatedBonePose:
     def __init__(self, pose:BonePose) -> None:
         self.pose = pose
         self.animatable = LinearQuat(glm.quat())
-        self.animatable.set_target( t1=1., tgt=glm.angleAxis(0.3,glm.vec3(1.,0.,0.)), callback=self.animation_callback )
+        self.animatable.set_target( t1=1., tgt=glm.angleAxis(0.3,glm.vec3((1.,0.,0.))), callback=self.animation_callback )
         pass
     def interpolate_to_time(self, t:float) -> None:
         z = self.animatable.interpolate_to_time(t)
@@ -55,7 +55,7 @@ class AnimatedBonePose:
         t_int = int(t_sec)
         tgt = 1.0
         if (t_int&1): tgt=-1.
-        self.animatable.set_target( t1=t_sec+1., tgt=glm.angleAxis(0.3*tgt,glm.vec3(1.,0.,0.)), callback=self.animation_callback )
+        self.animatable.set_target( t1=t_sec+1., tgt=glm.angleAxis(0.3*tgt,glm.vec3((1.,0.,0.))), callback=self.animation_callback )
         pass
     pass
 class F(Frontend):
@@ -97,7 +97,7 @@ class F(Frontend):
         self.animatables = []
         self.animatables.append(AnimatedBonePose(self.pose.poses[1]))
         self.model_objects.append( gltf_inst )
-        self.mesh_objects = []
+        # self.mesh_objects = []
         
         model = ObjectModel("cube", Snake(16,8.))
         # self.model_objects.append( ModelInstance(model) )
