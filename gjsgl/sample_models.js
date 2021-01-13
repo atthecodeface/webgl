@@ -6,8 +6,9 @@ class ObjectModel extends ModelClass {
         b = new Bone(bones.bones[0], new Transformation(vec3.set(vec3.create(),0.,0.,2.)));
         bones.add_bone(b);
         bones.rewrite_indices();
+        bones.derive_matrices();
         
-        const num_pts = obj.weights.length/4;
+        const num_pts = obj.positions.length/3;
         const buffer_data = [];
         for (const x of obj.positions) {buffer_data.push(x);}
         for (const x of obj.normals)   {buffer_data.push(x);}
@@ -26,15 +27,20 @@ class ObjectModel extends ModelClass {
         var o = 0;
         const view = new ModelPrimitiveView();
         view.position    = new ModelBufferView(model_data, 3, GL.FLOAT, o);
+        // view.position    = new ModelBufferView(new ModelBufferData(new Float32Array(obj.positions),0), 3, GL.FLOAT, 0);
         o += num_pts * 12;
         view.normal      = new ModelBufferView(model_data, 3, GL.FLOAT, o);
+        // view.normal    = new ModelBufferView(new ModelBufferData(new Float32Array(obj.normals),0), 3, GL.FLOAT, 0);
         o += num_pts * 12;
         view.tex_coords  = new ModelBufferView(model_data, 2, GL.FLOAT, o)
+        // view.tex_coords    = new ModelBufferView(new ModelBufferData(new Float32Array(obj.texcoords),0), 2, GL.FLOAT, 0);
         o += num_pts * 8;
-        view.weights     = new ModelBufferView(model_data, 4, GL.FLOAT, o)
+        // view.weights     = new ModelBufferView(model_data, 4, GL.FLOAT, o)
+        view.weights    = new ModelBufferView(new ModelBufferData(new Float32Array(obj.weights),0), 4, GL.FLOAT, 0);
         o += num_pts * 16;
         o = 0;
         view.joints      = new ModelBufferView(model_int_data, 4, GL.UNSIGNED_BYTE, o);
+        // view.joints    = new ModelBufferView(new ModelBufferData(new Uint8Array(obj.joints),0), 4, GL.UNSIGNED_BYTE, 0);
         o += num_pts * 4;
         
         view.indices = model_indices;

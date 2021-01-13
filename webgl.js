@@ -16,22 +16,24 @@ function main() {
     shader = (new BoneShader()).init(gl);
     console.log(shader);
     const mesh_objects = [];
-    mesh_objects.push(new MeshObject(shader, dbl_cube,          moon, [3,0,0]));
+    //mesh_objects.push(new MeshObject(shader, dbl_cube,          moon, [3,0,0]));
     mesh_objects.push(new MeshObject(shader, cube,              wood, [-3,0,0]));
-    mesh_objects.push(new MeshObject(shader, dbl_cube2,         wood, [0,0,0]));
-    mesh_objects.push(new MeshObject(shader, make_snake(16, 6), moon, [-6,0,0]));
+    //mesh_objects.push(new MeshObject(shader, dbl_cube2,         wood, [0,0,0]));
+    //mesh_objects.push(new MeshObject(shader, make_snake(16, 6), moon, [-6,0,0]));
 
     const model_objects = [];
-    model = new ObjectModel("cube", make_snake(16,8.));
+    // model = new ObjectModel("cube", make_snake(16,8.));
+    const model = new ObjectModel("cube", cube);
     model_objects.push( new ModelInstance(model) );
     for (const o of model_objects) {
         o.gl_create();
         o.gl_bind_program(shader.shader_class);
     }
-    run_animation(shader, mesh_objects);
+    console.log(model_objects[0].str());
+    run_animation(shader, mesh_objects, model_objects);
 }
 
-function run_animation(shader, mesh_objects) {
+function run_animation(shader, mesh_objects, model_objects) {
     const fieldOfView = 45 * Math.PI / 180;   // in radians
     const aspect = GL.canvas.clientWidth / GL.canvas.clientHeight;
     const zNear = 0.1;
@@ -48,14 +50,14 @@ function run_animation(shader, mesh_objects) {
     mat4.rotateX(cameraMatrix, cameraMatrix, 0.3);
     matrices = [projectionMatrix, cameraMatrix];
     step_animation = function() {
-        drawScene(shader, mesh_objects, time, matrices);
+        drawScene(shader, mesh_objects, model_objects, time, matrices);
         time+=0.1;
         requestAnimationFrame(step_animation);
     }
     requestAnimationFrame(step_animation);
 }
 
-function drawScene(shader, mesh_objects, time, matrices) {
+function drawScene(shader, mesh_objects, model_objects, time, matrices) {
     GL.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
     GL.clearDepth(1.0);                 // Clear everything
     GL.enable(GL.DEPTH_TEST);           // Enable depth testing
@@ -69,17 +71,17 @@ function drawScene(shader, mesh_objects, time, matrices) {
     for (const m of mesh_objects) {
         m.animate(time);
     }    
-    draw_objects(shader, mesh_objects, matrices);
-}
 
-function draw_objects(shader, meshes, matrices) {
     GL.useProgram(shader.program);
     GL.uniformMatrix4fv(shader.uniforms["uProjectionMatrix"],false, matrices[0]);
     GL.uniformMatrix4fv(shader.uniforms["uCameraMatrix"], false, matrices[1]);
     GL.uniformMatrix4fv(shader.uniforms["uMeshMatrix"], false, mat4.create());
 
-    for (const m of meshes) {
+    for (const m of mesh_objects) {
         m.draw(shader);
+    }
+    for (const o of model_objects) {
+        o.gl_draw(shader, time);
     }
 }
 

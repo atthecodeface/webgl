@@ -27,11 +27,6 @@ class Mesh {
         this.glid = GL.createVertexArray(1);
         GL.bindVertexArray(this.glid);
 
-        this.texcoords  = GL.createBuffer();
-        this.weights    = GL.createBuffer();
-        this.joints     = GL.createBuffer();
-        this.indices    = GL.createBuffer();
-
         var a;
         a = shader.get_attr("vPosition");
         if (a !== undefined) {
@@ -73,11 +68,12 @@ class Mesh {
         if (a !== undefined) {
             this.joints  = GL.createBuffer();
             GL.bindBuffer(GL.ARRAY_BUFFER, this.joints);
-            GL.bufferData(GL.ARRAY_BUFFER, new Int32Array(obj.joints), GL.STATIC_DRAW);
+            GL.bufferData(GL.ARRAY_BUFFER, new Uint8Array(obj.joints), GL.STATIC_DRAW);
             GL.enableVertexAttribArray(a);
-            GL.vertexAttribPointer(a, 4, GL.INT, false, 0, 0);
+            GL.vertexAttribPointer(a, 4, GL.UNSIGNED_BYTE, false, 0, 0);
         }
         
+        this.indices    = GL.createBuffer();
         GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, this.indices);
         GL.bufferData(GL.ELEMENT_ARRAY_BUFFER, new Uint8Array(obj.indices), GL.STATIC_DRAW);
     }
@@ -91,9 +87,13 @@ class Mesh {
 
         GL.activeTexture(GL.TEXTURE0);
         GL.bindTexture(GL.TEXTURE_2D, texture);
-        GL.uniform1i(shader.uniforms["uTexture"], 0);
-        GL.uniform1f(shader.uniforms["uBonesScale"], 1.);
-        GL.uniformMatrix4fv(shader.uniforms["uBonesMatrices"], false, poses.data);
+        shader.set_uniform_if("uTexture",
+                              (u) => GL.uniform1i(u, 0) );
+        shader.set_uniform_if("uBonesScale",
+                              (u) => GL.uniform1f(u, 1.) );
+        shader.set_uniform_if("uBonesMatrices",
+                              (u) => GL.uniformMatrix4fv(u, false, poses.data) );
+
 
         const mymatrix = Array(64);
         const gl_types = {"TS":GL.TRIANGLE_STRIP};
@@ -153,7 +153,8 @@ class MeshObject {
     }
     //f draw
     draw(shader) {
-        GL.uniformMatrix4fv(shader.uniforms["uModelMatrix"], false, this.world_matrix);
+        shader.set_uniform_if("uModelMatrix",
+                                      (u) => GL.uniformMatrix4fv(u, false, this.world_matrix) );
         this.mesh.draw(shader, this.pose, this.texture);
     }
     //f All done

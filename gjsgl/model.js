@@ -18,8 +18,8 @@ class ModelMaterial {
 class ModelBufferData {
     //f constructor
     constructor(data, byte_offset, byte_length) {
-        if (byte_length===undefined) {byte_length=data.length;}
-        this.data = data;
+        if (byte_length===undefined) {byte_length=data.byteLength;}
+        this.data = data.buffer;
         this.byte_length = byte_length;
         this.byte_offset = byte_offset;
         this.gl_buffer = undefined;
@@ -29,7 +29,8 @@ class ModelBufferData {
         if (this.gl_buffer===undefined) {
             this.gl_buffer = GL.createBuffer();
             GL.bindBuffer(GL.ARRAY_BUFFER, this.gl_buffer);
-            GL.bufferData(GL.ARRAY_BUFFER, this.data.slice(this.byte_offset,self.byte_offset+self.byte_length), GL.STATIC_DRAW);
+            GL.bufferData(GL.ARRAY_BUFFER, this.data, GL.STATIC_DRAW);
+            // GL.bufferData(GL.ARRAY_BUFFER, this.data.slice(this.byte_offset,self.byte_offset+self.byte_length), GL.STATIC_DRAW);
         }
     }
     //f str
@@ -43,8 +44,8 @@ class ModelBufferData {
 class ModelBufferIndices {
     //f constructor
     constructor(data, byte_offset, byte_length) {
-        if (byte_length===undefined) {byte_length=data.length;}
-        this.data = data;
+        if (byte_length===undefined) {byte_length=data.byteLength;}
+        this.data = data.buffer;
         this.byte_length = byte_length;
         this.byte_offset = byte_offset;
         this.gl_buffer = undefined;
@@ -54,7 +55,8 @@ class ModelBufferIndices {
         if (this.gl_buffer===undefined) {
             this.gl_buffer = GL.createBuffer();
             GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, this.gl_buffer)
-            GL.bufferData(GL.ELEMENT_ARRAY_BUFFER, this.data.slice(this.byte_offset, this.byte_offset+this.byte_length), GL.STATIC_DRAW)
+            GL.bufferData(GL.ELEMENT_ARRAY_BUFFER, this.data, GL.STATIC_DRAW)
+            // GL.bufferData(GL.ELEMENT_ARRAY_BUFFER, this.data.slice(this.byte_offset, this.byte_offset+this.byte_length), GL.STATIC_DRAW)
             // print(f"Bound {this.gl_buffer}")
             // print(f"Data {this.data[this.byte_offset:this.byte_offset+this.byte_length]}");
         }
@@ -78,11 +80,11 @@ class ModelBufferView {
     //f constructor
     constructor(data, count, gl_type, offset, stride) {
         if (stride===undefined) {stride=0;}
-        this.data = data
-        this.count = count
-        this.gl_type = gl_type
-        this.offset = offset
-        this.stride = stride
+        this.data = data;
+        this.count = count;
+        this.gl_type = gl_type;
+        this.offset = offset;
+        this.stride = stride;
     }
     //f gl_create
     gl_create() {
@@ -96,6 +98,7 @@ class ModelBufferView {
             GL.enableVertexAttribArray(a);
             // print(f"VAO {a} of {this.count} of {this.gl_type} {this.stride} {this.offset}")
             GL.vertexAttribPointer(a, this.count, this.gl_type, false, this.stride, this.offset);
+            console.log(a, this);
         }
     }
     //f hier_debug
@@ -120,6 +123,7 @@ class ModelPrimitiveView {
                           }
     //f constructor
     constructor() {
+        this.position   = undefined;
         this.normal     = undefined;
         this.tex_coords = undefined;
         this.joints     = undefined;
@@ -150,7 +154,7 @@ class ModelPrimitiveView {
             } else {
                 const sa = shader.get_attr(san);
                 if ((sa !== undefined) && (sa>=0)) {
-                    GL.disableVertexAttribArray(sa);
+                    // GL.disableVertexAttribArray(sa);
                 }
             }
         }
@@ -171,6 +175,7 @@ class ModelPrimitiveView {
 }
 
 //c ModelPrimitive
+var xxx=0;
 class ModelPrimitive {
     constructor() {
     }
@@ -184,6 +189,8 @@ class ModelPrimitive {
         GL.bindVertexArray(this.view.gl_vao);
         this.material.gl_program_configure(shader_program);
         GL.drawElements(this.gl_type, this.indices_count, this.indices_gl_type, this.indices_offset);
+        if ((xxx%100000)==1) { console.log(this); }
+        xxx+=1;
     }
     //f hier_debug
     hier_debug(hier) {
@@ -226,7 +233,7 @@ class ModelMesh {
     hier_debug(hier) {
         hier.add("ModelMesh");
         hier.push();
-        for (p of this.primitives) {
+        for (const p of this.primitives) {
             p.hier_debug(hier);
         }
         hier.pop();
@@ -367,34 +374,34 @@ class ModelInstance {
     }
     //f gl_draw
     gl_draw(shader_program, tick) {
-        mat = mat4.create();
-        GL.uniformMatrix4fv(shader_program.uniforms["uModelMatrix"], 1, False, mat);
+        const mat = mat4.create();
+        GL.uniformMatrix4fv(shader_program.uniforms["uModelMatrix"], false, mat);
         for (const bone_set_pose of this.bone_set_poses) {
             bone_set_pose.update(tick);
         }
         for (const [t,m,b] of this.meshes) {
             if (b>=0) {
-                const bma = this.bone_set_poses[b]
+                const bma = this.bone_set_poses[b];
                 shader_program.set_uniform_if("uBonesMatrices",
-                                              (u) => GL.glUniformMatrix4fv(u, bma.max_index, False, bma.data))
+                                              (u) => GL.uniformMatrix4fv(u, false, bma.data.subarray(0,bma.max_index*16)));
             }
             // Provide mesh matrix and material uniforms
             shader_program.set_uniform_if("uMeshMatrix",
-                                          (u) => GL.glUniformMatrix4fv(u, 1, False, glm.value_ptr(t.mat4())) )
+                                          (u) => GL.uniformMatrix4fv(u, false, mat)); //t.mat4()) )
             shader_program.set_uniform_if("uBonesScale",
-                                          (u) => GL.glUniform1f(u, 1.0) )
-            m.gl_draw(program);
+                                          (u) => GL.uniform1f(u, 1.0) )
+            m.gl_draw(shader_program);
         }
     }
     //f hier_debug
     hier_debug(hier) {
         hier.add("ModelInstance with "+this.bone_set_poses.length+" poses");
         hier.push();
-        for (i in this.bone_set_poses) {
+        for (const i in this.bone_set_poses) {
             hier.add("Pose/Matrix "+i);
             this.bone_set_poses[i].hier_debug(hier);
         }
-        for ([t,m,b] of this.meshes) {
+        for (const [t,m,b] of this.meshes) {
             hier.add("Mesh transform "+t+" pose/matrix "+b);
             m.hier_debug(hier);
         }
