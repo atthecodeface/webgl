@@ -22,8 +22,8 @@ function main() {
     //mesh_objects.push(new MeshObject(shader, make_snake(16, 6), moon, [-6,0,0]));
 
     const model_objects = [];
-    // model = new ObjectModel("cube", make_snake(16,8.));
-    const model = new ObjectModel("cube", cube);
+    const model = new ObjectModel("cube", make_snake(16,8.));
+    //const model = new ObjectModel("cube", cube);
     model_objects.push( new ModelInstance(model) );
     for (const o of model_objects) {
         o.gl_create();
@@ -81,6 +81,12 @@ function drawScene(shader, mesh_objects, model_objects, time, matrices) {
         m.draw(shader);
     }
     for (const o of model_objects) {
+        const pose1 = o.bone_set_poses[0].poses[1];
+        const pose2 = o.bone_set_poses[0].poses[2];
+        pose1.transformation_reset();
+        pose2.transformation_reset();
+        pose1.transform(new Transformation([Math.sin(time),0.,0.5*Math.cos(time*0.4)],quat.create()));
+        pose2.transform(new Transformation([-Math.sin(time),0.,-0.5*Math.cos(time*0.4)],quat.create()));
         o.gl_draw(shader, time);
     }
 }

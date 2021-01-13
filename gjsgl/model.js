@@ -29,8 +29,7 @@ class ModelBufferData {
         if (this.gl_buffer===undefined) {
             this.gl_buffer = GL.createBuffer();
             GL.bindBuffer(GL.ARRAY_BUFFER, this.gl_buffer);
-            GL.bufferData(GL.ARRAY_BUFFER, this.data, GL.STATIC_DRAW);
-            // GL.bufferData(GL.ARRAY_BUFFER, this.data.slice(this.byte_offset,self.byte_offset+self.byte_length), GL.STATIC_DRAW);
+            GL.bufferData(GL.ARRAY_BUFFER, this.data.slice(this.byte_offset,this.byte_offset+this.byte_length), GL.STATIC_DRAW);
         }
     }
     //f str
@@ -55,10 +54,7 @@ class ModelBufferIndices {
         if (this.gl_buffer===undefined) {
             this.gl_buffer = GL.createBuffer();
             GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, this.gl_buffer)
-            GL.bufferData(GL.ELEMENT_ARRAY_BUFFER, this.data, GL.STATIC_DRAW)
-            // GL.bufferData(GL.ELEMENT_ARRAY_BUFFER, this.data.slice(this.byte_offset, this.byte_offset+this.byte_length), GL.STATIC_DRAW)
-            // print(f"Bound {this.gl_buffer}")
-            // print(f"Data {this.data[this.byte_offset:this.byte_offset+this.byte_length]}");
+            GL.bufferData(GL.ELEMENT_ARRAY_BUFFER, this.data.slice(this.byte_offset, this.byte_offset+this.byte_length), GL.STATIC_DRAW)
         }
     }
     //f gl_buffer
@@ -96,7 +92,6 @@ class ModelBufferView {
         if (a !== undefined) {
             GL.bindBuffer(GL.ARRAY_BUFFER, this.data.gl_buffer);
             GL.enableVertexAttribArray(a);
-            // print(f"VAO {a} of {this.count} of {this.gl_type} {this.stride} {this.offset}")
             GL.vertexAttribPointer(a, this.count, this.gl_type, false, this.stride, this.offset);
             console.log(a, this);
         }
@@ -154,7 +149,7 @@ class ModelPrimitiveView {
             } else {
                 const sa = shader.get_attr(san);
                 if ((sa !== undefined) && (sa>=0)) {
-                    // GL.disableVertexAttribArray(sa);
+                    GL.disableVertexAttribArray(sa);
                 }
             }
         }
@@ -175,7 +170,6 @@ class ModelPrimitiveView {
 }
 
 //c ModelPrimitive
-var xxx=0;
 class ModelPrimitive {
     constructor() {
     }
@@ -189,8 +183,6 @@ class ModelPrimitive {
         GL.bindVertexArray(this.view.gl_vao);
         this.material.gl_program_configure(shader_program);
         GL.drawElements(this.gl_type, this.indices_count, this.indices_gl_type, this.indices_offset);
-        if ((xxx%100000)==1) { console.log(this); }
-        xxx+=1;
     }
     //f hier_debug
     hier_debug(hier) {
