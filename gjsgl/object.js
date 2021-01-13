@@ -86,24 +86,18 @@ class Mesh {
         GL.bindVertexArray(this.glid);
     }
     //f draw
-    draw(shader, bones, texture) {
+    draw(shader, poses, texture) {
         this.bind(shader);
 
         GL.activeTexture(GL.TEXTURE0);
         GL.bindTexture(GL.TEXTURE_2D, texture);
         GL.uniform1i(shader.uniforms["uTexture"], 0);
         GL.uniform1f(shader.uniforms["uBonesScale"], 1.);
+        GL.uniformMatrix4fv(shader.uniforms["uBonesMatrices"], false, poses.data);
 
         const mymatrix = Array(64);
         const gl_types = {"TS":GL.TRIANGLE_STRIP};
         for (const sm of this.obj.submeshes) {
-            for (var i=0; i<16; i++) {
-                mymatrix[ 0+i] = bones[sm.bone_indices[0]].animated_mtm[i];
-                mymatrix[16+i] = bones[sm.bone_indices[1]].animated_mtm[i];
-                mymatrix[32+i] = bones[sm.bone_indices[2]].animated_mtm[i];
-                mymatrix[48+i] = bones[sm.bone_indices[3]].animated_mtm[i];
-            }
-            GL.uniformMatrix4fv(shader.uniforms["uBonesMatrices"], false, mymatrix);    
             GL.drawElements(gl_types[sm.gl_type], sm.vindex_count, GL.UNSIGNED_BYTE, sm.vindex_offset);
         }
     }
@@ -118,15 +112,16 @@ class MeshObject {
         this.world_matrix = mat4.create();
         this.place(world_vec);
         this.mesh = new Mesh(shader, obj);
-        this.bones = []
-        this.bones.push(new Bone());
-        this.bones.push(new Bone(this.bones[0]));
-        this.bones.push(new Bone(this.bones[1]));
-        this.bones[0].transform(new Transformation([0.,0.,1.]));
-        this.bones[1].transform(new Transformation([0.,0.,-2.]));
-        this.bones[2].transform(new Transformation([0.,0.,-2.]));
-        this.bones[0].derive_at_rest();
-        this.bones[0].derive_animation();
+
+        this.bones = new BoneSet();
+        this.bones.add_bone(new Bone(undefined,           new Transformation(vec3.set(vec3.create(),0.,0., 1.))));
+        this.bones.add_bone(new Bone(this.bones.bones[0], new Transformation(vec3.set(vec3.create(),0.,0.,-2.))));
+        this.bones.add_bone(new Bone(this.bones.bones[1], new Transformation(vec3.set(vec3.create(),0.,0.,-2.))));
+        this.bones.rewrite_indices();
+        this.bones.derive_matrices();
+        this.pose = new BonePoseSet(this.bones);
+        this.poses = this.pose.poses;
+
     }
     //f place
     place(world_vec) {
@@ -137,25 +132,29 @@ class MeshObject {
     }
     //f animate
     animate(time) {
+        this.poses[0].transformation_reset();
+        this.poses[1].transformation_reset();
+        this.poses[2].transformation_reset();
+
         const q = quat.create();
         const angle=Math.sin(time*0.2)*0.3;
         quat.identity(q);
         quat.rotateX(q,q,1.85);
         //quat.rotateX(q,q,+angle*2);
         quat.rotateZ(q,q,time*0.3);
-        this.bones[0].transform_from_rest(new Transformation([0.,0.,0.],q));
+        this.poses[0].transform(new Transformation([0.,0.,0.],q));
         quat.identity(q);
         quat.rotateZ(q,q,4*angle);
-        this.bones[1].transform_from_rest(new Transformation([0.,0.,1.0-Math.cos(4*angle)],q));
+        this.poses[1].transform(new Transformation([0.,0.,1.0-Math.cos(4*angle)],q));
         quat.identity(q);
         quat.rotateZ(q,q,-4*angle);
-        this.bones[2].transform_from_rest(new Transformation([0.,0.,1.0+Math.cos(4*angle)],q));
-        this.bones[0].derive_animation();
+        this.poses[2].transform(new Transformation([0.,0.,1.0+Math.cos(4*angle)],q));
+        this.pose.update(Math.floor(time*1E5));
     }
     //f draw
     draw(shader) {
         GL.uniformMatrix4fv(shader.uniforms["uModelMatrix"], false, this.world_matrix);
-        this.mesh.draw(shader, this.bones, this.texture);
+        this.mesh.draw(shader, this.pose, this.texture);
     }
     //f All done
 }

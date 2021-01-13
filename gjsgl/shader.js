@@ -93,7 +93,7 @@ const vertex_bone4 = `#version 300 es
                               (uBonesMatrices[int(vJoints.w)] * vWeights.w) );
       weightedMatrix = weightedMatrix * uBonesScale + (mat4(1.) * (1.-uBonesScale));
       color_pos      = (normalize(vPosition) + 1.) / 2.0;
-      color_pos = vJoints.xyz/14.0;
+      color_pos = vWeights.xyz/4.0;
 
       mat4 mesh_to_world = uModelMatrix * uMeshMatrix * weightedMatrix;
       vec3 world_pos = (mesh_to_world * vec4(vPosition, 1.)).xyz;
@@ -117,7 +117,7 @@ const vertex_bone4 = `#version 300 es
       float n = clamp( abs(dot(light_direction, normalize(normal))), 0., 1. );
       vec4 c = vec4((n*0.8 + vec3(0.2)).xyz,1.) * t;
       outColor = vec4(c.xyz, 1.0);
-    // outColor.xyz = color_pos;
+      //outColor.xyz = color_pos;
     }
   `;
 

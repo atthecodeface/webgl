@@ -247,9 +247,9 @@ class BonePoseSet {
         if (tick==this.last_updated) {return;}
         this.last_updated = tick;
         this.derive_animation();
-        for ([bone,pose] of this.iter_bones_and_poses()) {
+        for (const [bone,pose] of this.iter_bones_and_poses()) {
             if (bone.matrix_index<0) {continue;}
-            base = bone.matrix_index*16;
+            const base = bone.matrix_index*16;
             this.data.subarray(base, base+16).set(pose.animated_mtm);
         }
     }
@@ -268,4 +268,3 @@ class BonePoseSet {
     str() {return this.hier_debug(new Hierarchy()).str();}
     //f All done
 }
-
