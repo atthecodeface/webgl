@@ -1,3 +1,29 @@
+function quaternion_to_euler(q) {
+    const x=q[0], y=q[1], z=q[2], w=q[3];
+    const test = x*y + z*w;
+
+    var heading, attitude, bank;
+    heading = NaN;
+    if (test > 0.499999) {
+        heading  = 2*Math.atan2(x,w);
+        attitude = Math.PI/2;
+        bank = 0;
+    }
+    else if (test < -0.499999) {
+        heading  = -2*Math.atan2(x,w);
+        attitude = -Math.PI/2;
+        bank = 0;
+    }
+    if(isNaN(heading)){
+        const x2 = x*x;
+        const y2 = y*y;
+        const z2 = z*z;
+        heading  = Math.atan2(2*y*w - 2*x*z , 1 - 2*y2 - 2*z2);
+        attitude = Math.asin(2*test);
+        bank     = Math.atan2(2*x*w - 2*y*z , 1 - 2*x2 - 2*z2);
+    }
+    return [bank, heading, attitude];
+}
 // quaternion_of_rotation
 function quaternion_of_rotation(rotation) {
     const rot_min_id   = mat3.subtract(mat3.create(), rotation, mat3.multiplyScalar(mat3.create(),mat3.create(),0.99999));

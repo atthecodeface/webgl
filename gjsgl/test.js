@@ -113,7 +113,50 @@ function test_hierarchy() {
     assert(a_str=="fred\n  joe\n","Blah");
 }
 
+function read_file(file) {
+    return new Promise(
+        (resolve,reject) => {
+            var reader = new FileReader();
+            reader.onload = (x) => resolve(reader.result);
+            // reader.readAsArrayBuffer(file); // or readAsText or readAsDataURL
+            reader.readAsText(file); // or readAsText or readAsDataURL
+        }
+    );
+}
+function get_file(file) {
+    return new Promise(
+        (resolve,reject) => {
+            console.log("Starting to get file "+file);
+            var req = new XMLHttpRequest();
+            req.open("GET", file, true);
+            // req.responseType = "arraybuffer";
+            req.responseType = "text";
+            req.onload = (x) => resolve(req.response);
+            req.send();
+            console.log(req);
+            // reader.readAsArrayBuffer(file); // or readAsText or readAsDataURL
+            // reader.readAsText(file); // or readAsText or readAsDataURL
+        }
+    );
+}
+
+async function demo_read() {
+    console.log('Kicking of initialization...');
+    try {
+        get_milo = get_file("milo.gltf");
+        console.log(get_milo); 
+        const data = await get_milo;
+        console.log("get complete"); 
+        // console.log(data);
+  } catch(e) {
+    console.error(e); // 30
+  }
+    console.log('Done');
+}
+
 function main() {
+    demo_read();
+    console.log("Keep going...");
     test_hierarchy();
     test_trans_mat();
     test_transformation();

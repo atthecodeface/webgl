@@ -86,7 +86,7 @@ class Mesh {
         this.bind(shader);
 
         GL.activeTexture(GL.TEXTURE0);
-        GL.bindTexture(GL.TEXTURE_2D, texture);
+        GL.bindTexture(GL.TEXTURE_2D, texture.texture);
         shader.set_uniform_if("uTexture",
                               (u) => GL.uniform1i(u, 0) );
         shader.set_uniform_if("uBonesScale",

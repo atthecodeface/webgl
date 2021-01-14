@@ -14,10 +14,20 @@
     <script src="./gjsgl/object.js" defer></script>
     <script src="./gjsgl/sample_objects.js" defer></script>
     <script src="./gjsgl/sample_models.js" defer></script>
+    <script src="./gjsgl/frontend.js" defer></script>
+    <script src="./gjsgl/viewer.js" defer></script>
     <script src="./webgl.js" defer></script>
   </head>
   <body>
-    <!-- <canvas id="glcanvas" width="640" height="480"></canvas> -->
-    <canvas id="glcanvas" width="1600" height="800"></canvas>
+    <button type=button onclick="set_euler(0,30);">blah</button>
+    FOV:<input type="range" min="5" max="180" value="50" oninput="set_fov(this.value)"/>
+    Zoom:<input id="cameraZoom" type="range" min="1" max="100" value="0" oninput="set_zoom(Math.pow(2.,(this.value-50.0)/10))"/>
+    Euler X:<input id="cameraEX" type="range" min="-180" max="180" value="0" oninput="set_euler(0,this.value)"/>    
+    Euler Y:<input id="cameraEY" type="range" min="-180" max="180" value="0" oninput="set_euler(1,this.value)"/>
+    Euler Z:<input id="cameraEZ" type="range" min="-180" max="180" value="0" oninput="set_euler(2,this.value)"/>
+    X:<input id="cameraX" type="range" min="-200" max="200" value="0"    oninput="set_xyz(0,this.value/10.)"/>
+    Y:<input id="cameraY" type="range" min="-200" max="200" value="-40"  oninput="set_xyz(1,this.value/10.)"/>
+    Z:<input id="cameraZ" type="range" min="-200" max="200" value="-200" oninput="set_xyz(2,this.value/10.)"/>
+    <canvas id="glcanvas" width="1600" height="500"></canvas>
   </body>
 </html>

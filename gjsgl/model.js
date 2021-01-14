@@ -146,7 +146,7 @@ class ModelPrimitiveView {
             if (mbv!==undefined) {
                 mbv.gl_bind_program(shader_class, san);
             } else {
-                const sa = shader.get_attr(san);
+                const sa = shader_class.get_attr(san);
                 if ((sa !== undefined) && (sa>=0)) {
                     GL.disableVertexAttribArray(sa);
                 }
