@@ -110,6 +110,7 @@ class ViewerFrontend extends Frontend {
 
         this.gltf_data = ["./milo.gltf", "Body.001"];
         this.gltf_data = ["./milo2.gltf", "Head.001"];
+        this.gltf_data = ["./WaterBottle.gltf", "WaterBottle"];
         this.gltf_file = new GLTF.Gltf(this.gltf_data[0]);
 
         return Promise.all([this.textures.moon.init(), this.textures.wood.init(), this.gltf_file.init()])
@@ -191,12 +192,14 @@ class ViewerFrontend extends Frontend {
             m.draw(this.shader);
         }
         for (const o of this.model_objects) {
+            if (o.bone_set_poses.length>0) {
             const pose1 = o.bone_set_poses[0].poses[1];
             const pose2 = o.bone_set_poses[0].poses[2];
             pose1.transformation_reset();
             pose2.transformation_reset();
             pose1.transform(new Transformation([Math.sin(time),0.,0.5*Math.cos(time*0.4)],quat.create()));
-            pose2.transform(new Transformation([-Math.sin(time),0.,-0.5*Math.cos(time*0.4)],quat.create()));
+                pose2.transform(new Transformation([-Math.sin(time),0.,-0.5*Math.cos(time*0.4)],quat.create()));
+            }
             o.gl_draw(this.shader, time);
         }
     }

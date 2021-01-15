@@ -12,7 +12,8 @@ class Frontend {
         canvas.addEventListener("mouseup",   (m) => this.mouse(m) );
         canvas.addEventListener("mousemove", (m) => this.mouse(m) );
 
-        this.finished = false;
+        this.animating = false;
+        this.run_step_pending = false;
         this.time_last = 0.;
         this.time = 0.;
         this.keys_down = new Set();
@@ -26,19 +27,31 @@ class Frontend {
         const promise = this.init();
         promise.then( (x) => {
             this.gl_ready();
-            this.run_step();
+            this.set_animating(true);
         } );
     }
     //f gl_ready
     gl_ready() {
         console.log("Do GL ready stuff");
     }
+    //f set_animating
+    set_animating(a) {
+        if (a) {
+            if (this.run_step_pending) {return;}
+            this.animating = true;
+            this.run_step();
+        } else {
+            this.animating = false;
+        }
+    }
     //f run_step
     run_step() {
-        if (!this.finished) {
+        this.run_step_pending = false;
+        if (this.animating) {
             this.draw_scene(this.time);
             this.time += 0.1;
             requestAnimationFrame(()=>this.run_step());
+            this.run_step_pending = true;
         }
     }
     //f key
@@ -48,7 +61,7 @@ class Frontend {
         const scancode = 0;
         const mods = (event.shiftKey?1:0)  | (event.ctrlKey?2:0) | (event.altKey?4:0);
         this.key_mods = mods;
-        if (key==81) {this.finished=true;}
+        if (key==81) {this.animating=false;}
         if (press) {
             this.keys_down.add(key);
         } else {
@@ -95,7 +108,7 @@ class Frontend {
         except Exception as e:
             print(f"Failed: {e}")
             print(f"Failed: {traceback.format_exc()}")
-            self.finished = True
+            self.animating = True
             pass
         pass
     */

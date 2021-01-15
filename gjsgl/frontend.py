@@ -9,7 +9,7 @@ from typing import *
 class Frontend:
     #v Properties
     window_title : ClassVar[str] = "blah"
-    finished : bool
+    animating : bool
     main_window : int
     frame_delay = 0.02
     keys_down : Set[int]
@@ -36,14 +36,14 @@ class Frontend:
         pass
     #f run
     def run(self) -> None:
-        self.finished = False
+        self.animating = False
         self.time_last = glfw.get_time()
         self.keys_down = set()
         self.key_mods = 0
         self.buttons_down = 0
         self.mouse_pos_drag_start = (0.,0.)
         self.mouse_pos = (0.,0.)
-        while not self.finished and not glfw.window_should_close(self.main_window):
+        while not self.animating and not glfw.window_should_close(self.main_window):
             time_now = glfw.get_time()
             timeout = self.time_last + self.frame_delay - time_now
             if timeout > 0:
@@ -63,7 +63,7 @@ class Frontend:
         pass
     #f key
     def key(self, window:Any, key:int, scancode:int, action:int, mods:int) -> None:
-        if key==81: self.finished=True
+        if key==81: self.animating=True
         press = (action==glfw.PRESS) or (action==glfw.REPEAT)
         if press: self.keys_down.add(key)
         else: self.keys_down.discard(key)
@@ -107,7 +107,7 @@ class Frontend:
         except Exception as e:
             print(f"Failed: {e}")
             print(f"Failed: {traceback.format_exc()}")
-            self.finished = True
+            self.animating = True
             pass
         pass
     #f opengl_ready - override

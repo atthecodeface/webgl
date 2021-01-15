@@ -20,6 +20,8 @@
     <script src="./webgl.js" defer></script>
   </head>
   <body>
+    <button type=button onclick="set_animation(false);">pause</button>
+    <button type=button onclick="set_animation(true);">restart</button>    
     <button type=button onclick="set_euler(0,30);">blah</button>
     FOV:<input type="range" min="5" max="180" value="50" oninput="set_fov(this.value)"/>
     Zoom:<input id="cameraZoom" type="range" min="1" max="100" value="0" oninput="set_zoom(Math.pow(2.,(this.value-50.0)/10))"/>
