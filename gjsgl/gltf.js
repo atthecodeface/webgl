@@ -171,38 +171,112 @@ class Accessor {
     //f All done
 }
 
-//c Image
-class Image {
+//c GltfImage
+class GltfImage {
+    //f constructor
+    constructor(json) {
+        this.name        = def(json.name,"");
+        this.uri         = json.uri;
+        this.buffer_view = json.bufferView;
+        this.mime_type   = json.mimeType;
+        this.image_data  = undefined;
+        this.image       = undefined;
+        if (this.uri!==undefined) {
+            this.load_promise = fetch(this.uri).then(
+                (response) => {
+                    if (!response.ok) {
+                        throw new Error("Failed to fetch image "+this.uri);
+                    } else {
+                        console.log(response);
+                        this.mime_type = "image/jpeg";
+                        return response.arrayBuffer();
+                    }
+                }).then( (data) => {this.image_data=data;} );
+        } else {
+            this.load_promise = new Promise.resolve();
+        }
+    }
+    //f init
+    init() {
+        return this.load_promise;
+    }
+    //f make_image
+    make_image() {
+        if (this.image_data===undefined) {
+            return Promise.resolve();
+        }
+        const blob = new Blob( [ this.image_data ], { type: this.mime_type } );
+        this.image_url = URL.createObjectURL( blob );
+        this.image = new Image();
+        const promise = new Promise(
+            (resolve) => {
+                this.image.onload = () => {
+                    URL.revokeObjectURL(this.image_url);
+                    this.image_url  = undefined;
+                    this.image_data = undefined;
+                    console.log(this);
+                    resolve();
+                }
+            });
+        this.image.src = this.image_url;
+        return promise;
+    }
+    //f All done
 }
 
-//c Sampler
-// sampler has magFilter, minFilter, wrapS, wrapT
-class Sampler {
+//c GltfSampler
+class GltfSampler {
+    //f constructor
+    constructor(json) {
+        this.name        = def(json.name,"");
+        this.mag_filter  = def(json.magFilter,"");
+        this.min_filter  = def(json.minFilter,"");
+        this.wrap_s      = def(json.wrapS,"");
+        this.wrap_t      = def(json.wrapT,"");
+    }
 }
 
-//c Texture
-// texture which refers to an image and a sampler
-// @dataclass
-class Texture {
+//c GltfTexture
+class GltfTexture {
+    //f constructor
+    constructor(gltf, json) {
+        this.name        = def(json.name,"");
+        this.sampler     = gltf.get_sampler(json["sampler"]);
+        this.image       = gltf.get_image(json["source"]);
+        this.texture = undefined;
+    }
+    //f to_texture
+    to_texture() {
+        if (this.texture!==undefined) {return this.texture;}
+        if (this.image.image===undefined) { throw new Error("Image not loaded for texture");}
+        const data = this.image.image;
+        this.texture = new Texture(data);
+        return this.texture;
+    }
 }
 
-//c Material
-// Texture use is Texture and aan int is an index to the tex_coords list to use to index the texture
-class Material {
+//c GltfMaterial
+class GltfMaterial {
     //f constructor
     constructor(gltf, json) {
         this.name    = def(json.name,"");
-        const pbr    = def(json.pbrMetallicRoughness,[]);
+        const pbr    = def(json.pbrMetallicRoughness,{});
         this.color   = (1.,1.,1.,1.);
-        this.metallic = 1.;
-        this.roughness = 0.;
-        this.base_texture = undefined;
+        this.metallic  = 1.;
+        this.roughness = 1.;
+        this.base_texture   = undefined;
+        this.mr_texture     = undefined;
         this.normal_texture = undefined;
-        if (pbr.length>0) {
-            this.color     = def(json.baseColorFactor,this.color);
-            this.roughness = def(json.roughnessFactor,this.roughness);
-            this.metallic  = def(json.metallicFactor, this.metallic);
-        }
+        this.occlusion_texture = undefined;
+        this.emission_texture = undefined;
+        this.color     = def(pbr.baseColorFactor,this.color);
+        this.roughness = def(pbr.roughnessFactor,this.roughness);
+        this.metallic  = def(pbr.metallicFactor, this.metallic);
+        do_if(pbr.baseColorTexture,  (n)=>{this.base_texture     =gltf.get_texture(n.index);} );
+        do_if(pbr.metallicRoughnessTexture,  (n)=>{this.mr_texture     =gltf.get_texture(n.index);} );
+        do_if(json.normalTexture,    (n)=>{this.normal_texture   =gltf.get_texture(n.index);} );
+        do_if(json.emissionTexture,  (n)=>{this.emission_texture =gltf.get_texture(n.index);} );
+        do_if(json.occlusionTexture, (n)=>{this.occlusion_texture=gltf.get_texture(n.index);} );
     }
     //f to_model_material
     to_model_material() {
@@ -383,8 +457,11 @@ class Gltf {
     constructor(uri) {
         this.uri    = uri;
         this.buffers = [];
+        this.images = [];
         this.buffer_views = [];
         this.accessors = [];
+        this.samplers = [];
+        this.textures = [];
         this.materials = [];
         this.skins = [];
         this.meshes = [];
@@ -411,10 +488,22 @@ class Gltf {
     }
     fetch_buffers() {
         const promises = [];
-        for (const b of this.json.buffers) {
+        for (const b of def(this.json.buffers,[])) {
             const buffer = new Buffer(b);
             this.buffers.push(buffer);
             promises.push(buffer.init());
+        }
+        for (const i of def(this.json.images,[])) {
+            const image = new GltfImage(i);
+            this.images.push(image);
+            promises.push(image.init());
+        }
+        return Promise.all(promises).then( () => {return this.make_images();} );
+    }
+    make_images() {
+        const promises = [];
+        for (const image of this.images) {
+            promises.push(image.make_image());
         }
         return Promise.all(promises);
     }
@@ -428,8 +517,14 @@ class Gltf {
         for (const b of def(this.json.accessors,[])) {
             this.accessors.push(new Accessor(this, b));
         }
+        for (const b of def(this.json.samplers,[])) {
+            this.samplers.push(new GltfSampler(this, b));
+        }
+        for (const b of def(this.json.textures,[])) {
+            this.textures.push(new GltfTexture(this, b));
+        }
         for (const b of def(this.json.materials,[])) {
-            this.materials.push(new Material(this, b));
+            this.materials.push(new GltfMaterial(this, b));
         }
         for (const b of def(this.json.skins,[])) {
             this.skins.push(new Skin(this, b));

@@ -26,7 +26,9 @@ class Frontend {
     run() {
         const promise = this.init();
         promise.then( (x) => {
+            console.log("Frontend initialized");
             this.gl_ready();
+            console.log("Frontend GL ready");
             this.set_animating(true);
         } );
     }

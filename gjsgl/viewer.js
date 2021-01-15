@@ -90,8 +90,8 @@ class ViewerFrontend extends Frontend {
                                 78:4096, 77:8192
                               };
 
-        this.textures.moon = new Texture("./moon.png");
-        this.textures.wood = new Texture("./wood.jpg");
+        this.textures.moon = new TextureImage("./moon.png");
+        this.textures.wood = new TextureImage("./wood.jpg");
 
         this.shader = new BoneShader();
         this.shader.init(GL);
