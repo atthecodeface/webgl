@@ -19,7 +19,7 @@ class ModelBufferData {
     //f constructor
     constructor(data, byte_offset, byte_length) {
         if (byte_length===undefined) {byte_length=data.byteLength;}
-        this.data = data.buffer;
+        this.data = data;
         this.byte_length = byte_length;
         this.byte_offset = byte_offset;
         this.gl_buffer = undefined;
@@ -44,7 +44,7 @@ class ModelBufferIndices {
     //f constructor
     constructor(data, byte_offset, byte_length) {
         if (byte_length===undefined) {byte_length=data.byteLength;}
-        this.data = data.buffer;
+        this.data = data;
         this.byte_length = byte_length;
         this.byte_offset = byte_offset;
         this.gl_buffer = undefined;
@@ -254,8 +254,8 @@ class ModelObject {
             trans_mat = this.transformation.trans_mat_after(trans_mat);
         }
         yield([trans_mat, this]);
-        for (c of this.children) {
-            for (x of c.iter_objects(trans_mat)) {
+        for (const c of this.children) {
+            for (const x of c.iter_objects(trans_mat)) {
                 yield(x);
             }
         }

@@ -105,16 +105,27 @@ class ViewerFrontend extends Frontend {
         this.mesh_objects = [];
         this.mesh_objects.push(new MeshObject(this.shader, dbl_cube,          this.textures.moon, [3,0,0]));
         this.mesh_objects.push(new MeshObject(this.shader, cube,              this.textures.wood, [-3,0,0]));
-        this.mesh_objects.push(new MeshObject(this.shader, dbl_cube2,         this.textures.wood, [0,0,0]));
+        // this.mesh_objects.push(new MeshObject(this.shader, dbl_cube2,         this.textures.wood, [0,0,0]));
         this.mesh_objects.push(new MeshObject(this.shader, make_snake(16, 6), this.textures.moon, [-6,0,0]));
 
-        return Promise.all([this.textures.moon.init(), this.textures.wood.init()])
+        this.gltf_data = ["./milo.gltf", "Body.001"];
+        this.gltf_data = ["./milo2.gltf", "Head.001"];
+        this.gltf_file = new GLTF.Gltf(this.gltf_data[0]);
+
+        return Promise.all([this.textures.moon.init(), this.textures.wood.init(), this.gltf_file.init()])
     }
     //f gl_ready
     gl_ready() {
+        this.gltf_node = this.gltf_file.get_node_by_name(this.gltf_data[1]);
+        this.gltf_root = this.gltf_node.to_model_object(this.gltf_file);
+        const gltf_model = new ModelClass("gltf", this.gltf_root);
+        const gltf_inst  = new ModelInstance(gltf_model);
+        this.model_objects = [gltf_inst];
+
         for (const t in this.textures) {
             this.textures[t].gl_create();
         }
+
         for (const o of this.model_objects) {
             o.gl_create();
             o.gl_bind_program(this.shader.shader_class);
