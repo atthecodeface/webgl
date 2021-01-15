@@ -375,12 +375,13 @@ class ModelInstance {
                 const bma = this.bone_set_poses[b];
                 shader_program.set_uniform_if("uBonesMatrices",
                                               (u) => GL.uniformMatrix4fv(u, false, bma.data.subarray(0,bma.max_index*16)));
+                shader_program.set_uniform_if("uBonesScale", (u) => GL.uniform1f(u, 1.0) )
+            } else {
+                shader_program.set_uniform_if("uBonesScale", (u) => GL.uniform1f(u, 0.0) )
             }
             // Provide mesh matrix and material uniforms
             shader_program.set_uniform_if("uMeshMatrix",
                                           (u) => GL.uniformMatrix4fv(u, false, mat)); //t.mat4()) )
-            shader_program.set_uniform_if("uBonesScale",
-                                          (u) => GL.uniform1f(u, 1.0) )
             m.gl_draw(shader_program);
         }
     }

@@ -100,13 +100,7 @@ class ViewerFrontend extends Frontend {
 
         const model = new ObjectModel("cube", make_snake(16,8.));
         //const model = new ObjectModel("cube", cube);
-        this.model_objects.push( new ModelInstance(model) );
-
-        this.mesh_objects = [];
-        this.mesh_objects.push(new MeshObject(this.shader, dbl_cube,          this.textures.moon, [3,0,0]));
-        this.mesh_objects.push(new MeshObject(this.shader, cube,              this.textures.wood, [-3,0,0]));
-        // this.mesh_objects.push(new MeshObject(this.shader, dbl_cube2,         this.textures.wood, [0,0,0]));
-        this.mesh_objects.push(new MeshObject(this.shader, make_snake(16, 6), this.textures.moon, [-6,0,0]));
+        //this.model_objects.push( new ModelInstance(model) );
 
         this.gltf_data = ["./milo.gltf", "Body.001"];
         this.gltf_data = ["./milo2.gltf", "Head.001"];
@@ -121,7 +115,7 @@ class ViewerFrontend extends Frontend {
         this.gltf_root = this.gltf_node.to_model_object(this.gltf_file);
         const gltf_model = new ModelClass("gltf", this.gltf_root);
         const gltf_inst  = new ModelInstance(gltf_model);
-        this.model_objects = [gltf_inst];
+        this.model_objects.push(gltf_inst);
 
         for (const t in this.textures) {
             this.textures[t].gl_create();
@@ -183,21 +177,20 @@ class ViewerFrontend extends Frontend {
         GL.uniformMatrix4fv(this.shader.uniforms["uCameraMatrix"],    false, this.camera.matrix);
         GL.uniformMatrix4fv(this.shader.uniforms["uMeshMatrix"],      false, mat4.create());
 
-        const time = this.time;
-        for (const m of this.mesh_objects) {
-            m.animate(this.time);
-        }    
+        GL.activeTexture(GL.TEXTURE0);
+        GL.bindTexture(GL.TEXTURE_2D, this.textures.wood.texture);
+        this.shader.set_uniform_if("uTexture",       (u) => GL.uniform1i(u, 0) );
+        this.shader.set_uniform_if("uBonesScale",    (u) => GL.uniform1f(u, 1.) );
+        // this.shader.set_uniform_if("uBonesMatrices", (u) => GL.uniformMatrix4fv(u, false, poses.data) );
 
-        for (const m of this.mesh_objects) {
-            m.draw(this.shader);
-        }
+        const time = this.time;
         for (const o of this.model_objects) {
             if (o.bone_set_poses.length>0) {
-            const pose1 = o.bone_set_poses[0].poses[1];
-            const pose2 = o.bone_set_poses[0].poses[2];
-            pose1.transformation_reset();
-            pose2.transformation_reset();
-            pose1.transform(new Transformation([Math.sin(time),0.,0.5*Math.cos(time*0.4)],quat.create()));
+                const pose1 = o.bone_set_poses[0].poses[1];
+                const pose2 = o.bone_set_poses[0].poses[2];
+                pose1.transformation_reset();
+                pose2.transformation_reset();
+                pose1.transform(new Transformation([Math.sin(time),0.,0.5*Math.cos(time*0.4)],quat.create()));
                 pose2.transform(new Transformation([-Math.sin(time),0.,-0.5*Math.cos(time*0.4)],quat.create()));
             }
             o.gl_draw(this.shader, time);

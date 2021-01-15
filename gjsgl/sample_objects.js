@@ -43,8 +43,7 @@ const cube =  {
       0., 1., 0., 0.,
     ],
     indices :  [3, 2, 1, 0, 4, 2, 6, 7,  4, 5, 1, 7, 3, 2],
-    submeshes : [ new Submesh([0,1,0,0], "TS", 0, 14),
-                ],
+    //submeshes : [ new Submesh([0,1,0,0], "TS", 0, 14),]
 }
 
 //a Double cube object
@@ -104,8 +103,7 @@ const dbl_cube =  {
       0., 0., 1., 0.,
     ],
     indices :  [3, 2, 1, 0, 4, 2, 6, 7,   11, 5, 9, 8, 11, 10, 6, 8,   4, 5, 1, 7, 3, 2],
-    submeshes : [ new Submesh([0,1,2,0], "TS", 0, 22),
-                ],
+    // submeshes : [ new Submesh([0,1,2,0], "TS", 0, 22),]
 }
 
 const dbl_cube2 =  {
@@ -159,8 +157,7 @@ const dbl_cube2 =  {
       0., 1., 0., 0.,
     ],
     indices :  [3, 2, 1, 0, 4, 2, 6, 7,   11, 5, 9, 8, 11, 10, 6, 8,   4, 5, 1, 7, 3, 2],
-    submeshes : [ new Submesh([0,1,2,0], "TS", 0, 22),
-                ],
+    //submeshes : [ new Submesh([0,1,2,0], "TS", 0, 22),],
 }
 function make_snake(snake_slices, snake_height) {
     const snake_slice_height=snake_height/snake_slices;
@@ -216,8 +213,7 @@ function make_snake(snake_slices, snake_height) {
         texcoords : snake_texcoords,
         weights   : snake_weights,
         indices   : snake_indices,
-        submeshes : [ new Submesh([0,1,2,0], "TS", 0, snake_indices.length),
-                    ],
+        //submeshes : [ new Submesh([0,1,2,0], "TS", 0, snake_indices.length),],
     }
     return snake;
 }
