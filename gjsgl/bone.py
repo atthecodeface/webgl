@@ -3,6 +3,7 @@ import glm
 import numpy as np
 from .hierarchy import Hierarchy
 from .transformation import Transformation
+from .animate import Linear, Bezier2
 
 from typing import *
 if not TYPE_CHECKING:
@@ -332,3 +333,33 @@ class BonePoseSet:
         return hier
     #f All done
     pass
+#c AnimatedBonePose
+class AnimatedBonePose:
+    def __init__(self, poses:BonePoseSet) -> None:
+        self.poses = poses
+        self.animatable = Bezier2(Transformation())
+        self.animatable.set_target( t1=1.,
+                                    c0=Transformation(quaternion=glm.angleAxis(0.3,glm.vec3((1.,0.,0.)))),
+                                    c1=Transformation(quaternion=glm.angleAxis(0.3,glm.vec3((1.,0.,0.)))),
+                                    tgt=Transformation(quaternion=glm.angleAxis(0.3,glm.vec3((1.,0.,0.)))),
+                                    callback=self.animation_callback )
+        pass
+    def interpolate_to_time(self, t:float) -> None:
+        z = self.animatable.interpolate_to_time(t)
+        # print(t, z)
+        self.poses[1].transformation_reset()
+        self.poses[1].transform(z)
+        pass
+    def animation_callback(self, t:float) -> None:
+        t_sec = math.floor(t)
+        t_int = int(t_sec)
+        tgt = 1.0
+        if (t_int&1): tgt=-1.
+        self.animatable.set_target( t1=t_sec+1.,
+                                    c0=Transformation(quaternion=glm.angleAxis(0.3,glm.vec3((1.,0.,0.)))),
+                                    c1=Transformation(quaternion=glm.angleAxis(0.5,glm.vec3((0.,1.,0.)))),
+                                    tgt=Transformation(quaternion=glm.angleAxis(tgt*0.3,glm.vec3((1.,0.,0.)))),
+                                    callback=self.animation_callback )
+        pass
+    pass
+
