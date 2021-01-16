@@ -254,6 +254,7 @@ class GltfTexture {
 }
 
 //c GltfMaterial
+// GltfTextureInfo = Tuple[GltfTexture,int] # Texture and which texcoord to use to index
 class GltfMaterial {
     //f constructor
     constructor(gltf, json) {

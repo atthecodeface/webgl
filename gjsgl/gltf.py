@@ -5,17 +5,19 @@ import base64
 import glm
 import ctypes
 import numpy as np
+import PIL
 from pathlib import Path
 from dataclasses import dataclass
 from .transformation import Transformation
 from .object import MeshBase
 from .bone import Bone, BoneSet
-from .texture import Texture as OTexture
+from .texture import Texture
 from .shader import ShaderProgram
 from .model import ModelObject, ModelMesh, ModelPrimitive, ModelPrimitiveView, ModelBufferView, ModelBufferData, ModelMaterial, ModelBufferIndices
 
 from typing import *
 Json = Dict[str,Any]
+NPArray = Any
 
 if not TYPE_CHECKING:
     GL.VAO          = object
@@ -99,9 +101,14 @@ PrimitiveType.enum_to_cls = {
     PTTriangleFan.enum     : PTTriangleFan,
     }
 
+#a Useful functions
+def if_in (a:Dict[Any,Any], n:Any, f:Callable[[Any],Any], default:Any) -> Any:
+    if n in a:
+        return f(a[n])
+    return default
+
 #a Data classes
 #c Buffer
-NPArray = Any
 class Buffer:
     #v Properties
     name: str
@@ -124,10 +131,12 @@ class Buffer:
                 pass
             pass
         pass
+    #f All done
     pass
 
 #c BufferView
 class BufferView:
+    #v Properties
     name: str
     buffer: Buffer
     offset: int
@@ -143,7 +152,7 @@ class BufferView:
         self.length = json.get("byteLength",0)
         self.target = json.get("target",0)
         pass
-    #f All donen
+    #f All done
     pass
 
 #c Accessor
@@ -164,18 +173,6 @@ class Accessor:
         self.comp_type = cast(ValueType, ValueType.of_enum(json.get("componentType",5120)))
         self.count = json.get("count",0)
         pass
-    #f as_np_data
-    def as_np_data(self) -> Any:
-        item_size = self.comp_type.size * self.acc_type.size
-        stride = self.view.stride
-        if stride==0: stride=item_size
-        b = np.ndarray((self.count * item_size,), dtype=np.uint8)
-        for i in range(self.count):
-            dest_offset = item_size*i
-            src_offset = self.view.offset + self.offset + stride*i
-            b[dest_offset:dest_offset+item_size] = self.view.buffer.data[src_offset:src_offset+item_size]
-            pass
-        return b
     #f to_model_buffer_view
     def to_model_buffer_view(self) -> ModelBufferView:
         data        = self.view.buffer.data
@@ -185,7 +182,7 @@ class Accessor:
         offset      = self.offset
         count       = self.acc_type.size # e.g. 3 for VEC3
         gl_type     = self.comp_type.gl_type # e.g. of GL_FLOAT
-        print(f"Creating attributes of {gl_type} {byte_offset}, {byte_length}, {data[byte_offset:byte_offset+byte_length]}")
+        # print(f"Creating attributes of {gl_type} {byte_offset}, {byte_length}, {data[byte_offset:byte_offset+byte_length]}")
         model_data  = ModelBufferData(data=data, byte_offset=byte_offset, byte_length=byte_length)
         return ModelBufferView(data=model_data, count=count, gl_type=gl_type, offset=offset, stride=stride)
     #f to_model_buffer_indices
@@ -193,63 +190,124 @@ class Accessor:
         data        = self.view.buffer.data
         byte_offset = self.view.offset
         byte_length = self.view.length
-        print(f"Creating indices of {self.comp_type.gl_type} {byte_offset}, {byte_length}, {data[byte_offset:byte_offset+byte_length]}")
+        # print(f"Creating indices of {self.comp_type.gl_type} {byte_offset}, {byte_length}, {data[byte_offset:byte_offset+byte_length]}")
         return ModelBufferIndices(data=data, byte_offset=byte_offset, byte_length=byte_length)
     #f All done
     pass
 
-#c Image
-            # images have a URI
-@dataclass
-class Image:
+#c GltfImage
+class GltfImage:
+    #v Properties
+    name  : str
+    uri   : Optional[str]
+    view  : Optional[BufferView]
+    mime_type : str
+    image : Tuple[int, int, NPArray]
+    #f __init__
+    def __init__(self, gltf:"Gltf", json:Json) -> None:
+        self.name = json.get("name","")
+        self.uri  = json.get("uri",None)
+        buffer_view  = json.get("bufferView",None)
+        self.view = None
+        if buffer_view is not None: gltf.get_buffer_view(buffer_view)
+        self.mime_type = json.get("mimeType", "image/jpeg")
+        self.image = (0,0,None)
+        if self.uri is not None:
+            image = PIL.Image.open(self.uri)
+            self.image = (image.size[0], image.size[1], np.array(image.getdata(), np.int8))
+            pass
+        elif self.view is not None:
+            image = PIL.Image.fromarray(self.view)
+            self.image = (image.size[0], image.size[1], np.array(image.getdata(), np.int8))
+            pass
+        pass
+    #f make_image
+    def make_image(self) -> None:
+        pass
+    #f All done
     pass
 
-#c Sampler
-            # sampler has magFilter, minFilter, wrapS, wrapT
-@dataclass
-class Sampler:
+#c GltfSampler
+class GltfSampler:
+    name : str
+    mag_filter : str
+    min_filter : str
+    wrap_s     : str
+    wrap_t     : str
+    #f __init__
+    def __init__(self, gltf:"Gltf", json:Json) -> None:
+        self.name        = json.get("name","")
+        self.mag_filter  = json.get("magFilter","")
+        self.min_filter  = json.get("minFilter","")
+        self.wrap_s      = json.get("wrapS","")
+        self.wrap_t      = json.get("wrapT","")
+        pass
+    #f All done
     pass
 
-#c Texture
-            # texture which refers to an image and a sampler
-@dataclass
-class Texture:
+#c GltfTexture
+class GltfTexture:
+    name : str
+    sample : GltfSampler
+    image : GltfImage
+    texture : Optional[Texture]
+    #f __init__
+    def __init__(self, gltf:"Gltf", json:Json) -> None:
+        self.name        = json.get("name","")
+        self.sampler     = gltf.get_sampler(json.get("sampler",0))
+        self.image       = gltf.get_image(json.get("source",0))
+        self.texture     = None
+        pass
+    #f to_texture
+    def to_texture(self) -> Texture:
+        if self.texture is not None:
+            return self.texture
+        self.texture = Texture(data=self.image.image)
+        return self.texture
+    #f All done
     pass
 
-#c Material
-# Texture use is Texture and aan int is an index to the tex_coords list to use to index the texture
-TextureUse = Tuple[Texture,int]
-class Material:
+#c GltfMaterial
+GltfTextureInfo = Tuple[GltfTexture,int] # Texture and which texcoord to use to index
+class GltfMaterial:
     #v Properties
     color    : Tuple[float,float,float,float] # Base color
     metallic : float # 0 is fully dielectric, 1.0 is fully metallic
     roughness: float # 0.5 is specular, no specular down to 0 full reflection, up to 1 fully matt
-    base_texture: Optional[TextureUse]
-    normal_texture: Optional[TextureUse]
-    # emissive_texture: Optional[Texture] # 0 for no-emission, 1 for full emissive_color
+    base_texture     : Optional[GltfTexture]
+    mr_texture       : Optional[GltfTexture]
+    normal_texture   : Optional[GltfTexture]
+    occlusion_texture: Optional[GltfTexture]
+    emission_texture : Optional[GltfTexture]
     # emissive_color: Tuple[float,float,float]
     # alpha_mode:
-    # occlusion_texture: Optional[Texture] # 0 for no occlusion, 1 to reduce final color value to 0
-    # metallic_roughness_texture: Optional[Texture] # get metallic for G and roughness from B
     #f __init__
     def __init__(self, gltf:"Gltf", json:Json) -> None:
         self.name   = json.get("name","")
-        pbr : Json = json.get("pbrMetallicRoughness",[])
+        pbr : Json = json.get("pbrMetallicRoughness",{})
         self.color = (1.,1.,1.,1.)
         self.metallic = 1.
         self.roughness = 0.
-        self.base_texture = None
-        self.normal_texture = None
-        if len(pbr)>0:
-            self.color     = tuple(json.get("baseColorFactor",self.color)) # type: ignore
-            self.roughness = json.get("roughnessFactor",self.roughness)
-            self.metallic  = json.get("metallicFactor",self.metallic)
-            pass
+        self.color     = if_in(pbr, "baseColorFactor", lambda x:tuple(x), self.color)
+        self.roughness = if_in(pbr, "roughness",       lambda x:x, self.roughness)
+        self.metallic  = if_in(pbr, "metallic",        lambda x:x, self.metallic)
+        self.base_texture      = if_in(pbr, "baseColorTexture",         lambda x:gltf.get_texture(x["index"]), None)
+        self.mr_texture        = if_in(pbr, "metallicRoughnessTexture", lambda x:gltf.get_texture(x["index"]), None)
+        self.normal_texture    = if_in(json, "normalTexture",     lambda x:gltf.get_texture(x["index"]), None)
+        self.emission_texture  = if_in(json, "emissionTexture",   lambda x:gltf.get_texture(x["index"]), None)
+        self.occlusion_texture = if_in(json, "occlusionTexture",  lambda x:gltf.get_texture(x["index"]), None)
         pass
     #f to_model_material
     def to_model_material(self) -> ModelMaterial:
         m = ModelMaterial()
         m.color = self.color
+        m.metallic = self.metallic
+        m.roughness = self.roughness
+        if self.base_texture      is not None: m.base_texture = self.base_texture.to_texture()
+        if self.mr_texture        is not None: m.base_texture = self.mr_texture.to_texture()
+        if self.normal_texture    is not None: m.base_texture = self.normal_texture.to_texture()
+        if self.emission_texture  is not None: m.base_texture = self.emission_texture.to_texture()
+        if self.occlusion_texture is not None: m.base_texture = self.occlusion_texture.to_texture()
         return m
     #f All done
     pass
@@ -258,7 +316,7 @@ class Material:
 class Primitive: # Defines a drawElements call
     #v Properties
     mode       : PrimitiveType
-    material   : Material
+    material   : GltfMaterial
     indices    : Accessor
     position   : Accessor
     normal     : List[Accessor]
@@ -275,13 +333,9 @@ class Primitive: # Defines a drawElements call
         self.indices  = gltf.get_accessor(json.get("indices",0))
         self.material = gltf.get_material(json.get("material",0))
         self.normal  = []
-        if "NORMAL" in attributes:
-            self.normal.append( gltf.get_accessor(attributes["NORMAL"]) )
-            pass
         self.tangent = []
-        if "TANGENT" in attributes:
-            self.tangent.append( gltf.get_accessor(attributes["TANGENT"]) )
-            pass
+        if "NORMAL" in attributes:  self.normal.append(gltf.get_accessor(attributes["NORMAL"]) )
+        if "TANGENT" in attributes: self.tangent.append( gltf.get_accessor(attributes["TANGENT"]) )
         self.color   = []
         self.tex_coords = []
         if "TEXCOORD_0" in attributes:
@@ -479,15 +533,69 @@ class Gltf:
     buffers:       List[Buffer]
     buffer_views:  List[BufferView]
     accessors:     List[Accessor]
-    images:        List[Image]
-    samplers:      List[Sampler]
-    textures:      List[Texture]
-    materials:     List[Material]
+    images:        List[GltfImage]
+    samplers:      List[GltfSampler]
+    textures:      List[GltfTexture]
+    materials:     List[GltfMaterial]
     skins:         List[Skin]
     meshes:        List[Mesh]
     nodes:         List[Node]
 
     bone_sets   : Dict[Skin,BoneSet]
+    #f __init__
+    def __init__(self, root:Path, path:Path) -> None:
+        with path.open() as f:
+            self.json_data = json.load(f)
+            # Ignore 'asset','scene', 'scenes'
+            self.buffers = []
+            self.buffer_views = []
+            self.accessors = []
+            self.materials = []
+            self.skins = []
+            self.meshes = []
+            self.nodes = []
+            for b in self.json_data.get("buffers",[]):
+                self.buffers.append(Buffer(b))
+                pass
+            for b in self.json_data.get("bufferViews",[]):
+                self.buffer_views.append(BufferView(self, b))
+                pass
+            for b in self.json_data.get("accessors",[]):
+                self.accessors.append(Accessor(self, b))
+                pass
+            for b in self.json_data.get("images",[]):
+                self.images.append(GltfImage(self, b))
+                pass
+            for b in self.json_data.get("samplers",[]):
+                self.samplers.append(GltfSampler(self, b))
+                pass
+            for b in self.json_data.get("textures",[]):
+                self.textures.append(GltfTexture(self, b))
+                pass
+            for m in self.json_data.get("materials",[]):
+                self.materials.append(GltfMaterial(self,m))
+                pass
+            for s in self.json_data.get("skins",[]):
+                self.skins.append(Skin(self,s))
+                pass
+            for m in self.json_data.get("meshes",[]):
+                self.meshes.append(Mesh(self,m))
+                pass
+            for n in self.json_data.get("nodes",[]):
+                self.nodes.append(Node(self,n))
+                pass
+            for n in self.nodes:
+                n.calculate_depth(self, 0)
+                pass
+            self.bone_sets = {}
+            for s in self.skins:
+                self.bone_sets[s] = s.to_bones(self)
+                pass
+            pass
+        pass
+    #f bones_of_skin
+    def bones_of_skin(self, skin:Skin) -> BoneSet:
+        return self.bone_sets[skin]
     #f get_buffer
     def get_buffer(self, index:int) -> Buffer:
         if index<0 or index>=len(self.buffers): raise Exception("Bad buffer number")
@@ -501,19 +609,19 @@ class Gltf:
         if index<0 or index>=len(self.accessors): raise Exception("Bad accessor number")
         return self.accessors[index]
     #f get_image
-    def get_image(self, index:int) -> Image:
+    def get_image(self, index:int) -> GltfImage:
         if index<0 or index>=len(self.images): raise Exception("Bad image number")
         return self.images[index]
     #f get_sampler
-    def get_sampler(self, index:int) -> Sampler:
+    def get_sampler(self, index:int) -> GltfSampler:
         if index<0 or index>=len(self.samplers): raise Exception("Bad sampler number")
         return self.samplers[index]
     #f get_texture
-    def get_texture(self, index:int) -> Texture:
+    def get_texture(self, index:int) -> GltfTexture:
         if index<0 or index>=len(self.textures): raise Exception("Bad texture number")
         return self.textures[index]
     #f get_material
-    def get_material(self, index:int) -> Material:
+    def get_material(self, index:int) -> GltfMaterial:
         if index<0 or index>=len(self.materials): raise Exception("Bad material number")
         return self.materials[index]
     #f get_skin
@@ -535,64 +643,6 @@ class Gltf:
                 return (i, self.nodes[i])
             pass
         return None
-    #f __init__
-    def __init__(self, root:Path, path:Path) -> None:
-        with path.open() as f:
-            self.json_data = json.load(f)
-            # Ignore 'asset','scene', 'scenes'
-            self.buffers = []
-            self.buffer_views = []
-            self.accessors = []
-            self.materials = []
-            self.skins = []
-            self.meshes = []
-            self.nodes = []
-            if "buffers" in self.json_data:
-                for b in self.json_data["buffers"]:
-                    self.buffers.append(Buffer(b))
-                    pass
-                pass
-            if "bufferViews" in self.json_data:
-                for b in self.json_data["bufferViews"]:
-                    self.buffer_views.append(BufferView(self, b))
-                    pass
-                pass
-            if "accessors" in self.json_data:
-                for b in self.json_data["accessors"]:
-                    self.accessors.append(Accessor(self, b))
-                pass
-            if "materials" in self.json_data:
-                for m in self.json_data['materials']:
-                    self.materials.append(Material(self,m))
-                    pass
-                pass
-            if "skins" in self.json_data:
-                for s in self.json_data['skins']:
-                    self.skins.append(Skin(self,s))
-                    pass
-                pass
-            if "meshes" in self.json_data:
-                for m in self.json_data['meshes']:
-                    self.meshes.append(Mesh(self,m))
-                    pass
-                pass
-            if "nodes" in self.json_data:
-                for n in self.json_data['nodes']:
-                    self.nodes.append(Node(self,n))
-                    pass
-                pass
-            for n in self.nodes:
-                n.calculate_depth(self, 0)
-                pass
-            self.bone_sets = {}
-            for s in self.skins:
-                self.bone_sets[s] = s.to_bones(self)
-                pass
-            pass
-        pass
-    #f bones_of_skin
-    def bones_of_skin(self, skin:Skin) -> BoneSet:
-        return self.bone_sets[skin]
     #f All done
     pass
 

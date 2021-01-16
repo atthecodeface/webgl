@@ -7,7 +7,7 @@ from .sample_objects import Cube, DoubleCube, DoubleCube2, Snake
 from .bone import Bone, BonePose
 from .shader import BoneShader, FlatShader, UnbonedShader
 from .frontend import Frontend
-from .texture import Texture
+from .texture import Texture, TextureImage
 from .transformation import Transformation
 from .gltf import Gltf
 from .sample_models import ObjectModel
@@ -79,9 +79,11 @@ class ViewerFrontend(Frontend):
         self.camera = Transformation(translation=(-0.2,-1.2,-5.))
         self.motions = 0
 
-        texture = Texture("wood_square.png")
-        # texture = Texture("wood.jpg")
-        # texture = Texture("moon.png")
+        self.textures = {}
+        self.textures["wood"] = TextureImage("wood_square.png")
+        self.textures["moon"] = TextureImage("moon.png")
+        # texture = TextureImage("wood.jpg")
+        # texture = TextureImage("moon.png")
 
         gltf_data = (Path("./milo.gltf"), "Body.001")
         #gltf_data = (Path("./cubeplus.gltf"), "Cube")
@@ -97,7 +99,7 @@ class ViewerFrontend(Frontend):
         # c = Snake(16,8.)
 
         mesh = Mesh(self.shader, c)
-        self.mesh_objects.append(MeshObject(mesh, texture, glm.vec3((3.,0.,0.))))
+        self.mesh_objects.append(MeshObject(mesh, self.textures["wood"], glm.vec3((3.,0.,0.))))
 
         gltf_model = ModelClass("gltf", gltf_root)
         gltf_inst = ModelInstance(gltf_model)
@@ -106,7 +108,10 @@ class ViewerFrontend(Frontend):
         self.animatables.append(AnimatedBonePose(self.pose.poses[1]))
         self.model_objects.append( gltf_inst )
         # self.mesh_objects = []
-        
+
+        for (_,t) in self.textures.items():
+            t.gl_create()
+            pass
         model = ObjectModel("cube", Snake(16,8.))
         # self.model_objects.append( ModelInstance(model) )
         for o in self.model_objects:
@@ -125,7 +130,7 @@ class ViewerFrontend(Frontend):
         if press and key==80: print(self.camera)
         pass
     #f move_camera
-    def move_camera(self):
+    def move_camera(self) -> None:
         mat = glm.mat4()
         axes = self.camera.mat4()
         axes = mat
