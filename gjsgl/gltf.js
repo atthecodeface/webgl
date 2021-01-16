@@ -187,7 +187,6 @@ class GltfImage {
                     if (!response.ok) {
                         throw new Error("Failed to fetch image "+this.uri);
                     } else {
-                        console.log(response);
                         this.mime_type = "image/jpeg";
                         return response.arrayBuffer();
                     }
@@ -214,7 +213,6 @@ class GltfImage {
                     URL.revokeObjectURL(this.image_url);
                     this.image_url  = undefined;
                     this.image_data = undefined;
-                    console.log(this);
                     resolve();
                 }
             });
@@ -261,7 +259,7 @@ class GltfMaterial {
     constructor(gltf, json) {
         this.name    = def(json.name,"");
         const pbr    = def(json.pbrMetallicRoughness,{});
-        this.color   = (1.,1.,1.,1.);
+        this.color   = [1.,1.,1.,1.];
         this.metallic  = 1.;
         this.roughness = 1.;
         this.base_texture   = undefined;
@@ -272,16 +270,23 @@ class GltfMaterial {
         this.color     = def(pbr.baseColorFactor,this.color);
         this.roughness = def(pbr.roughnessFactor,this.roughness);
         this.metallic  = def(pbr.metallicFactor, this.metallic);
-        do_if(pbr.baseColorTexture,  (n)=>{this.base_texture     =gltf.get_texture(n.index);} );
-        do_if(pbr.metallicRoughnessTexture,  (n)=>{this.mr_texture     =gltf.get_texture(n.index);} );
-        do_if(json.normalTexture,    (n)=>{this.normal_texture   =gltf.get_texture(n.index);} );
-        do_if(json.emissionTexture,  (n)=>{this.emission_texture =gltf.get_texture(n.index);} );
-        do_if(json.occlusionTexture, (n)=>{this.occlusion_texture=gltf.get_texture(n.index);} );
+        do_if(pbr.baseColorTexture,  (n)=>{this.base_texture     = gltf.get_texture(n.index);} );
+        do_if(pbr.metallicRoughnessTexture,  (n)=>{this.mr_texture     = gltf.get_texture(n.index);} );
+        do_if(json.normalTexture,    (n)=>{this.normal_texture   = gltf.get_texture(n.index);} );
+        do_if(json.emissionTexture,  (n)=>{this.emission_texture = gltf.get_texture(n.index);} );
+        do_if(json.occlusionTexture, (n)=>{this.occlusion_texture= gltf.get_texture(n.index);} );
     }
     //f to_model_material
     to_model_material() {
         const m = new ModelMaterial()
         m.color = this.color;
+        m.metallic = this.metallic;
+        m.roughness = this.roughness;
+        do_if(this.base_texture,      (t) => {m.base_texture = t.to_texture();});
+        do_if(this.mr_texture,        (t) => {m.mr_texture = t.to_texture();});
+        do_if(this.normal_texture,    (t) => {m.normal_texture = t.to_texture();});
+        do_if(this.occlusion_texture, (t) => {m.occlusion_texture = t.to_texture();});
+        do_if(this.emission_texture,  (t) => {m.emission_texture = t.to_texture();});
         return m;
     }
     //f All done
@@ -330,6 +335,7 @@ class Primitive {
         primitive.indices_offset  = this.indices.offset;
         primitive.indices_count   = this.indices.count;
         primitive.indices_gl_type = this.indices.comp_type.gl_type(GL);
+        console.log(primitive);
         return primitive;
     }
     //f All done

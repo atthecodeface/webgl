@@ -95,6 +95,7 @@ class ViewerFrontend extends Frontend {
 
         this.shader = new BoneShader();
         this.shader.init(GL);
+        console.log(this.shader);
 
         this.model_objects = [];
 
@@ -176,12 +177,6 @@ class ViewerFrontend extends Frontend {
         GL.uniformMatrix4fv(this.shader.uniforms["uProjectionMatrix"],false, this.projection.matrix);
         GL.uniformMatrix4fv(this.shader.uniforms["uCameraMatrix"],    false, this.camera.matrix);
         GL.uniformMatrix4fv(this.shader.uniforms["uMeshMatrix"],      false, mat4.create());
-
-        GL.activeTexture(GL.TEXTURE0);
-        GL.bindTexture(GL.TEXTURE_2D, this.textures.wood.texture);
-        this.shader.set_uniform_if("uTexture",       (u) => GL.uniform1i(u, 0) );
-        this.shader.set_uniform_if("uBonesScale",    (u) => GL.uniform1f(u, 1.) );
-        // this.shader.set_uniform_if("uBonesMatrices", (u) => GL.uniformMatrix4fv(u, false, poses.data) );
 
         const time = this.time;
         for (const o of this.model_objects) {

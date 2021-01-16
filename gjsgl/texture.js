@@ -7,6 +7,7 @@ class Texture {
         this.texture = undefined;
     }
     gl_create() {
+        if (this.texture!==undefined) {return;}
         this.texture = GL.createTexture();
         GL.bindTexture(GL.TEXTURE_2D, this.texture);
         GL.texImage2D(GL.TEXTURE_2D, 0, GL.RGBA, GL.RGBA, GL.UNSIGNED_BYTE, this.data);

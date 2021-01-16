@@ -105,14 +105,23 @@ const vertex_bone4 = `#version 300 es
 
   const frag = `#version 300 es
     precision mediump float;
-    uniform sampler2D uTexture;
+    struct Material {
+        vec4      base_color;
+        vec4      mrxx;
+        sampler2D base_texture;
+        sampler2D mr_texture;
+        sampler2D normal_texture;
+        sampler2D occlusion_texture;
+        sampler2D emission_texture;
+    };
+    uniform Material uMaterial;
 
     in vec3 color_pos;
     in vec3 normal;
     in vec2 tex_uv;
     out vec4 outColor;
     void main() {
-      vec4 t = texture( uTexture, tex_uv );
+      vec4 t = uMaterial.base_color * texture( uMaterial.base_texture, tex_uv );
       vec3 light_direction = -normalize(vec3(-0.2, -1., -1.));
       float n = clamp( abs(dot(light_direction, normalize(normal))), 0., 1. );
       vec4 c = vec4((n*0.8 + vec3(0.2)).xyz,1.) * t;
@@ -128,6 +137,6 @@ class BoneShader extends ShaderProgram {
     vertex_source = vertex_bone4;
     fragment_source = frag;
     attrib_keys = ["vPosition", "vNormal", "vJoints", "vWeights", "vTexture", "vColor",];
-    uniform_keys = ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix", "uMeshMatrix", "uBonesMatrices", "uBonesScale", "uTexture" ];
+    uniform_keys = ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix", "uMeshMatrix", "uBonesMatrices", "uBonesScale", "uMaterial.base_color", "uMaterial.base_texture" ];
 }
 

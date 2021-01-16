@@ -1,11 +1,32 @@
 //a Classes
 //c ModelMaterial
 class ModelMaterial {
+    constructor() {
+        this.color      = [1.,1.,1.,1.];
+        this.metallic  = 1.;
+        this.roughness = 1.;
+        this.base_texture      = undefined;
+        this.mr_texture        = undefined;
+        this.normal_texture    = undefined;
+        this.occlusion_texture = undefined;
+        this.emission_texture  = undefined;
+    }
+    //f gl_create
+    gl_create() {
+        if (this.base_texture!==undefined)      {this.base_texture.gl_create();}
+        if (this.mr_texture!==undefined)        {this.mr_texture.gl_create();}
+        if (this.normal_texture!==undefined)    {this.normal_texture.gl_create();}
+        if (this.occlusion_texture!==undefined) {this.occlusion_texture.gl_create();}
+        if (this.emission_texture!==undefined)  {this.emission_texture.gl_create();}
+    }
     //f gl_program_configure ?
     gl_program_configure(program) {
-        //# GL.glActiveTexture(GL.TEXTURE0)
-        //# GL.glBindTexture(GL.TEXTURE_2D, texture.texture)
-        //# shader.set_uniform_if("uTexture",    lambda u:GL.glUniform1i(u, 0))
+        if (this.base_texture!==undefined) {
+            GL.activeTexture(GL.TEXTURE0);
+            GL.bindTexture(GL.TEXTURE_2D, this.base_texture.texture);
+            program.set_uniform_if("uMaterial.base_texture", (u) => GL.uniform1i(u, 0) );
+        }
+        program.set_uniform_if("uMaterial.base_color",   (u) => GL.uniform4fv(u, this.color) );
     }
     //f str
     str() {
@@ -174,6 +195,7 @@ class ModelPrimitive {
     }
     gl_create() {
         this.view.gl_create();
+        this.material.gl_create();
     }
     gl_bind_program(shader_class) {
         this.view.gl_bind_program(shader_class);
