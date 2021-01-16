@@ -102,7 +102,9 @@ PrimitiveType.enum_to_cls = {
     }
 
 #a Useful functions
-def if_in (a:Dict[Any,Any], n:Any, f:Callable[[Any],Any], default:Any) -> Any:
+T0 = TypeVar('T0')
+T1 = TypeVar('T1')
+def if_in (a:Dict[str,T0], n:str, f:Callable[[T0],T1], default:T1) -> T1:
     if n in a:
         return f(a[n])
     return default
@@ -288,9 +290,9 @@ class GltfMaterial:
         self.color = (1.,1.,1.,1.)
         self.metallic = 1.
         self.roughness = 0.
-        self.color     = if_in(pbr, "baseColorFactor", lambda x:tuple(x), self.color)
-        self.roughness = if_in(pbr, "roughness",       lambda x:x, self.roughness)
-        self.metallic  = if_in(pbr, "metallic",        lambda x:x, self.metallic)
+        self.color     = if_in(pbr, "baseColorFactor", lambda x:tuple(x), self.color) # type: ignore
+        self.roughness = if_in(pbr, "roughness",       lambda x:float(x), self.roughness)
+        self.metallic  = if_in(pbr, "metallic",        lambda x:float(x), self.metallic)
         self.base_texture      = if_in(pbr, "baseColorTexture",         lambda x:gltf.get_texture(x["index"]), None)
         self.mr_texture        = if_in(pbr, "metallicRoughnessTexture", lambda x:gltf.get_texture(x["index"]), None)
         self.normal_texture    = if_in(json, "normalTexture",     lambda x:gltf.get_texture(x["index"]), None)
@@ -334,28 +336,16 @@ class Primitive: # Defines a drawElements call
         self.material = gltf.get_material(json.get("material",0))
         self.normal  = []
         self.tangent = []
-        if "NORMAL" in attributes:  self.normal.append(gltf.get_accessor(attributes["NORMAL"]) )
-        if "TANGENT" in attributes: self.tangent.append( gltf.get_accessor(attributes["TANGENT"]) )
         self.color   = []
         self.tex_coords = []
-        if "TEXCOORD_0" in attributes:
-            self.tex_coords.append( gltf.get_accessor(attributes["TEXCOORD_0"]) )
-            pass
-        if "TEXCOORD_1" in attributes:
-            self.tex_coords.append( gltf.get_accessor(attributes["TEXCOORD_1"]) )
-            pass
-        if "TEXCOORD_1" in attributes:
-            self.tex_coords.append( gltf.get_accessor(attributes["TEXCOORD_1"]) )
-            pass
         self.joints  = []
-        if "JOINTS_0" in attributes:
-            self.joints.append( gltf.get_accessor(attributes["JOINTS_0"]) )
-            pass
         self.weights = []
-        if "WEIGHTS_0" in attributes:
-            self.weights.append( gltf.get_accessor(attributes["WEIGHTS_0"]) )
-            pass
-        # if attributes has "self.material = gltf.get_accessor(json.get("material",0))
+        if "NORMAL" in attributes:     self.normal.append(gltf.get_accessor(attributes["NORMAL"]) )
+        if "TANGENT" in attributes:    self.tangent.append( gltf.get_accessor(attributes["TANGENT"]) )
+        if "TEXCOORD_0" in attributes: self.tex_coords.append( gltf.get_accessor(attributes["TEXCOORD_0"]) )
+        if "TEXCOORD_1" in attributes: self.tex_coords.append( gltf.get_accessor(attributes["TEXCOORD_1"]) )
+        if "JOINTS_0" in attributes:   self.joints.append( gltf.get_accessor(attributes["JOINTS_0"]) )
+        if "WEIGHTS_0" in attributes:  self.weights.append( gltf.get_accessor(attributes["WEIGHTS_0"]) )
         pass
     #f to_model_primitive
     def to_model_primitive(self) -> ModelPrimitive:
@@ -377,7 +367,7 @@ class Primitive: # Defines a drawElements call
         primitive.indices_offset  = self.indices.offset
         primitive.indices_count   = self.indices.count
         primitive.indices_gl_type = self.indices.comp_type.gl_type
-        print(f"Created model primitive {primitive}")
+        # print(f"Created model primitive {primitive}")
         return primitive
     #f All done
     pass
@@ -468,9 +458,7 @@ class Node:
         self.children = json.get("children",[])
         self.transformation = Transformation()
         self.depth = -1
-        if "mesh" in json:
-            self.mesh = gltf.get_mesh(json["mesh"])
-            pass
+        self.mesh = if_in(json, "mesh", lambda x:gltf.get_mesh(x), None)
         if "skin" in json:
             self.skin = gltf.get_skin(json["skin"])
             pass
@@ -550,6 +538,9 @@ class Gltf:
             self.buffers = []
             self.buffer_views = []
             self.accessors = []
+            self.images = []
+            self.samplers = []
+            self.textures = []
             self.materials = []
             self.skins = []
             self.meshes = []

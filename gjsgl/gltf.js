@@ -303,18 +303,17 @@ class Primitive {
         this.indices  = gltf.get_accessor(def(json.indices,0));
         this.material = gltf.get_material(def(json.material,0));
         this.normal  = [];
-        do_if(attributes.NORMAL, (a)=>this.normal.push(gltf.get_accessor(a)) );
         this.tangent  = []
-        do_if(attributes.TANGENT, (a)=>this.tangent.push(gltf.get_accessor(a)) );
         this.color   = [];
         this.tex_coords = [];
+        this.joints  = [];
+        this.weights  = [];
+        do_if(attributes.NORMAL, (a)=>this.normal.push(gltf.get_accessor(a)) );
+        do_if(attributes.TANGENT, (a)=>this.tangent.push(gltf.get_accessor(a)) );
         do_if(attributes.TEXCOORD_0, (a)=>this.tex_coords.push(gltf.get_accessor(a)) );
         do_if(attributes.TEXCOORD_1, (a)=>this.tex_coords.push(gltf.get_accessor(a)) );
-        this.joints  = []
         do_if(attributes.JOINTS_0, (a)=>this.joints.push(gltf.get_accessor(a)) );
-        this.weights  = []
         do_if(attributes.WEIGHTS_0, (a)=>this.weights.push(gltf.get_accessor(a)) );
-        // if attributes has this.material = gltf.get_accessor(json.get("material",0))
     }
     //f to_model_primitive
     to_model_primitive() {
@@ -336,7 +335,7 @@ class Primitive {
         primitive.indices_offset  = this.indices.offset;
         primitive.indices_count   = this.indices.count;
         primitive.indices_gl_type = this.indices.comp_type.gl_type(GL);
-        console.log(primitive);
+        // console.log(primitive);
         return primitive;
     }
     //f All done
