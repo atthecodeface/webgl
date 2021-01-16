@@ -216,11 +216,11 @@ class GltfImage:
         self.image = (0,0,None)
         if self.uri is not None:
             image = PIL.Image.open(self.uri)
-            self.image = (image.size[0], image.size[1], np.array(image.getdata(), np.int8))
+            self.image = (image.size[0], image.size[1], np.array(image))
             pass
         elif self.view is not None:
             image = PIL.Image.fromarray(self.view)
-            self.image = (image.size[0], image.size[1], np.array(image.getdata(), np.int8))
+            self.image = (image.size[0], image.size[1], np.array(image))
             pass
         pass
     #f make_image
@@ -250,14 +250,14 @@ class GltfSampler:
 #c GltfTexture
 class GltfTexture:
     name : str
-    sample : GltfSampler
-    image : GltfImage
+    image   : GltfImage
+    sampler : Optional[GltfSampler]
     texture : Optional[Texture]
     #f __init__
     def __init__(self, gltf:"Gltf", json:Json) -> None:
         self.name        = json.get("name","")
-        self.sampler     = gltf.get_sampler(json.get("sampler",0))
         self.image       = gltf.get_image(json.get("source",0))
+        self.sampler     = if_in(json, "sampler", lambda x:gltf.get_sampler(json.get("sampler",x)), None)
         self.texture     = None
         pass
     #f to_texture

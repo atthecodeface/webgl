@@ -32,13 +32,40 @@ class ModelMaterial:
     color    : Tuple[float,float,float,float] # Base color
     metallic : float # 0 is fully dielectric, 1.0 is fully metallic
     roughness: float # 0.5 is specular, no specular down to 0 full reflection, up to 1 fully matt
-    base_texture: Optional[Texture]
-    normal_texture: Optional[Texture]
-    #f gl_program_configure ?
+    base_texture     : Optional[Texture]
+    mr_texture       : Optional[Texture]
+    normal_texture   : Optional[Texture]
+    occlusion_texture: Optional[Texture]
+    emission_texture : Optional[Texture]
+    #f __init__
+    def __init__(self) -> None:
+        self.color     = (1.,1.,1.,1.)
+        self.metallic  = 1.
+        self.roughness = 1.
+        self.base_texture      = None
+        self.mr_texture        = None
+        self.normal_texture    = None
+        self.occlusion_texture = None
+        self.emission_texture  = None
+        pass
+    #f gl_create
+    def gl_create(self) -> None:
+        if self.base_texture is not None:      self.base_texture.gl_create()
+        if self.mr_texture is not None:        self.mr_texture.gl_create()
+        if self.normal_texture is not None:    self.normal_texture.gl_create()
+        if self.occlusion_texture is not None: self.occlusion_texture.gl_create()
+        if self.emission_texture is not None:  self.emission_texture.gl_create()
+        pass
+    #f gl_program_configure
     def gl_program_configure(self, program:ShaderProgram) -> None:
-        # GL.glActiveTexture(GL.GL_TEXTURE0)
-        # GL.glBindTexture(GL.GL_TEXTURE_2D, texture.texture)
-        # shader.set_uniform_if("uTexture",    lambda u:GL.glUniform1i(u, 0))
+        if self.base_texture is not None:
+            GL.glActiveTexture(GL.GL_TEXTURE0)
+            GL.glBindTexture(GL.GL_TEXTURE_2D, self.base_texture.texture)
+            program.set_uniform_if("uMaterial.base_texture",
+                                   lambda u:GL.glUniform1i(u, 0) )
+            pass
+        program.set_uniform_if("uMaterial.base_color",
+                               lambda u: GL.glUniform4f(u, self.color[0], self.color[1], self.color[2], self.color[3], ) )
         pass
     #f __str__
     def __str__(self) -> str:
@@ -249,6 +276,7 @@ class ModelPrimitive:
     #f gl_create
     def gl_create(self) -> None:
         self.view.gl_create()
+        self.material.gl_create()
         pass
     #f gl_bind_program
     def gl_bind_program(self, shader_class:Type[ShaderClass]) -> None:
@@ -492,12 +520,16 @@ class ModelInstance:
                 bma = self.bone_set_poses[b]
                 program.set_uniform_if("uBonesMatrices",
                                       lambda u:GL.glUniformMatrix4fv(u, bma.max_index, False, bma.data))
+                program.set_uniform_if("uBonesScale",
+                                       lambda u: GL.glUniform1f(u, 1.0) )
+                pass
+            else:
+                program.set_uniform_if("uBonesScale",
+                                       lambda u: GL.glUniform1f(u, 0.0) )
                 pass
             # Provide mesh matrix and material uniforms
             program.set_uniform_if("uMeshMatrix",
                                    lambda u: GL.glUniformMatrix4fv(u, 1, False, glm.value_ptr(t.mat4())) )
-            program.set_uniform_if("uBonesScale",
-                                   lambda u: GL.glUniform1f(u, 1.0) )
             m.gl_draw(program)
             pass
         pass

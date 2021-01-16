@@ -19,7 +19,7 @@ class ModelMaterial {
         if (this.occlusion_texture!==undefined) {this.occlusion_texture.gl_create();}
         if (this.emission_texture!==undefined)  {this.emission_texture.gl_create();}
     }
-    //f gl_program_configure ?
+    //f gl_program_configure
     gl_program_configure(program) {
         if (this.base_texture!==undefined) {
             GL.activeTexture(GL.TEXTURE0);

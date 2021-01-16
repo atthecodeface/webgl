@@ -80,19 +80,21 @@ class ViewerFrontend(Frontend):
         self.motions = 0
 
         self.textures = {}
-        self.textures["wood"] = TextureImage("wood_square.png")
+        self.textures["wood_png"] = TextureImage("wood_square.png")
+        self.textures["wood"] = TextureImage("wood.jpg")
         self.textures["moon"] = TextureImage("moon.png")
         # texture = TextureImage("wood.jpg")
         # texture = TextureImage("moon.png")
 
-        gltf_data = (Path("./milo.gltf"), "Body.001")
-        #gltf_data = (Path("./cubeplus.gltf"), "Cube")
-        #gltf_data = (Path("./simple_escape.gltf"), "RoomExport")
-        #gltf_data = (Path("./milo2.gltf"), "Head.001")
+        self.gltf_data = (Path("./milo.gltf"), "Body.001")
+        # self.gltf_data = (Path("./cubeplus.gltf"), "Cube")
+        # self.gltf_data = (Path("./simple_escape.gltf"), "RoomExport")
+        # self.gltf_data = (Path("./milo2.gltf"), "Head.001")
+        self.gltf_data = [Path("./WaterBottle.gltf"), "WaterBottle"];
 
-        gltf_file = Gltf(Path("."), gltf_data[0])
-        (_, gltf_node) = gltf_file.get_node_by_name(gltf_data[1]) 
-        gltf_root = gltf_node.to_model_object(gltf_file)
+        self.gltf_file = Gltf(Path("."), self.gltf_data[0])
+        self.gltf_node = self.gltf_file.get_node_by_name(self.gltf_data[1]) [1]
+        self.gltf_root = self.gltf_node.to_model_object(self.gltf_file)
 
         c : Object = DoubleCube2()
         c = Cube()
@@ -101,11 +103,14 @@ class ViewerFrontend(Frontend):
         mesh = Mesh(self.shader, c)
         self.mesh_objects.append(MeshObject(mesh, self.textures["wood"], glm.vec3((3.,0.,0.))))
 
-        gltf_model = ModelClass("gltf", gltf_root)
+        gltf_model = ModelClass("gltf", self.gltf_root)
         gltf_inst = ModelInstance(gltf_model)
-        self.pose = gltf_inst.bone_set_poses[0]
+        self.pose = None
         self.animatables = []
-        self.animatables.append(AnimatedBonePose(self.pose.poses[1]))
+        if len(gltf_inst.bone_set_poses)>0:
+            self.pose = gltf_inst.bone_set_poses[0]
+            self.animatables.append(AnimatedBonePose(self.pose.poses[1]))
+            pass
         self.model_objects.append( gltf_inst )
         # self.mesh_objects = []
 

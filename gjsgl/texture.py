@@ -33,7 +33,7 @@ class Texture:
         GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
         GL.glTexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
         GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, self.data[0], self.data[1], 
-                        0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, self.data[2])
+                        0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, self.data[2])
 
         pass
     pass
@@ -41,7 +41,7 @@ class Texture:
 class TextureImage(Texture):
     def __init__(self, url:str) -> None:
         image = Image.open(url)
-        image_data = np.array(image.getdata(), np.int8)
+        image_data = np.array(image) #.getdata(), np.int8)
         super().__init__(data=(image.size[0], image.size[1], image_data))
         pass
     pass
