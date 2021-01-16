@@ -12,49 +12,32 @@ from .transformation import Transformation
 from .gltf import Gltf
 from .sample_models import ObjectModel
 from .model import ModelClass, ModelInstance
-from .animate import Cubic, Linear, LinearQuat
+from .animate import Linear, Bezier2
 #a Frontend
 def axis(mat:glm.Mat4, n:int) -> glm.Vec3:
     return glm.vec3((mat[n][0],mat[n][1],mat[n][2]))
 class AnimatedBonePose:
     def __init__(self, pose:BonePose) -> None:
         self.pose = pose
-        # self.animatable = Linear(0.)
-        self.animatable = Cubic(0.,1.)
-        self.animatable.set_target( t1=1., tgt=(0.,1.), callback=self.animation_callback )
+        self.animatable = Linear(Transformation())
+        self.animatable.set_target( t1=1.,
+                                    tgt=Transformation(quaternion=glm.angleAxis(0.3,glm.vec3((1.,0.,0.)))),
+                                    callback=self.animation_callback )
         pass
     def interpolate_to_time(self, t:float) -> None:
         z = self.animatable.interpolate_to_time(t)
         # print(t, z)
         self.pose.transformation_reset()
-        self.pose.transform(Transformation(translation=(0.,0.,z[0])))
+        self.pose.transform(z)
         pass
     def animation_callback(self, t:float) -> None:
         t_sec = math.floor(t)
         t_int = int(t_sec)
         tgt = 1.0
         if (t_int&1): tgt=-1.
-        self.animatable.set_target( t1=t_sec+1., tgt=(0.,tgt), callback=self.animation_callback )
-        pass
-    pass
-class AnimatedBonePose:
-    def __init__(self, pose:BonePose) -> None:
-        self.pose = pose
-        self.animatable = LinearQuat(glm.quat())
-        self.animatable.set_target( t1=1., tgt=glm.angleAxis(0.3,glm.vec3((1.,0.,0.))), callback=self.animation_callback )
-        pass
-    def interpolate_to_time(self, t:float) -> None:
-        z = self.animatable.interpolate_to_time(t)
-        # print(t, z)
-        self.pose.transformation_reset()
-        self.pose.transform(Transformation(quaternion=z))
-        pass
-    def animation_callback(self, t:float) -> None:
-        t_sec = math.floor(t)
-        t_int = int(t_sec)
-        tgt = 1.0
-        if (t_int&1): tgt=-1.
-        self.animatable.set_target( t1=t_sec+1., tgt=glm.angleAxis(0.3*tgt,glm.vec3((1.,0.,0.))), callback=self.animation_callback )
+        self.animatable.set_target( t1=t_sec+1.,
+                                    tgt=Transformation(quaternion=glm.angleAxis(tgt*0.3,glm.vec3((1.,0.,0.)))),
+                                    callback=self.animation_callback )
         pass
     pass
 
@@ -90,7 +73,7 @@ class ViewerFrontend(Frontend):
         # self.gltf_data = (Path("./cubeplus.gltf"), "Cube")
         # self.gltf_data = (Path("./simple_escape.gltf"), "RoomExport")
         # self.gltf_data = (Path("./milo2.gltf"), "Head.001")
-        self.gltf_data = [Path("./WaterBottle.gltf"), "WaterBottle"];
+        # self.gltf_data = [Path("./WaterBottle.gltf"), "WaterBottle"];
 
         self.gltf_file = Gltf(Path("."), self.gltf_data[0])
         self.gltf_node = self.gltf_file.get_node_by_name(self.gltf_data[1]) [1]
@@ -188,7 +171,6 @@ class ViewerFrontend(Frontend):
         GL.glUniformMatrix4fv(self.shader.uniforms["uCameraMatrix"],     1, False, glm.value_ptr(matrices[1]))
         mat = glm.mat4()
         GL.glUniformMatrix4fv(self.shader.uniforms["uMeshMatrix"], 1, False, glm.value_ptr(mat))
-        self.shader.set_uniform_if("uTexture",    lambda u:GL.glUniform1i(u, 0))
         for m in self.mesh_objects:
             m.draw(self.shader)
             pass

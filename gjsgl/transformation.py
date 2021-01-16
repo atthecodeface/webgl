@@ -138,19 +138,29 @@ class Transformation:
     def __str__(self) -> str:
         r = f"{vec3_str(self.translation)}:{quat_str(self.quaternion)}:{vec3_str(self.scale)}"
         return r
+    #f clone
+    def clone(self) -> "Transformation":
+        t = Transformation( translation = self.translation,
+                            quaternion  = self.quaternion,
+                            scale       = self.scale)
+        return t
     #f copy
     def copy(self, other:"Transformation") -> None:
         self.quaternion  = glm.quat(other.quaternion)
         self.translation = glm.vec3(other.translation)
         self.scale       = glm.vec3(other.scale)
         pass
-    #f set
-    def set(self, base:"Transformation", other:"Transformation") -> None:
+    #f combine
+    def combine(self, base:"Transformation", other:"Transformation") -> None:
         self.quaternion  = base.quaternion * other.quaternion
         self.translation = base.translation + other.translation
         for i in range(3):
             self.scale[i] = base.scale[i] * other.scale[i]
             pass
+        pass
+    #f set
+    def set(self, other:"Transformation") -> None:
+        self.copy(other)
         pass
     #f translate
     def translate(self, t:glm.Vec3, scale:float) -> None:
@@ -201,6 +211,15 @@ class Transformation:
         if qn.w<0: qn = -qn
         qd = glm.length(qn - glm.quat())
         return td+sd+qd
+    #f lerp
+    def lerp(self, t:float, in0:"Transformation", in1:"Transformation") -> None:
+        tn = 1.0-t
+        for i in range(3):
+            self.translation[i] = t*in0.translation[i] + tn*in1.translation[i]
+            self.scale[i]       = t*in0.scale[i]       + tn*in1.scale[i]
+            pass
+        self.quaternion = glm.slerp(in0.quaternion, in1.quaternion, t)
+        pass
     #f All done
     pass
 

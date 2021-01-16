@@ -83,7 +83,7 @@ class Bone:
         pass
     #f set_transformation
     def set_transformation(self, transform:Transformation) -> None:
-        self.transformation.set(self.transformation, transform)
+        self.transformation.combine(self.transformation, transform)
         pass
     #f derive_matrices
     def derive_matrices(self) -> None:
@@ -225,7 +225,7 @@ class BonePose:
         pass
     #f transform
     def transform(self, transform:Transformation) -> None:
-        self.transformation.set(self.transformation, transform)
+        self.transformation.combine(self.transformation, transform)
         pass
     #f derive_animation
     def derive_animation(self) -> None:

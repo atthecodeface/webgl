@@ -5,40 +5,45 @@ import glm
 from typing import *
 
 AnimationComplete = Callable[[float],None]
+#c Animatable
 class Animatable:
+    #v Properties
     t0 : float
     t1 : float
     time : float
     value : Any
-    p0 : Any
-    p1 : Any
+    p0    : Any
     completion_callback : Optional[AnimationComplete]
+    #f __init__
     def __init__(self, p:Any) -> None:
-        self.value = p
         self.time = 0.
         self.t0 = 0.
         self.t1 = 0.
-        self.p0 = p
-        self.p1 = p
+        self.value = p
+        self.p0 = p.clone()
         self.completion_callback = None
         pass
+    #f set
     def set(self, t:float, value:Any) -> None:
         self.t0 = t
-        self.p0 = value
         self.time = t
-        self.value = value
+        self.p0.set(value)
+        self.value.set(value)
         pass
+    #f get_time
     def get_time(self) -> float:
         return self.t0
+    #f get
     def get(self) -> Any:
         return self.value
-    def set_target(self, t1:float, tgt:Any, callback:Optional[AnimationComplete]) -> "Animatable":
+    #f _set_target
+    def _set_target(self, t1:float, callback:Optional[AnimationComplete]) -> None:
         self.t0 = self.time
-        self.p0 = self.value
+        self.p0.set(self.value)
         self.t1 = t1
-        self.p1 = tgt
         self.completion_callback = callback
-        return self
+        pass
+    #f interpolate_to_time
     def interpolate_to_time(self, t:float) -> Any:
         if t<=self.t1:
             self.perform_interpolation(t)
@@ -52,68 +57,79 @@ class Animatable:
             return self.value
         self.interpolate_to_time(self.t1) # And then kick in update of animation...
         return self.interpolate_to_time(t)
+    #f perform_interpolation
     def perform_interpolation(self, t:float) -> None:
         pass
+    #f All done
     pass
 
+#c Linear - animate anything with a linear fashion p0 to p1 providing it has add and scalar mult
 class Linear(Animatable):
+    #v Properties
     value : Any
     p0   : Any
     p1   : Any
+    #f __init__
     def __init__(self, p:Any) -> None:
         super().__init__(p=p)
+        self.p1 = p.clone()
         pass
-    def perform_interpolation(self, t:float) -> None:
+    #f set_target
+    def set_target(self, t1:float, tgt:Any, callback:Optional[AnimationComplete]) -> "Animatable":
+        super()._set_target(t1, callback)
+        self.t1 = t1
+        self.p1.set(tgt)
+        return self
+    #f perform_interpolation - linear interpolation of p(t) between p0(t0) and p1(t1)
+    def perform_interpolation(self, time:float) -> None:
         dt  = self.t1 - self.t0
-        dt0 = t - self.t0
-        dt1 = self.t1 - t
-        if dt < 1E-4:
-            self.value = self.p1
+        dt0 = (time - self.t0) / dt
+        if dt0 > 0.9999:
+            self.value.set(self.p1)
             pass
         else:
-            self.value = (dt1 * self.value + dt0 * self.p1) / dt
+            self.value.lerp(dt0, self.p0, self.p1)
             pass
         pass
+    #f All done
     pass
 
-class Cubic(Animatable):
-    value : Tuple[Any,Any]
-    p0   : Tuple[Any,Any]
-    p1   : Tuple[Any,Any]
-    def __init__(self, p:Any, v:Any) -> None:
-        super().__init__(p=(p,v))
-        pass
-    def perform_interpolation(self, time:float) -> None:
-        dt  = self.t1 - self.t0
-        t = (time - self.t0) / dt
-        if t>0.9999:
-            self.value = self.p1
-            return
-        d = self.p0[0] # position
-        c = self.p0[1] # velocity
-        dp = self.p1[0] - d
-        b = 3 * dp - 2*c - self.p1[1]
-        a = dp - b - c
-        print(t, a+b+c+d, 3*a+2*b+c, self.value, self.p1)
-        v1 = (3*t*t) * a + (2*t) * b + c
-        p1 = (t*t*t) * a + (t*t) * b + t*c + d
-        self.value = (p1, v1)
-        pass
-    pass
-
-Quat=object
-class LinearQuat(Animatable):
-    value : Quat
-    p0    : Quat
-    p1    : Quat
+#c Bezier2 - animate anything with a bezier with 2 control points from p0 to p1 providing it has add and scalar mult
+class Bezier2(Animatable):
+    value : Any
+    p0   : Any
+    c0   : Any
+    p1   : Any
+    c1   : Any
+    #f __init__
     def __init__(self, p:Any) -> None:
         super().__init__(p=p)
+        self.c0 = p.clone()
+        self.c1 = p.clone()
+        self.p1 = p.clone()
+        self.v0 = p.clone() # temp values
+        self.v1 = p.clone()
         pass
+    #f set_target
+    def set_target(self, t1:float, c0:Any, c1:Any, tgt:Any, callback:Optional[AnimationComplete]) -> "Bezier2":
+        super()._set_target(t1, callback)
+        self.c0.set(c0)
+        self.c1.set(c1)
+        self.p1.set(tgt)
+        return self
+    #f perform_interpolation - bezier of (p,v)(t) between (p0,c0)(t0) to (p1,c1)(t1)
     def perform_interpolation(self, time:float) -> None:
         dt  = self.t1 - self.t0
-        dt0 = time - self.t0
-        t = dt0 / dt
-        self.value = glm.slerp(self.p0, self.p1, t)
+        dt0 = (time - self.t0) / dt
+        if dt0 > 0.9999:
+            self.value.set(self.p1)
+            pass
+        else:
+            self.v0.lerp(dt0, self.p0, self.c0)
+            self.v1.lerp(dt0, self.c1, self.p1)
+            self.value.lerp(dt0, self.v0, self.v1)
+            pass
         pass
+    #f All done
     pass
 
