@@ -18,7 +18,7 @@ function assert_vec_eq(a,b,...args) {
     assert (Glm.vec3.length(d)<1E-4, a,b,...args);
 }
 function assert_mat4_eq(a,b,...args) {
-    const c = mat4.subtract(mat4.create(),a,b);
+    const c = Glm.mat4.subtract(Glm.mat4.create(),a,b);
     const d = Math.abs(mat4.determinant(c));
     assert (d<1E-4, a,b,...args);
 }
@@ -29,7 +29,7 @@ function assert_trans_eq(t,scale,trans,quat,msg) {
 
 function test_trans_mat() {
     const a = new TransMat();
-    const b = mat4.create();
+    const b = Glm.mat4.create();
     assert_mat4_eq(a.mat4(),b,"Trans mat of none");
     const c = a.mat_after(a);
     assert_mat4_eq(c.mat4(),b,"Trans mat of identity squared");
@@ -155,6 +155,7 @@ async function demo_read() {
 }
 
 function main() {
+    console.log(Glm);
     demo_read();
     console.log("Keep going...");
     test_hierarchy();

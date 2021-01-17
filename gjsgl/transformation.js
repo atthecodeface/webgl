@@ -28,32 +28,32 @@ function quaternion_to_euler(q) {
 function quaternion_of_rotation(rotation) {
     const rot_min_id   = mat3.subtract(mat3.create(), rotation, mat3.multiplyScalar(mat3.create(),mat3.create(),0.99999));
     const rot_min_id_i = mat3.invert(mat3.create(), rot_min_id);
-    var axis = vec3.create();
+    var axis = Glm.vec3.create();
     for (var j=0; j<3; j++) {
-        var v = vec3.create();
-        var last_v = vec3.copy(vec3.create(),v);
+        var v = Glm.vec3.create();
+        var last_v = Glm.vec3.copy(Glm.vec3.create(),v);
         v[j] = 1.;
         for (i=0; i<10; i++) {
-            vec3.copy(last_v,v);
-            vec3.normalize(v,vec3.transformMat3(v,v,rot_min_id_i));
+            Glm.vec3.copy(last_v,v);
+            Glm.vec3.normalize(v,Glm.vec3.transformMat3(v,v,rot_min_id_i));
         }
-        vec3.copy(axis,v);
-        const dist2 = vec3.sqrLen(vec3.subtract(v,v,last_v));
+        Glm.vec3.copy(axis,v);
+        const dist2 = Glm.vec3.sqrLen(Glm.vec3.subtract(v,v,last_v));
         if (dist2<0.00001) {break;}
     }
 
-    var w = vec3.fromValues(1.0,0,0);
-    if ((axis[0]>0.9) || (axis[0]<-0.9)) {w = vec3.fromValues(0,1.0,0);}
-    const na0 = vec3.normalize(vec3.create(), vec3.cross(vec3.create(), w, axis));
-    const na1 = vec3.cross(vec3.create(), axis, na0);
+    var w = Glm.vec3.fromValues(1.0,0,0);
+    if ((axis[0]>0.9) || (axis[0]<-0.9)) {w = Glm.vec3.fromValues(0,1.0,0);}
+    const na0 = Glm.vec3.normalize(Glm.vec3.create(), Glm.vec3.cross(Glm.vec3.create(), w, axis));
+    const na1 = Glm.vec3.cross(Glm.vec3.create(), axis, na0);
 
     // Rotate w_perp_n around the axis of rotation by angle A
-    const na0_r = vec3.transformMat3(vec3.create(), na0, rotation);
-    const na1_r = vec3.transformMat3(vec3.create(), na1, rotation);
+    const na0_r = Glm.vec3.transformMat3(Glm.vec3.create(), na0, rotation);
+    const na1_r = Glm.vec3.transformMat3(Glm.vec3.create(), na1, rotation);
 
     // Get angle of rotation
-    const cos_angle =  vec3.dot(na0, na0_r);
-    const sin_angle = -vec3.dot(na0, na1_r);
+    const cos_angle =  Glm.vec3.dot(na0, na0_r);
+    const sin_angle = -Glm.vec3.dot(na0, na1_r);
     const angle = Math.atan2(sin_angle, cos_angle);
 
     // Set quaternion
@@ -65,7 +65,7 @@ class TransMat {
     //f constructor
     constructor(mat) {
         if (mat === undefined) {
-            this.mat = mat4.create();
+            this.mat = Glm.mat4.create();
         } else {
             this.mat = mat;
         }
@@ -76,7 +76,7 @@ class TransMat {
     }
     //f mat_after
     mat_after(pre_mat) {
-        return new TransMat(mat4.multiply(mat4.create(),pre_mat.mat,this.mat));
+        return new TransMat(mat4.multiply(Glm.mat4.create(),pre_mat.mat,this.mat));
     }
     //f All done
 }
@@ -84,29 +84,29 @@ class TransMat {
 //a Transformation
 class Transformation {
     constructor(translation, quaternion, scale) {
-        this.translation = vec3.create();
+        this.translation = Glm.vec3.create();
         this.quaternion  = quat.create();
-        this.scale       = vec3.set(vec3.create(),1.,1.,1.);
+        this.scale       = Glm.vec3.set(Glm.vec3.create(),1.,1.,1.);
         if (translation !== undefined) {
-            vec3.copy(this.translation, translation);
+            Glm.vec3.copy(this.translation, translation);
         }
         if (quaternion !== undefined) {
             quat.copy(this.quaternion, quaternion);
         }
         if (scale !== undefined) {
-            vec3.copy(this.scale,scale);
+            Glm.vec3.copy(this.scale,scale);
         }
     }
     //f copy
     copy(other) {
         quat.copy(this.quaternion,  other.quaternion);
-        vec3.copy(this.translation, other.translation);
-        vec3.copy(this.scale,       other.scale);
+        Glm.vec3.copy(this.translation, other.translation);
+        Glm.vec3.copy(this.scale,       other.scale);
     }
     //f set
     set(base, other) {
         quat.multiply(this.quaternion, base.quaternion, other.quaternion);
-        vec3.add(this.translation, base.translation, other.translation);
+        Glm.vec3.add(this.translation, base.translation, other.translation);
         for (var i=0; i<3; i++) {
             this.scale[i] = base.scale[i] * other.scale[i];
         }
@@ -123,7 +123,7 @@ class Transformation {
     }
     //f mat4
     mat4() {
-        var m = mat4.create();
+        var m = Glm.mat4.create();
         mat4.fromQuat(m, this.quaternion);
         m[12] += this.translation[0];
         m[13] += this.translation[1];
@@ -137,11 +137,11 @@ class Transformation {
     }
     //f from_mat4
     from_mat4(m) {
-        this.translation = vec3.fromValues(m[3*4+0], m[3*4+1], m[3*4+2]);
+        this.translation = Glm.vec3.fromValues(m[3*4+0], m[3*4+1], m[3*4+2]);
         var rotation = mat3.create();
         for (var i=0; i<3; i++) {
-            const v = vec3.fromValues(m[4*i+0],m[4*i+1],m[4*i+2]);
-            const l = vec3.length(v);
+            const v = Glm.vec3.fromValues(m[4*i+0],m[4*i+1],m[4*i+2]);
+            const l = Glm.vec3.length(v);
             this.scale[i] = l;
             rotation[3*i+0] = v[0]/l;
             rotation[3*i+1] = v[1]/l;
@@ -155,12 +155,12 @@ class Transformation {
     }
     //f trans_mat_after
     trans_mat_after(pre_mat) {
-        return new TransMat(mat4.multiply(mat4.create(),pre_mat.mat,this.mat4()));
+        return new TransMat(mat4.multiply(Glm.mat4.create(),pre_mat.mat,this.mat4()));
     }
     //f distance
     distance(other) {
-        const td = vec3.distance(this.translation, other.translation);
-        const sd = vec3.distance(this.scale, other.scale);
+        const td = Glm.vec3.distance(this.translation, other.translation);
+        const sd = Glm.vec3.distance(this.scale, other.scale);
         const qn = quat.multiply(quat.create(),quat.invert(quat.create(),this.quaternion),other.quaternion);
         if (qn[3]>0) {quat.scale(qn,qn,-1);}
         const qd = quat.length(quat.add(quat.create(),qn,quat.create()));
