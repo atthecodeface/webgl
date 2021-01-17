@@ -339,8 +339,8 @@ class AnimatedBonePose:
         self.poses = poses
         self.animatable = Bezier2(Transformation())
         self.animatable.set_target( t1=1.,
-                                    c0=Transformation(quaternion=glm.angleAxis(0.3,glm.vec3((1.,0.,0.)))),
-                                    c1=Transformation(quaternion=glm.angleAxis(0.3,glm.vec3((1.,0.,0.)))),
+                                    c0=Transformation( quaternion=glm.angleAxis(0.3,glm.vec3((1.,0.,0.)))),
+                                    c1=Transformation( quaternion=glm.angleAxis(0.3,glm.vec3((1.,0.,0.)))),
                                     tgt=Transformation(quaternion=glm.angleAxis(0.3,glm.vec3((1.,0.,0.)))),
                                     callback=self.animation_callback )
         pass

@@ -14,8 +14,8 @@ function assert_eq(a,b,...args) {
     assert(a==b,a,b,...args);
 }
 function assert_vec_eq(a,b,...args) {
-    const d = vec3.subtract(vec3.create(),a,b);
-    assert (vec3.length(d)<1E-4, a,b,...args);
+    const d = Glm.vec3.subtract(Glm.vec3.create(),a,b);
+    assert (Glm.vec3.length(d)<1E-4, a,b,...args);
 }
 function assert_mat4_eq(a,b,...args) {
     const c = mat4.subtract(mat4.create(),a,b);
@@ -40,7 +40,7 @@ function test_transformation() {
     const a = new Transformation();
     const b = new Transformation();
     b.copy(a);
-    const c = new Transformation(translation=vec3.set(vec3.create(),1.,2.,3.),
+    const c = new Transformation(translation=Glm.vec3.set(Glm.vec3.create(),1.,2.,3.),
                                  quaternion=b.quaternion,
                                  scale=b.scale);
     const d = new Transformation();
@@ -54,9 +54,9 @@ function test_transformation() {
     d.set(d,c);
     assert_trans_eq(d,[1.,1.,1.],[2.,4.,6.],q,"d2");
 
-    const ma = new Transformation(translation=vec3.fromValues(4.,5.,6.),
-                                  quaternion=quat.setAxisAngle(quat.create(),vec3.fromValues(1.,0.,0.),0.1),
-                                  scale=vec3.fromValues(7.,8.,9.));
+    const ma = new Transformation(translation=Glm.vec3.fromValues(4.,5.,6.),
+                                  quaternion=quat.setAxisAngle(quat.create(),Glm.vec3.fromValues(1.,0.,0.),0.1),
+                                  scale=Glm.vec3.fromValues(7.,8.,9.));
     const mb = new Transformation();
     mb.from_mat4(ma.mat4());
     assert(mb.distance(ma)<1E-5, "transformation to and from mat4")
