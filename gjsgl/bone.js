@@ -10,9 +10,9 @@ class Bone {
         if (matrix_index===undefined) { matrix_index=-1;}
         this.matrix_index   = matrix_index;
         this.transformation = new Transformation();
-        this.btp = mat4.create(); // derived from translation and quaternion
-        this.ptb = mat4.create();
-        this.mtb = mat4.create();
+        this.btp = Glm.mat4.create(); // derived from translation and quaternion
+        this.ptb = Glm.mat4.create();
+        this.mtb = Glm.mat4.create();
         this.set_transformation(transformation);
     }
     //f iter_hierarchy
@@ -42,12 +42,12 @@ class Bone {
     }
     //f derive_matrices
     derive_matrices() {
-        mat4.copy(this.btp, this.transformation.mat4());
-        mat4.invert(this.ptb, this.btp);
+        Glm.mat4.copy(this.btp, this.transformation.mat4());
+        Glm.mat4.invert(this.ptb, this.btp);
         if (this.parent == null) {
-            mat4.copy(this.mtb, this.ptb);
+            Glm.mat4.copy(this.mtb, this.ptb);
         } else {
-            mat4.multiply(this.mtb, this.ptb, this.parent.mtb);
+            Glm.mat4.multiply(this.mtb, this.ptb, this.parent.mtb);
         }
         for (const c of this.children) {
             c.derive_matrices();
@@ -142,10 +142,10 @@ class BonePose {
         this.transformation = new Transformation();
         this.transformation_reset();
 
-        this.btp = mat4.create(); // derived from translation and quaternion
-        this.ptb = mat4.create();
-        this.animated_btm = mat4.create();
-        this.animated_mtm = mat4.create();
+        this.btp = Glm.mat4.create(); // derived from translation and quaternion
+        this.ptb = Glm.mat4.create();
+        this.animated_btm = Glm.mat4.create();
+        this.animated_mtm = Glm.mat4.create();
     }
     //f set_parent
     set_parent(parent) {
@@ -171,13 +171,13 @@ class BonePose {
     }
     //f derive_animation
     derive_animation() {
-        mat4.copy(this.btp, this.transformation.mat4());
+        Glm.mat4.copy(this.btp, this.transformation.mat4());
         if (this.parent == null) {
-            mat4.copy(this.animated_btm, this.btp);
+            Glm.mat4.copy(this.animated_btm, this.btp);
         } else {
-            mat4.multiply(this.animated_btm, this.parent.animated_btm, this.btp);
+            Glm.mat4.multiply(this.animated_btm, this.parent.animated_btm, this.btp);
         }
-        mat4.multiply(this.animated_mtm, this.animated_btm, this.bone.mtb);
+        Glm.mat4.multiply(this.animated_mtm, this.animated_btm, this.bone.mtb);
         for (const c of this.children) {
             c.derive_animation();
         }

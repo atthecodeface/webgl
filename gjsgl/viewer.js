@@ -7,7 +7,7 @@ class Projection {
         this.recalculate();
     }
     recalculate() {
-        this.matrix = mat4.perspective(mat4.create(), this.fov, this.aspect, this.near, this.far);
+        this.matrix = Glm.mat4.perspective(Glm.mat4.create(), this.fov, this.aspect, this.near, this.far);
     }
     set_fov(x) {
         this.fov = x * Math.PI / 180;   // in radians
@@ -33,12 +33,12 @@ class Camera {
         if ((d=document.getElementById("cameraEY"))!==undefined) {d.value=this.eulers[1]*180/Math.PI;}
         if ((d=document.getElementById("cameraEZ"))!==undefined) {d.value=this.eulers[2]*180/Math.PI;}
         if ((d=document.getElementById("cameraZoom"))!==undefined) {d.value=Math.log2(this.zoom)*10.+50;}
-        const camera = mat4.create();
+        const camera = Glm.mat4.create();
         mat4.rotateY(camera, camera, this.eulers[1]);
         mat4.rotateZ(camera, camera, this.eulers[2]);
         mat4.rotateX(camera, camera, this.eulers[0]);
         mat4.translate(camera, camera, this.translation);
-        mat4.scale(camera, camera, [this.zoom,this.zoom,this.zoom]);
+        Glm.mat4.scale(camera, camera, [this.zoom,this.zoom,this.zoom]);
         this.matrix = camera;
     }
     translate(n,x) {
@@ -56,8 +56,8 @@ class Camera {
         if (n==0) { quat.rotateX(q,q,x);}
         if (n==1) { quat.rotateY(q,q,x);}
         if (n==2) { quat.rotateZ(q,q,x);}
-        const m = mat4.clone(this.matrix);
-        mat4.multiply(this.matrix, mat4.fromQuat(mat4.create(),q), this.matrix);
+        const m = Glm.mat4.clone(this.matrix);
+        Glm.mat4.multiply(this.matrix, Glm.mat4.fromQuat(Glm.mat4.create(),q), this.matrix);
         mat4.getRotation(q, this.matrix);
         this.eulers = quaternion_to_euler(q);
         this.recalculate();
@@ -176,7 +176,7 @@ class ViewerFrontend extends Frontend {
         GL.useProgram(this.shader.program);
         GL.uniformMatrix4fv(this.shader.uniforms["uProjectionMatrix"],false, this.projection.matrix);
         GL.uniformMatrix4fv(this.shader.uniforms["uCameraMatrix"],    false, this.camera.matrix);
-        GL.uniformMatrix4fv(this.shader.uniforms["uMeshMatrix"],      false, mat4.create());
+        GL.uniformMatrix4fv(this.shader.uniforms["uMeshMatrix"],      false, Glm.mat4.create());
 
         const time = this.time;
         for (const o of this.model_objects) {
