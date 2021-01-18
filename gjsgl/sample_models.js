@@ -1,11 +1,11 @@
 class ObjectModel extends ModelClass {
     constructor(name, obj) {
         const bones = new BoneSet();
-        var b = new Bone(undefined, new Transformation(vec3.set(vec3.create(),0.,0.,-1.)));
+        var b = new Bone(undefined, new Transformation(Glm.vec3.set(Glm.vec3.create(),0.,0.,-1.)));
         bones.add_bone(b);
-        b = new Bone(bones.bones[0], new Transformation(vec3.set(vec3.create(),0.,0.,2.)));
+        b = new Bone(bones.bones[0], new Transformation(Glm.vec3.set(Glm.vec3.create(),0.,0.,2.)));
         bones.add_bone(b);
-        b = new Bone(bones.bones[1], new Transformation(vec3.set(vec3.create(),0.,0.,2.)));
+        b = new Bone(bones.bones[1], new Transformation(Glm.vec3.set(Glm.vec3.create(),0.,0.,2.)));
         bones.add_bone(b);
         bones.rewrite_indices();
         bones.derive_matrices();

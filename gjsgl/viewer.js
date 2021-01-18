@@ -34,31 +34,29 @@ class Camera {
         if ((d=document.getElementById("cameraEZ"))!==undefined) {d.value=this.eulers[2]*180/Math.PI;}
         if ((d=document.getElementById("cameraZoom"))!==undefined) {d.value=Math.log2(this.zoom)*10.+50;}
         const camera = Glm.mat4.create();
-        mat4.rotateY(camera, camera, this.eulers[1]);
-        mat4.rotateZ(camera, camera, this.eulers[2]);
-        mat4.rotateX(camera, camera, this.eulers[0]);
-        mat4.translate(camera, camera, this.translation);
+        const q = Glm.quat.create();
+        Glm.quat.rotateY(q, q, this.eulers[1]);
+        Glm.quat.rotateZ(q, q, this.eulers[2]);
+        Glm.quat.rotateX(q, q, this.eulers[0]);
+        Glm.mat4.fromQuat(camera ,q);
+        Glm.mat4.translate(camera, camera, this.translation);
         Glm.mat4.scale(camera, camera, [this.zoom,this.zoom,this.zoom]);
         this.matrix = camera;
     }
     translate(n,x) {
-        if (1) {
         this.translation[0] += x*this.matrix[0+n];
         this.translation[1] += x*this.matrix[4+n];
-            this.translation[2] += x*this.matrix[8+n]; }
-        else {
-            this.translation[n] += x;
-        }
+        this.translation[2] += x*this.matrix[8+n];
         this.recalculate();
     }
     rotate(n,x) {
-        const q = quat.create();
-        if (n==0) { quat.rotateX(q,q,x);}
-        if (n==1) { quat.rotateY(q,q,x);}
-        if (n==2) { quat.rotateZ(q,q,x);}
+        const q = Glm.quat.create();
+        if (n==0) { Glm.quat.rotateX(q,q,x);}
+        if (n==1) { Glm.quat.rotateY(q,q,x);}
+        if (n==2) { Glm.quat.rotateZ(q,q,x);}
         const m = Glm.mat4.clone(this.matrix);
         Glm.mat4.multiply(this.matrix, Glm.mat4.fromQuat(Glm.mat4.create(),q), this.matrix);
-        mat4.getRotation(q, this.matrix);
+        Glm.mat4.getRotation(q, this.matrix);
         this.eulers = quaternion_to_euler(q);
         this.recalculate();
     }
@@ -185,8 +183,8 @@ class ViewerFrontend extends Frontend {
                 const pose2 = o.bone_set_poses[0].poses[2];
                 pose1.transformation_reset();
                 pose2.transformation_reset();
-                pose1.transform(new Transformation([Math.sin(time),0.,0.5*Math.cos(time*0.4)],quat.create()));
-                pose2.transform(new Transformation([-Math.sin(time),0.,-0.5*Math.cos(time*0.4)],quat.create()));
+                pose1.transform(new Transformation([Math.sin(time),0.,0.5*Math.cos(time*0.4)],Glm.quat.create()));
+                pose2.transform(new Transformation([-Math.sin(time),0.,-0.5*Math.cos(time*0.4)],Glm.quat.create()));
             }
             o.gl_draw(this.shader, time);
         }

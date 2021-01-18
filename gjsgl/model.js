@@ -387,7 +387,7 @@ class ModelInstance {
     }
     //f gl_draw
     gl_draw(shader_program, tick) {
-        const mat = mat4.create();
+        const mat = Glm.mat4.create();
         GL.uniformMatrix4fv(shader_program.uniforms["uModelMatrix"], false, mat);
         for (const bone_set_pose of this.bone_set_poses) {
             bone_set_pose.update(tick);

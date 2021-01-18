@@ -182,16 +182,43 @@ class Quat extends Vector {
         q[3] =  a[3];
         return q;
     }
+    //f rotateX
+    static rotateX(q, a, angle) {
+        const s = Math.sin(angle*0.5), c=Math.cos(angle*0.5);
+        const x = q[0] * c + q[3] * s;
+        const y = q[1] * c + q[2] * s;
+        const z = q[2] * c - q[1] * s;
+        const w = q[3] * c - q[0] * s;
+        q[0]=x; q[1]=y; q[2]=z; q[3]=w;
+        return q;
+    }
+    //f rotateY
+    static rotateY(q, a, angle) {
+        const s = Math.sin(angle*0.5), c=Math.cos(angle*0.5);
+        const x = q[0] * c - q[2] * s;
+        const y = q[1] * c + q[3] * s;
+        const z = q[2] * c + q[0] * s;
+        const w = q[3] * c - q[1] * s;
+        q[0]=x; q[1]=y; q[2]=z; q[3]=w;
+        return q;
+    }
+    //f rotateZ
+    static rotateZ(q, a, angle) {
+        const s = Math.sin(angle*0.5), c=Math.cos(angle*0.5);
+        const x = q[0] * c + q[1] * s;
+        const y = q[1] * c - q[0] * s;
+        const z = q[2] * c + q[3] * s;
+        const w = q[3] * c - q[2] * s;
+        q[0]=x; q[1]=y; q[2]=z; q[3]=w;
+        return q;
+    }
     //f multiply
     static multiply(q, a, b) {
-        const q0 = a[0]*b[3] + a[3]*b[0] + a[1]*b[2] - a[2]*b[1];
-        const q1 = a[1]*b[3] + a[3]*b[1] + a[2]*b[0] - a[0]*b[2];
-        const q2 = a[2]*b[3] + a[3]*b[2] + a[0]*b[1] - a[1]*b[0];
-        const q3 = a[3]*b[3] - a[0]*b[0] - a[1]*b[1] - a[2]*b[2];
-        q[0] = q0;
-        q[1] = q1;
-        q[2] = q2;
-        q[3] = q3;
+        const x = a[0]*b[3] + a[3]*b[0] + a[1]*b[2] - a[2]*b[1];
+        const y = a[1]*b[3] + a[3]*b[1] + a[2]*b[0] - a[0]*b[2];
+        const z = a[2]*b[3] + a[3]*b[2] + a[0]*b[1] - a[1]*b[0];
+        const w = a[3]*b[3] - a[0]*b[0] - a[1]*b[1] - a[2]*b[2];
+        q[0]=x; q[1]=y; q[2]=z; q[3]=w;
         return q;
     }
     //f setAxisAngle
@@ -379,6 +406,45 @@ class Mat4 extends Matrix {
         a[12]=0;a[13]=0;a[14]=0;a[15]=1;
         return a;
     }
+    //f getRotation
+    // from www.euclideanspace
+    static getRotation(q, m) {
+        const lr0 = 1.0/Math.hypot(m[0+0], m[4+0], m[8+0]);
+        const lr1 = 1.0/Math.hypot(m[0+1], m[4+1], m[8+1]);
+        const lr2 = 1.0/Math.hypot(m[0+2], m[4+2], m[8+2]);
+        const m00 = m[0]*lr0, m10=m[1]*lr1, m20=m[ 2]*lr2;
+        const m01 = m[4]*lr0, m11=m[5]*lr1, m21=m[ 6]*lr2;
+        const m02 = m[8]*lr0, m12=m[9]*lr1, m22=m[10]*lr2;
+        const tr = m00 + m11 + m22;
+        var w,x,y,z;
+        if (tr > 0) { 
+            const S = Math.sqrt(tr+1.0) * 2; // S=4*qw 
+            w = 0.25 * S;
+            x = (m21 - m12) / S;
+            y = (m02 - m20) / S; 
+            z = (m10 - m01) / S; 
+        } else if ((m00 > m11)&(m00 > m22)) { 
+            const S = Math.sqrt(1.0 + m00 - m11 - m22) * 2; // S=4*qx 
+            w = (m21 - m12) / S;
+            x = 0.25 * S;
+            y = (m01 + m10) / S; 
+            z = (m02 + m20) / S; 
+        } else if (m11 > m22) { 
+            const S = Math.sqrt(1.0 + m11 - m00 - m22) * 2; // S=4*qy
+            w = (m02 - m20) / S;
+            x = (m01 + m10) / S; 
+            y = 0.25 * S;
+            z = (m12 + m21) / S; 
+        } else { 
+            const S = Math.sqrt(1.0 + m22 - m00 - m11) * 2; // S=4*qz
+            w = (m10 - m01) / S;
+            x = (m02 + m20) / S;
+            y = (m12 + m21) / S;
+            z = 0.25 * S;
+        }
+        q[0]=x; q[1]=y; q[2]=z; q[3]=w;
+        return q;
+    }
     //f scale
     static scale(a, x, s) {
         for (var i=0; i<4; i++) {
@@ -389,8 +455,16 @@ class Mat4 extends Matrix {
         }
         return a;
     }
-    //f translate - apply the mat4 to the translation...
+    //f translate - translate by v *in matrix axes*
+    // Same as postmultiply by [1 0 0 v0], [0 1 0 v1], [0 0 1 v2], [0 0 0 1]
     static translate(a, x, v) {
+        for (var i=0; i<12; i++) {
+            a[i]=x[i];
+        }
+        a[12+0] = x[ 0]*v[0] + x[4+0]*v[1] + x[8+0]*v[2] + x[12+0];
+        a[12+1] = x[ 1]*v[0] + x[4+1]*v[1] + x[8+1]*v[2] + x[12+1];
+        a[12+2] = x[ 2]*v[0] + x[4+2]*v[1] + x[8+2]*v[2] + x[12+2];
+        a[12+3] = x[ 3]*v[0] + x[4+3]*v[1] + x[8+3]*v[2] + x[12+3];
         return a;
     }
     //f perspective
