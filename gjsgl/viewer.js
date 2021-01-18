@@ -75,6 +75,13 @@ class Camera {
 }
 
 class ViewerFrontend extends Frontend {
+    constructor(url, node) {
+        super();
+        this.gltf_data = ["./milo.gltf", "Body.001"];
+        this.gltf_data = ["./milo2.gltf", "Head.001"];
+        this.gltf_data = ["./WaterBottle.gltf", "WaterBottle"];
+        this.gltf_data = [url, node];
+    }
     async init() {
         this.projection = new Projection();
         this.camera     = new Camera();
@@ -101,9 +108,6 @@ class ViewerFrontend extends Frontend {
         //const model = new ObjectModel("cube", cube);
         //this.model_objects.push( new ModelInstance(model) );
 
-        this.gltf_data = ["./milo.gltf", "Body.001"];
-        this.gltf_data = ["./milo2.gltf", "Head.001"];
-        this.gltf_data = ["./WaterBottle.gltf", "WaterBottle"];
         this.gltf_file = new GLTF.Gltf(this.gltf_data[0]);
 
         return Promise.all([this.textures.moon.init(), this.textures.wood.init(), this.gltf_file.init()])

@@ -18,6 +18,9 @@ class ModelMaterial {
         if (this.normal_texture!==undefined)    {this.normal_texture.gl_create();}
         if (this.occlusion_texture!==undefined) {this.occlusion_texture.gl_create();}
         if (this.emission_texture!==undefined)  {this.emission_texture.gl_create();}
+        if (this.base_texture!==undefined) {
+            this.color[3] = 0.;
+        }
     }
     //f gl_program_configure
     gl_program_configure(program) {
@@ -356,6 +359,7 @@ class ModelInstance {
     constructor(model_class) {
         this.bone_set_poses = [];
         this.meshes = [];
+        this.transformation = new Transformation();
         const bone_set_dict = new Map();
         for (const [trans_mat,model] of model_class.iter_objects()) {
             if (!model.has_mesh()) {continue;}
@@ -387,8 +391,7 @@ class ModelInstance {
     }
     //f gl_draw
     gl_draw(shader_program, tick) {
-        const mat = Glm.mat4.create();
-        GL.uniformMatrix4fv(shader_program.uniforms["uModelMatrix"], false, mat);
+        GL.uniformMatrix4fv(shader_program.uniforms["uModelMatrix"], false, this.transformation.mat4());
         for (const bone_set_pose of this.bone_set_poses) {
             bone_set_pose.update(tick);
         }
@@ -403,7 +406,7 @@ class ModelInstance {
             }
             // Provide mesh matrix and material uniforms
             shader_program.set_uniform_if("uMeshMatrix",
-                                          (u) => GL.uniformMatrix4fv(u, false, mat)); //t.mat4()) )
+                                          (u) => GL.uniformMatrix4fv(u, false, t.mat4()) )
             m.gl_draw(shader_program);
         }
     }

@@ -1,3 +1,17 @@
+JS_SOURCES =
+JS_SOURCES += bone.js
+JS_SOURCES += frontend.js
+JS_SOURCES += glm.js
+JS_SOURCES += gltf.js
+JS_SOURCES += hierarchy.js
+JS_SOURCES += model.js
+JS_SOURCES += sample_models.js
+JS_SOURCES += sample_objects.js
+JS_SOURCES += shader.js
+JS_SOURCES += texture.js
+JS_SOURCES += transformation.js
+# JS_SOURCES += viewer.js
+
 help:
 	@echo "Help!"
 	@echo "httpd  - run server for javascript use/testing"
@@ -14,6 +28,9 @@ httpd:
 
 mypy:
 	MYPYPATH=${CURDIR}/mypy_stubs mypy --strict -m test
+
+jslib:
+	cat ${JS_SOURCES:%.js=gjsgl/%.js} > gjsgl.js
 
 py:
 	python3 -m test
