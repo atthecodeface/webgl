@@ -99,21 +99,18 @@ class ViewerFrontend extends Frontend {
         this.textures.wood = new TextureImage("./wood.jpg");
 
         this.shader = new BoneShader();
-        this.shader.init(GL);
-        console.log(this.shader);
-
         this.model_objects = [];
 
         const model = new ObjectModel("cube", make_snake(16,8.));
-        //const model = new ObjectModel("cube", cube);
-        //this.model_objects.push( new ModelInstance(model) );
 
         this.gltf_file = new GLTF.Gltf(this.gltf_data[0]);
 
-        return Promise.all([this.textures.moon.init(), this.textures.wood.init(), this.gltf_file.init()])
+        return Promise.all([this.shader.init(), this.textures.moon.init(), this.textures.wood.init(), this.gltf_file.init()])
     }
     //f gl_ready
     gl_ready() {
+        this.shader.gl_ready();
+        
         this.gltf_node = this.gltf_file.get_node_by_name(this.gltf_data[1]);
         this.gltf_root = this.gltf_node.to_model_object(this.gltf_file);
         const gltf_model = new ModelClass("gltf", this.gltf_root);

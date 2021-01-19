@@ -5,7 +5,7 @@
     <title>WebGL Demo</title>
     <link rel="stylesheet" href="./page.css" type="text/css">
     <script src="./gjsgl.js" defer></script>
-    <script src="./gjsgl/viewer.js" defer></script>
+    <script src="./apps/viewer.js" defer></script>
     <script>
     function set_fov(n,v)   { viewer.projection.set_fov(n,v); }
     function set_euler(n,v) { viewer.camera.set_euler(n,v); }
@@ -13,7 +13,7 @@
     function set_zoom(v)    { viewer.camera.set_zoom(v); }
     function set_animation(a) {viewer.set_animating(a);}
     var viewer;
-    window.onload = () => {viewer=new ViewerFrontend("./spaceship.gltf", "Body.001"); viewer.run();};
+    window.onload = () => {viewer=new ViewerFrontend("./gltf/spaceship.gltf", "Body.001"); viewer.run();};
     </script>
   </head>
   <body>

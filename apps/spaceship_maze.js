@@ -20,7 +20,6 @@ class Camera {
         this.translation = [0.,0.,-30.];
         this.quaternion = Glm.quat.create();
         this.zoom = 1.;
-        this.transformation = new Transformation();
         this.matrix = Glm.mat4.create();
         this.tm     = Glm.mat4.create();
         this.recalculate();
@@ -93,6 +92,7 @@ class SpaceshipMaze extends Frontend {
         super();
     }
     async init() {
+        const promises = [];
         this.textures = {};
         this.motion_of_keys = { 87:1,    83:2,
                                 65:4,    68:8,
@@ -101,13 +101,17 @@ class SpaceshipMaze extends Frontend {
                                 74:1024, 75:2048,
                                 78:4096, 77:8192
                               };
-        this.shader = new BoneShader();
-        this.shader.init(GL);
+        this.shaders = {}
+        this.shaders.bone = new BoneShader();
+        this.shaders.glow = new GlowShader();
+
+        for (const s in this.shaders) {
+            promises.push(this.shaders[s].init());
+        }
 
         this.gltfs = [];
-        this.gltfs.push(new GLTF.Gltf("spaceship.gltf"));
+        this.gltfs.push(new GLTF.Gltf("gltf/spaceship.gltf"));
 
-        const promises = [];
         for (const g of this.gltfs) {
             promises.push(g.init());
         }
@@ -116,6 +120,9 @@ class SpaceshipMaze extends Frontend {
     }
     //f gl_ready
     gl_ready() {
+        for (const s in this.shaders) {
+            this.shaders[s].gl_ready();
+        }
         this.gltf_models = []
         for (const g of this.gltfs) {
             const gltf_node = g.get_node_by_name("Body.001");
@@ -127,7 +134,7 @@ class SpaceshipMaze extends Frontend {
         this.camera     = new Camera();
         this.spaceship  = new Spaceship(this.gltf_models[0]);
 
-        this.spaceship.gl_ready(this.shader);
+        this.spaceship.gl_ready(this.shaders.bone);
     }
     //f key_fn
     key_fn(key, scancode, press, mods) {
@@ -157,17 +164,17 @@ class SpaceshipMaze extends Frontend {
 
         GL.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
 
-        GL.useProgram(this.shader.program);
+        GL.useProgram(this.shaders.bone.program);
 
         // Glm.quat.rotateX(this.camera.quaternion,this.camera.quaternion,0.01);
         this.camera.recalculate();
         
-        GL.uniformMatrix4fv(this.shader.uniforms["uProjectionMatrix"],false, this.projection.matrix);
-        GL.uniformMatrix4fv(this.shader.uniforms["uCameraMatrix"],    false, this.camera.matrix);
+        GL.uniformMatrix4fv(this.shaders.bone.uniforms["uProjectionMatrix"],false, this.projection.matrix);
+        GL.uniformMatrix4fv(this.shaders.bone.uniforms["uCameraMatrix"],    false, this.camera.matrix);
 
         const time = this.time;
         this.spaceship.tick(this.motions);
-        this.spaceship.gl_draw(this.shader, time);
+        this.spaceship.gl_draw(this.shaders.bone, time);
     }
 }
 
