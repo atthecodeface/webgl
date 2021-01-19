@@ -1,7 +1,10 @@
 class ShaderClass {
-    attributes = {};
+    constructor(shader_desc) {
+        this.name = shader_desc.name;
+        this.attrib_keys = shader_desc.attrib_keys;
+        this.attributes = {};
+    }
     validate(program) {
-        console.log(program.attributes);
         for (const sm in program.attributes) {
             this.attributes[sm] = program.attributes[sm];
         }
@@ -12,13 +15,20 @@ class ShaderClass {
     }
 }
 
-class BoneShaderClass extends ShaderClass {
-    name = "Simple shader class";
-    attrib_keys = ["vPosition", "vNormal", "vJoints", "vWeights", "vTexture", "vColor",];
+BoneShaderClass = {
+    name : "Simple shader class",
+    attrib_keys : ["vPosition", "vNormal", "vJoints", "vWeights", "vTexture", "vColor",]
 }
-bone_shader_class = new BoneShaderClass();
+bone_shader_class = new ShaderClass(BoneShaderClass);
 
 class ShaderProgram {
+    constructor(program_desc) {
+        this.shader_class = program_desc.shader_class;
+        this.vertex_uri   = program_desc.vertex_uri  ;
+        this.fragment_uri = program_desc.fragment_uri;
+        this.attrib_keys  = program_desc.attrib_keys ;
+        this.uniform_keys = program_desc.uniform_keys;
+    }
     init() {
         this.init_promises = [];
         this.init_promises.push(new Promise(
@@ -102,20 +112,20 @@ class ShaderProgram {
 }
 
 //c BoneShader
-class BoneShader extends ShaderProgram {
-    shader_class = bone_shader_class;
-    vertex_uri   = "./shader/bone_shader_v.glsl";
-    fragment_uri = "./shader/bone_shader_f.glsl";
-    attrib_keys = ["vPosition", "vNormal", "vJoints", "vWeights", "vTexture", "vColor",];
-    uniform_keys = ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix", "uMeshMatrix", "uBonesMatrices", "uBonesScale", "uMaterial.base_color", "uMaterial.base_texture" ];
+BoneShader = {
+    shader_class : bone_shader_class,
+    vertex_uri   : "./shader/bone_shader_v.glsl",
+    fragment_uri : "./shader/bone_shader_f.glsl",
+    attrib_keys  : ["vPosition", "vNormal", "vJoints", "vWeights", "vTexture", "vColor",],
+    uniform_keys : ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix", "uMeshMatrix", "uBonesMatrices", "uBonesScale", "uMaterial.base_color", "uMaterial.base_texture" ]
 }
 
 //c GlowShader
-class GlowShader extends ShaderProgram {
-    shader_class = bone_shader_class;
-    vertex_uri   = "./shader/unboned_shader_v.glsl";
-    fragment_uri = "./shader/glow_shader_f.glsl";
-    attrib_keys = ["vPosition", "vNormal", "vJoints", "vWeights", "vTexture", "vColor",];
-    uniform_keys = ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix", "uMeshMatrix", "uMaterial.base_color", ];
+GlowShader = {
+    shader_class : bone_shader_class,
+    vertex_uri   : "./shader/unboned_shader_v.glsl",
+    fragment_uri : "./shader/glow_shader_f.glsl",
+    attrib_keys  : ["vPosition", "vNormal", "vJoints", "vWeights", "vTexture", "vColor",],
+    uniform_keys : ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix", "uMeshMatrix", "uMaterial.base_color", ]
 }
 

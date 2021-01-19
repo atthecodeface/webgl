@@ -613,7 +613,6 @@ class Gltf {
         return this.bone_sets[skin];
     }
     //f All done
-    pass
 }
 
 //a GLTF wrapper end

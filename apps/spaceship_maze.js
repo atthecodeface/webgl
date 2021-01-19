@@ -195,8 +195,8 @@ class SpaceshipMaze extends Frontend {
                                 78:4096, 77:8192
                               };
         this.shaders = {}
-        this.shaders.bone = new BoneShader();
-        this.shaders.glow = new GlowShader();
+        this.shaders.bone = new ShaderProgram(BoneShader);
+        this.shaders.glow = new ShaderProgram(GlowShader);
 
         for (const s in this.shaders) {
             promises.push(this.shaders[s].init());
