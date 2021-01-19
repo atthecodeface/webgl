@@ -36,8 +36,9 @@ class Camera {
     }
 }
 
-const tv = Glm.vec2.create();
-const tv2 = Glm.vec2.create();
+const tv  = Glm.vec3.create(); // vec3 so it has room for stuff
+const tv2 = Glm.vec3.create(); // vec3 so it has room for stuff
+const tq  = Glm.quat.create();
 const r_sqrt2 = Math.sqrt(0.5);
 class Polar {
     static create() {
@@ -60,20 +61,32 @@ class Polar {
 var pp;
 function gl_create_particle(shader_class) {
     // ppmbd = new ModelBufferData(new Float32Array(3),0);
-    const ppmbd = new ModelBufferData(new Float32Array(9),0);
-    ppmbd.data[3]=0.2;
-    ppmbd.data[7]=0.2;
-    ppmbd.data[8]=0.2;
+    const ppmbd = new ModelBufferData(new Float32Array(12),0);
+    const size=0.05;
+    ppmbd.data[0]=-size;
+    ppmbd.data[1]=-size;
+    ppmbd.data[2]=-size;
+    ppmbd.data[3]=size;
+    ppmbd.data[4]=-size;
+    ppmbd.data[5]=-size;
+    ppmbd.data[6]=-size;
+    ppmbd.data[7]=size;
+    ppmbd.data[8]=size;
+    ppmbd.data[9]=size;
+    ppmbd.data[10]=size;
     const ppv = new ModelPrimitiveView();
     ppv.position = new ModelBufferView(ppmbd,3,GL.FLOAT,0,0);
-    ppv.indices  = new ModelBufferIndices(new Int32Array(3),0);
+    ppv.indices  = new ModelBufferIndices(new Int32Array(5),0);
     ppv.indices.data[0]=0;
     ppv.indices.data[1]=1;
     ppv.indices.data[2]=2;
+    ppv.indices.data[3]=3;
+    ppv.indices.data[4]=0;
+    ppv.indices.data[5]=1;
     pp = new ModelPrimitive();
     pp.view = ppv;
     pp.material = new ModelMaterial();
-    pp.indices_count = 3;
+    pp.indices_count = 5;
     pp.indices_offset = 0;
     pp.indices_gl_type = GL.UNSIGNED_INT;
     pp.gl_type         = GL.TRIANGLES;
@@ -128,6 +141,49 @@ class Flame extends Particle {
         if (time>this.start_time+1.0) {this.color[1] = 0.7; this.color[2]=0.5;}
         if (time>this.start_time+1.5) {this.color[1] = 0.5; this.color[2]=0.1;}
     }
+    gl_draw(shader_program) {
+        tv[0] = Math.random()*2-1;
+        tv[1] = Math.random()*2-1;
+        tv[2] = Math.random()*2-1;
+        Glm.quat.setAxisAngle(tq,tv,1);
+        Glm.mat4.fromQuat(this.matrix, tq);
+        super.gl_draw(shader_program);
+    }
+}
+class Asteroid {
+    constructor(model_class) {
+        const pos_angle = Math.random()*Math.PI*2;
+        const dist      = 7+2*Math.random();
+        this.pos      = Glm.vec2.create();
+        this.pos[0]   = Math.cos(pos_angle)*dist;
+        this.pos[1]   = Math.sin(pos_angle)*dist;
+        this.velocity = Glm.vec2.create();
+        this.velocity[0]=Math.random()*0.2-0.1;
+        this.velocity[1]=Math.random()*0.2-0.1;
+        this.size = 1;
+        this.angular_velocity = Glm.quat.create();
+        tv[0] = Math.random()*2-1;
+        tv[1] = Math.random()*2-1;
+        tv[2] = Math.random()*2-1;
+        const aspeed = Math.random();
+        Glm.quat.setAxisAngle(this.angular_velocity,tv,aspeed/15);
+        this.model = new ModelInstance(model_class);
+    }
+    gl_ready(shader_class) {
+        this.model.gl_create();
+        this.model.gl_bind_program(shader_class);
+    }
+    tick(game, time) {
+        const q = this.model.transformation.quaternion;
+        Glm.quat.multiply(q, q, this.angular_velocity);
+        Glm.quat.normalize(q, q);
+        Glm.vec2.add(this.pos, this.pos, this.velocity);
+        game.bound_to_field(this.pos);
+    }
+    gl_draw(shader_program, time) {
+        Glm.vec3.set(this.model.transformation.translation, this.pos[0],this.pos[1],0.);
+        this.model.gl_draw(shader_program, time);
+    }
 }
 class Spaceship {
     constructor(model_class) {
@@ -139,11 +195,14 @@ class Spaceship {
         Glm.quat.set(this.model.transformation.quaternion, r_sqrt2,0,0,r_sqrt2);
         this.rocket = 0.9;
     }
-    gl_ready(shader_program) {
+    gl_ready(shader_class) {
         this.model.gl_create();
-        this.model.gl_bind_program(shader_program.shader_class);
+        this.model.gl_bind_program(shader_class);
     }
     gl_draw(shader_program, time) {
+        Glm.quat.set(this.model.transformation.quaternion, r_sqrt2,0,0,r_sqrt2);
+        Glm.quat.rotateY(this.model.transformation.quaternion,this.model.transformation.quaternion,this.angle);
+        Glm.vec3.set(this.model.transformation.translation, this.pos[0],this.pos[1],0.);
         this.model.gl_draw(shader_program, time);
     }
     tick(game, time) {
@@ -171,18 +230,9 @@ class Spaceship {
             }
         }
         Glm.vec2.add(this.pos, this.pos, this.velocity);
-        /*
-        if ((this.pos[0]<-10) && (this.velocity[0]<0)) { this.pos[0]=-20-this.pos[0]; this.velocity[0]=-this.velocity[0];}
-        if ((this.pos[0]> 10) && (this.velocity[0]>0)) { this.pos[0]= 20-this.pos[0]; this.velocity[0]=-this.velocity[0];}
-        if ((this.pos[1]<-10) && (this.velocity[1]<0)) { this.pos[1]=-20-this.pos[1]; this.velocity[1]=-this.velocity[1];}
-        if ((this.pos[1]> 10) && (this.velocity[1]>0)) { this.pos[1]= 20-this.pos[1]; this.velocity[1]=-this.velocity[1];}
-*/
-        Glm.quat.set(this.model.transformation.quaternion, r_sqrt2,0,0,r_sqrt2);
-        Glm.quat.rotateY(this.model.transformation.quaternion,this.model.transformation.quaternion,this.angle);
-        Glm.vec3.set(this.model.transformation.translation, this.pos[0],this.pos[1],0.);
     }
 }
-class SpaceshipMaze extends Frontend {
+class Asteroids extends Frontend {
     constructor(url, node) {
         super();
     }
@@ -196,6 +246,8 @@ class SpaceshipMaze extends Frontend {
                                 74:1024, 75:2048,
                                 78:4096, 77:8192
                               };
+        this.field_xy  = [16.,16.]; // actually should be based on field of view and distance from camera to plane, plus camera_xy
+        this.camera_xy = [1.,1.];
         this.shaders = {}
         this.shaders.bone = new BoneShader();
         this.shaders.glow = new GlowShader();
@@ -204,11 +256,12 @@ class SpaceshipMaze extends Frontend {
             promises.push(this.shaders[s].init());
         }
 
-        this.gltfs = [];
-        this.gltfs.push(new GLTF.Gltf("gltf/spaceship.gltf"));
+        this.gltfs = {};
+        this.gltfs.spaceship = new GLTF.Gltf("gltf/spaceship.gltf");
+        this.gltfs.asteroid  = new GLTF.Gltf("gltf/asteroid.gltf");
 
-        for (const g of this.gltfs) {
-            promises.push(g.init());
+        for (const g in this.gltfs) {
+            promises.push(this.gltfs[g].init());
         }
 
         return Promise.all(promises);
@@ -219,20 +272,26 @@ class SpaceshipMaze extends Frontend {
             this.shaders[s].gl_ready();
         }
         gl_create_particle(this.shaders.bone.shader_class);
-        this.gltf_models = []
-        for (const g of this.gltfs) {
-            const gltf_node = g.get_node_by_name("Body.001");
-            const gltf_root = gltf_node.to_model_object(g);
-            this.gltf_models.push(new ModelClass("spaceship", gltf_root));
-        }
+        this.gltf_models = {}
+        var g = this.gltfs.spaceship;
+        this.gltf_models.spaceship = new ModelClass("spaceship", g.get_node_by_name("Body.001").to_model_object(g))
+        g = this.gltfs.asteroid;
+        this.gltf_models.asteroid = new ModelClass("asteroid", g.get_node_by_name("Asteroid").to_model_object(g))
 
         this.projection = new Projection();
         this.camera     = new Camera();
-        this.spaceship  = new Spaceship(this.gltf_models[0]);
-
-        this.spaceship.gl_ready(this.shaders.bone);
+        this.spaceship  = new Spaceship(this.gltf_models.spaceship);
+        this.asteroids = [];
+        for (var i=0; i<8; i++) {
+            this.asteroids.push(new Asteroid(this.gltf_models.asteroid));
+        }
+            
+        this.spaceship.gl_ready(this.shaders.bone.shader_class);
+        for (const a of this.asteroids) {
+            a.gl_ready(this.shaders.bone.shader_class);
+        }
         this.particles = [];
-        for (var i=0; i<10; i++) {
+        for (var i=0; i<20; i++) {
             this.particles.push( new Flame() );
         }
     }
@@ -253,6 +312,15 @@ class SpaceshipMaze extends Frontend {
     //f mouse_button_fn
     mouse_button_fn(xpos, ypos, button, action, mods) {
     }
+    //f bound_to_field
+    bound_to_field(pos) {
+        Glm.vec2.subtract(tv, pos, this.spaceship.pos);
+        const w=this.field_xy[0], h=this.field_xy[1];
+        if (tv[0]<-w) {pos[0] += 2*w;}
+        if (tv[0]> w) {pos[0] -= 2*w;}
+        if (tv[1]<-h) {pos[1] += 2*h;}
+        if (tv[1]> h) {pos[1] -= 2*h;}
+    }
     //f get_flame
     get_flame() {
         if (Math.random()>0.4) {return null;}
@@ -265,7 +333,7 @@ class SpaceshipMaze extends Frontend {
     }
     //f draw_scene
     draw_scene() {
-        GL.clearColor(0.0, 0.4, 0.0, 1.0);  // Clear to black, fully opaque
+        GL.clearColor(0.0, 0.0, 0.1, 1.0);  // Clear to black, fully opaque
         GL.clearDepth(1.0);                 // Clear everything
         GL.enable(GL.DEPTH_TEST);           // Enable depth testing
         GL.depthFunc(GL.LEQUAL);            // Near things obscure far things
@@ -277,12 +345,15 @@ class SpaceshipMaze extends Frontend {
 
         const time = this.time;
         this.spaceship.tick(this, time);
+        for (const a of this.asteroids) {
+            a.tick(this, time);
+        }
         for (const p of this.particles) {
             p.tick(time);
         }
 
         Glm.vec2.add(tv, this.spaceship.pos, this.camera.translation);
-        const w=5, h=5;
+        const w=this.camera_xy[0], h=this.camera_xy[1];
         if (tv[0]<-w) {this.camera.translation[0] = -this.spaceship.pos[0]-w;}
         if (tv[0]> w) {this.camera.translation[0] = -this.spaceship.pos[0]+w;}
         if (tv[1]<-h) {this.camera.translation[1] = -this.spaceship.pos[1]-h;}
@@ -294,6 +365,9 @@ class SpaceshipMaze extends Frontend {
         GL.uniformMatrix4fv(this.shaders.bone.uniforms["uCameraMatrix"],    false, this.camera.matrix);
 
         this.spaceship.gl_draw(this.shaders.bone, time);
+        for (const a of this.asteroids) {
+            a.gl_draw(this.shaders.bone, time);
+        }
 
         GL.useProgram(this.shaders.glow.program);
         GL.uniformMatrix4fv(this.shaders.glow.uniforms["uProjectionMatrix"],false, this.projection.matrix);

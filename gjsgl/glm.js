@@ -231,6 +231,15 @@ class Quat extends Vector {
         q[3] = c
         return q;
     }
+    //f getAxisAngle
+    static getAxisAngle(axis, q) {
+        const angle = Math.acos(q[3]);
+        axis[0] = q[0];
+        axis[1] = q[1];
+        axis[2] = q[2];
+        Vec3.normalize(axis,axis);
+        return angle;
+    }
     //f All done
 }
 
