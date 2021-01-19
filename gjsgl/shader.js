@@ -116,6 +116,6 @@ class GlowShader extends ShaderProgram {
     vertex_uri   = "./shader/unboned_shader_v.glsl";
     fragment_uri = "./shader/glow_shader_f.glsl";
     attrib_keys = ["vPosition", "vNormal", "vJoints", "vWeights", "vTexture", "vColor",];
-    uniform_keys = ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix", "uMeshMatrix", "uMaterial.color", ];
+    uniform_keys = ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix", "uMeshMatrix", "uMaterial.base_color", ];
 }
 

@@ -41,6 +41,7 @@ class Frontend {
         if (a) {
             if (this.run_step_pending) {return;}
             this.animating = true;
+            this.init_time = Date.now();
             this.run_step();
         } else {
             this.animating = false;
@@ -51,7 +52,7 @@ class Frontend {
         this.run_step_pending = false;
         if (this.animating) {
             this.draw_scene(this.time);
-            this.time += 0.1;
+            this.time = (Date.now() - this.init_time) * 0.001;
             requestAnimationFrame(()=>this.run_step());
             this.run_step_pending = true;
         }

@@ -21,6 +21,7 @@ void main() {
     float n = clamp( abs(dot(light_direction, normalize(normal))), 0., 1. );
     vec4 c = vec4((n*0.8 + vec3(0.2)).xyz,1.) * t;
     outColor = vec4(c.xyz, 1.0);
+    // outColor =vec4(1.0);
     //outColor.xyz = color_pos;
 }
 
