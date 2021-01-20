@@ -1,3 +1,5 @@
+//c Matrix classes
+//cc Projection
 class Projection {
     constructor() {
         this.fov = 45 * Math.PI / 180;   // in radians
@@ -15,6 +17,7 @@ class Projection {
     }
 }
 
+//cc Camera
 class Camera {
     constructor() {
         this.translation = [0.,0.,-30.];
@@ -36,10 +39,16 @@ class Camera {
     }
 }
 
+//v Global variables including temps
+//vt Temporary variables
 const tv  = Glm.vec3.create(); // vec3 so it has room for stuff
 const tv2 = Glm.vec3.create(); // vec3 so it has room for stuff
 const tq  = Glm.quat.create();
+
+//vc Constants
 const r_sqrt2 = Math.sqrt(0.5);
+
+//cc Polar
 class Polar {
     static create() {
         return Glm.vec2.create();
@@ -58,43 +67,54 @@ class Polar {
     }
 }
 
-var pp;
-function gl_create_particle(shader_class) {
-    // ppmbd = new ModelBufferData(new Float32Array(3),0);
-    const ppmbd = new ModelBufferData(new Float32Array(12),0);
-    const size=0.05;
-    ppmbd.data[0]=-size;
-    ppmbd.data[1]=-size;
-    ppmbd.data[2]=-size;
-    ppmbd.data[3]=size;
-    ppmbd.data[4]=-size;
-    ppmbd.data[5]=-size;
-    ppmbd.data[6]=-size;
-    ppmbd.data[7]=size;
-    ppmbd.data[8]=size;
-    ppmbd.data[9]=size;
-    ppmbd.data[10]=size;
-    const ppv = new ModelPrimitiveView();
-    ppv.position = new ModelBufferView(ppmbd,3,GL.FLOAT,0,0);
-    ppv.indices  = new ModelBufferIndices(new Int32Array(5),0);
-    ppv.indices.data[0]=0;
-    ppv.indices.data[1]=1;
-    ppv.indices.data[2]=2;
-    ppv.indices.data[3]=3;
-    ppv.indices.data[4]=0;
-    ppv.indices.data[5]=1;
-    pp = new ModelPrimitive();
-    pp.view = ppv;
-    pp.material = new ModelMaterial();
-    pp.indices_count = 5;
-    pp.indices_offset = 0;
-    pp.indices_gl_type = GL.UNSIGNED_INT;
-    pp.gl_type         = GL.TRIANGLES;
-    pp.gl_create();
-    pp.gl_bind_program(shader_class);
-}
+//c Particle
+//cc ParticlePrimitive - Creates a single ModelPrimitive that describes the particle
+const ParticlePrimitive = ( () => {
+    function gl_create(shader_class) {
+        // ppmbd = new ModelBufferData(new Float32Array(3),0);
+        const ppmbd = new ModelBufferData(new Float32Array(12),0);
+        const size=0.05;
+        ppmbd.data[0]=-size;
+        ppmbd.data[1]=-size;
+        ppmbd.data[2]=-size;
+        ppmbd.data[3]=size;
+        ppmbd.data[4]=-size;
+        ppmbd.data[5]=-size;
+        ppmbd.data[6]=-size;
+        ppmbd.data[7]=size;
+        ppmbd.data[8]=size;
+        ppmbd.data[9]=size;
+        ppmbd.data[10]=size;
+        const ppv = new ModelPrimitiveView();
+        ppv.position = new ModelBufferView(ppmbd,3,GL.FLOAT,0,0);
+        ppv.indices  = new ModelBufferIndices(new Int32Array(5),0);
+        ppv.indices.data[0]=0;
+        ppv.indices.data[1]=1;
+        ppv.indices.data[2]=2;
+        ppv.indices.data[3]=3;
+        ppv.indices.data[4]=0;
+        ppv.indices.data[5]=1;
+        const pp = new ModelPrimitive();
+        pp.view = ppv;
+        pp.material = new ModelMaterial();
+        pp.indices_count = 5;
+        pp.indices_offset = 0;
+        pp.indices_gl_type = GL.UNSIGNED_INT;
+        pp.gl_type         = GL.TRIANGLES;
+        pp.gl_create();
+        pp.gl_bind_program(shader_class);
+        return pp;
+    }
+    return {
+        gl_create:gl_create,
+    };
+}  )();
+
+//cc Particle - Particle instances may share a ModelInstance
 class Particle {
-    constructor() {
+    //fp constructor
+    constructor(model) {
+        this.model = model;
         this.show = true;
         this.pos      = Glm.vec2.create();
         this.velocity = Glm.vec2.create();
@@ -102,8 +122,10 @@ class Particle {
         this.identity   = Glm.mat4.create();
         this.color = [1.,1.,1.,1.];
     }
+    //mp tick - subclass may override
     tick(time) {
     }
+    //mp gl_draw - draw using shader program
     gl_draw(shader_program) {
         if (!this.show) {return;}
         this.matrix[12] = this.pos[0];
@@ -112,13 +134,16 @@ class Particle {
         shader_program.set_uniform_if("uModelMatrix", (u) => GL.uniformMatrix4fv(u, false, this.matrix));
         shader_program.set_uniform_if("uMeshMatrix", (u) => GL.uniformMatrix4fv(u, false, this.identity));
         shader_program.set_uniform_if("uBonesScale", (u) => GL.uniform1f(u, 0.0) )
-        pp.material.color = this.color;
-        pp.gl_draw(shader_program);
+        this.model.material.color = this.color;
+        this.model.gl_draw(shader_program);
     }
+    //zz All done
 }
+
+//c Flame - a kind of Particle
 class Flame extends Particle {
-    constructor() {
-        super();
+    constructor(model) {
+        super(model);
         this.show = false;
         this.start_time = -1000;
     }
@@ -150,6 +175,8 @@ class Flame extends Particle {
         super.gl_draw(shader_program);
     }
 }
+
+//c Asteroid
 class Asteroid {
     constructor(model_class) {
         const pos_angle = Math.random()*Math.PI*2;
@@ -185,42 +212,68 @@ class Asteroid {
         this.model.gl_draw(shader_program, time);
     }
 }
+
+//c Rocket - fired by the spaceship
 class Rocket {
+    //f constructor
     constructor(model_class) {
-        const pos_angle = Math.random()*Math.PI*2;
-        const dist      = 7+2*Math.random();
-        const vel_angle = Math.random(1)*Math.PI*2;
+        this.fired = false;
+        this.speed = 0.4;
+        this.launch_time = 0.;
+        this.life_time = 1.;
         this.pos      = Glm.vec2.create();
-        this.pos[0]   = Math.cos(pos_angle)*dist;
-        this.pos[1]   = Math.sin(pos_angle)*dist;
         this.velocity = Glm.vec2.create();
-        this.velocity[0]=0.4*Math.cos(vel_angle);
-        this.velocity[1]=0.4*Math.sin(vel_angle);
-        this.size = 1;
         this.angular_velocity = Glm.quat.create();
         Glm.quat.rotateZ(this.angular_velocity,this.angular_velocity,0.1);
         this.model = new ModelInstance(model_class);
-        Glm.quat.rotateX(this.model.transformation.quaternion,this.model.transformation.quaternion,Math.PI*0.5);
-        Glm.quat.rotateY(this.model.transformation.quaternion,this.model.transformation.quaternion,Math.PI*0.5);
-        Glm.quat.rotateY(this.model.transformation.quaternion,this.model.transformation.quaternion,vel_angle);
+        this.base_quaternion = Glm.quat.create();
+        Glm.quat.rotateX(this.base_quaternion,this.base_quaternion,Math.PI*0.5);
+        Glm.quat.rotateY(this.base_quaternion,this.base_quaternion,Math.PI*0.5);
     }
+    //f gl_ready - invoked when WebGL is set up
     gl_ready(shader_class) {
         this.model.gl_create();
         this.model.gl_bind_program(shader_class);
     }
+    //f launch - launch a rocket from the spaceship position in its direction with velocity of spaceship + direction
+    launch(game, time) {
+        const dist      = 0.7;
+        const spos = game.spaceship.pos;
+        const sang = game.spaceship.angle;
+        const svel = game.spaceship.velocity;
+        this.pos[0]      = spos[0] + Math.cos(sang)*dist;
+        this.pos[1]      = spos[1] + Math.sin(sang)*dist;
+        this.velocity[0] = this.speed*Math.cos(sang) + svel[0];
+        this.velocity[1] = this.speed*Math.sin(sang) + svel[1];
+        const vel_angle = Math.atan2(svel[1],svel[0]);
+        Glm.quat.rotateY(this.model.transformation.quaternion, this.base_quaternion, sang);
+        this.fired = true;
+        this.launch_time = time;
+    }
+    //f tick - move if alive
     tick(game, time) {
+        if (!this.fired) {return;}
+        if ((time-this.launch_time) > this.life_time) {
+            this.fired = false; return;
+        }
         const q = this.model.transformation.quaternion;
         Glm.quat.multiply(q, q, this.angular_velocity);
         Glm.quat.normalize(q, q);
         Glm.vec2.add(this.pos, this.pos, this.velocity);
         game.bound_to_field(this.pos);
     }
+    //mp gl_draw - draw the rocket at the correct position
     gl_draw(shader_program, time) {
-        Glm.vec3.set(this.model.transformation.translation, this.pos[0],this.pos[1],0.);
+        if (!this.fired) {return;}
+        Glm.vec3.set(this.model.transformation.translation, this.pos[0],this.pos[1], -0.3);
         this.model.gl_draw(shader_program, time);
     }
+    //zz All done
 }
+
+//c Spaceship
 class Spaceship {
+    //fp constructor
     constructor(model_class) {
         this.pos      = Glm.vec2.create();
         this.velocity = Glm.vec2.create();
@@ -228,45 +281,74 @@ class Spaceship {
         this.angular_velocity = 0.01;
         this.model = new ModelInstance(model_class);
         Glm.quat.set(this.model.transformation.quaternion, r_sqrt2,0,0,r_sqrt2);
-        this.rocket = 0.9;
+        this.rocket_ofs = 0.9;
+        this.max_speed = 0.3;
+        this.acceleration = 0.02;
+        this.reverse_acceleration = -0.003;
+        this.braking = (this.max_speed - this.acceleration) / this.max_speed;
+        this.next_allowed_launch_time = -999;
+        this.reload_time = 0.3;
     }
+    //mp gl_ready - invoked when WebGL is ready
     gl_ready(shader_class) {
         this.model.gl_create();
         this.model.gl_bind_program(shader_class);
     }
+    //mp tick - move spaceship as required
+    tick(game, time) {
+        this.angular_velocity = this.angular_velocity*0.95;
+        this.velocity[0] = this.velocity[0] * this.braking;
+        this.velocity[1] = this.velocity[1] * this.braking;
+        if (game.motions&8) {this.angular_velocity-=0.01;}
+        if (game.motions&4) {this.angular_velocity+=0.01;}
+        this.angle += this.angular_velocity;
+        if (game.motions&2) {
+            tv[0] = this.angle;
+            tv[1] = 1;
+            Polar.as_xy(tv,tv);
+            Glm.vec2.scaleAndAdd(this.velocity, this.velocity, tv, this.reverse_acceleration);
+        }
+        if (game.motions&1) {
+            tv[0] = this.angle;
+            tv[1] = 1;
+            Polar.as_xy(tv,tv);
+            Glm.vec2.scaleAndAdd(this.velocity, this.velocity, tv, this.acceleration);
+            if (Math.random()<0.4) {
+                const p = game.get_flame();
+                if (p!=null) {
+                    tv2[0] = this.angle+(Math.random()+Math.random()-1)*0.3;
+                    tv2[1] = -0.2;
+                    Polar.as_xy(tv2,tv2);
+                    p.start(time,
+                            [this.pos[0]-0.6*tv[0]-this.rocket_ofs*tv[1],this.pos[1]-0.6*tv[1]+this.rocket_ofs*tv[0]],
+                            [this.velocity[0]+tv2[0],this.velocity[1]+tv2[1]]
+                           );
+                    this.rocket_ofs=-this.rocket_ofs;
+                }
+            }
+        }
+        if (game.motions&16) {
+            if (time>this.next_allowed_launch_time) {
+                const r = game.get_rocket();
+                if (r!=null) {
+                    r.launch(game,time);
+                    this.next_allowed_launch_time = time + this.reload_time;
+                }
+            }
+        }
+        Glm.vec2.add(this.pos, this.pos, this.velocity);
+    }
+    //mp gl_draw - draw on canvas
     gl_draw(shader_program, time) {
         Glm.quat.set(this.model.transformation.quaternion, r_sqrt2,0,0,r_sqrt2);
         Glm.quat.rotateY(this.model.transformation.quaternion,this.model.transformation.quaternion,this.angle);
         Glm.vec3.set(this.model.transformation.translation, this.pos[0],this.pos[1],0.);
         this.model.gl_draw(shader_program, time);
     }
-    tick(game, time) {
-        this.angular_velocity = this.angular_velocity*0.95;
-        this.velocity[0] = this.velocity[0] * 0.95;
-        this.velocity[1] = this.velocity[1] * 0.95;
-        if (game.motions&8) {this.angular_velocity-=0.01;}
-        if (game.motions&4) {this.angular_velocity+=0.01;}
-        this.angle += this.angular_velocity;
-        if (game.motions&1) {
-            tv[0] = this.angle;
-            tv[1] = (game.motions&1) ? 1:0;
-            Polar.as_xy(tv,tv);
-            Glm.vec2.scaleAndAdd(this.velocity, this.velocity, tv, 0.03);
-            const p = game.get_flame();
-            if (p!=null) {
-                tv2[0] = this.angle+(Math.random()+Math.random()-1)*0.3;
-                tv2[1] = -0.2;
-                Polar.as_xy(tv2,tv2);
-                p.start(time,
-                        [this.pos[0]-0.6*tv[0]-this.rocket*tv[1],this.pos[1]-0.6*tv[1]+this.rocket*tv[0]],
-                        [this.velocity[0]+tv2[0],this.velocity[1]+tv2[1]]
-                       );
-                this.rocket=-this.rocket;
-            }
-        }
-        Glm.vec2.add(this.pos, this.pos, this.velocity);
-    }
+    //zz All done
 }
+
+//c Asteroids - extends Frontend
 class Asteroids extends Frontend {
     constructor(url, node) {
         super();
@@ -284,8 +366,8 @@ class Asteroids extends Frontend {
         this.field_xy  = [16.,16.]; // actually should be based on field of view and distance from camera to plane, plus camera_xy
         this.camera_xy = [1.,1.];
         this.shaders = {}
-        this.shaders.bone = new BoneShader();
-        this.shaders.glow = new GlowShader();
+        this.shaders.bone = new ShaderProgram(BoneShader);
+        this.shaders.glow = new ShaderProgram(GlowShader);
 
         for (const s in this.shaders) {
             promises.push(this.shaders[s].init());
@@ -307,7 +389,7 @@ class Asteroids extends Frontend {
         for (const s in this.shaders) {
             this.shaders[s].gl_ready();
         }
-        gl_create_particle(this.shaders.bone.shader_class);
+        this.particle_model = ParticlePrimitive.gl_create(this.shaders.bone.shader_class);
         this.gltf_models = {}
         var g = this.gltfs.spaceship;
         this.gltf_models.spaceship = new ModelClass("spaceship", g.get_node_by_name("Body.001").to_model_object(g))
@@ -337,7 +419,7 @@ class Asteroids extends Frontend {
         }
         this.particles = [];
         for (var i=0; i<20; i++) {
-            this.particles.push( new Flame() );
+            this.particles.push( new Flame(this.particle_model) );
         }
     }
     //f key_fn
@@ -368,9 +450,17 @@ class Asteroids extends Frontend {
     }
     //f get_flame
     get_flame() {
-        if (Math.random()>0.4) {return null;}
         for (const p of this.particles) {
             if (!p.show) {
+                return p;
+            }
+        }
+        return null;
+    }
+    //f get_rocket
+    get_rocket() {
+        for (const p of this.rockets) {
+            if (!p.fired) {
                 return p;
             }
         }
@@ -386,7 +476,6 @@ class Asteroids extends Frontend {
         GL.cullFace(GL.BACK);
 
         GL.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
-
 
         const time = this.time;
         this.spaceship.tick(this, time);

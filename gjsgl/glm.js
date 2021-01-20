@@ -185,30 +185,30 @@ class Quat extends Vector {
     //f rotateX
     static rotateX(q, a, angle) {
         const s = Math.sin(angle*0.5), c=Math.cos(angle*0.5);
-        const x = q[0] * c + q[3] * s;
-        const y = q[1] * c + q[2] * s;
-        const z = q[2] * c - q[1] * s;
-        const w = q[3] * c - q[0] * s;
+        const x = a[0] * c + a[3] * s;
+        const y = a[1] * c + a[2] * s;
+        const z = a[2] * c - a[1] * s;
+        const w = a[3] * c - a[0] * s;
         q[0]=x; q[1]=y; q[2]=z; q[3]=w;
         return q;
     }
     //f rotateY
     static rotateY(q, a, angle) {
         const s = Math.sin(angle*0.5), c=Math.cos(angle*0.5);
-        const x = q[0] * c - q[2] * s;
-        const y = q[1] * c + q[3] * s;
-        const z = q[2] * c + q[0] * s;
-        const w = q[3] * c - q[1] * s;
+        const x = a[0] * c - a[2] * s;
+        const y = a[1] * c + a[3] * s;
+        const z = a[2] * c + a[0] * s;
+        const w = a[3] * c - a[1] * s;
         q[0]=x; q[1]=y; q[2]=z; q[3]=w;
         return q;
     }
     //f rotateZ
     static rotateZ(q, a, angle) {
         const s = Math.sin(angle*0.5), c=Math.cos(angle*0.5);
-        const x = q[0] * c + q[1] * s;
-        const y = q[1] * c - q[0] * s;
-        const z = q[2] * c + q[3] * s;
-        const w = q[3] * c - q[2] * s;
+        const x = a[0] * c + a[1] * s;
+        const y = a[1] * c - a[0] * s;
+        const z = a[2] * c + a[3] * s;
+        const w = a[3] * c - a[2] * s;
         q[0]=x; q[1]=y; q[2]=z; q[3]=w;
         return q;
     }
