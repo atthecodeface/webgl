@@ -185,6 +185,41 @@ class Asteroid {
         this.model.gl_draw(shader_program, time);
     }
 }
+class Rocket {
+    constructor(model_class) {
+        const pos_angle = Math.random()*Math.PI*2;
+        const dist      = 7+2*Math.random();
+        const vel_angle = Math.random(1)*Math.PI*2;
+        this.pos      = Glm.vec2.create();
+        this.pos[0]   = Math.cos(pos_angle)*dist;
+        this.pos[1]   = Math.sin(pos_angle)*dist;
+        this.velocity = Glm.vec2.create();
+        this.velocity[0]=0.4*Math.cos(vel_angle);
+        this.velocity[1]=0.4*Math.sin(vel_angle);
+        this.size = 1;
+        this.angular_velocity = Glm.quat.create();
+        Glm.quat.rotateZ(this.angular_velocity,this.angular_velocity,0.1);
+        this.model = new ModelInstance(model_class);
+        Glm.quat.rotateX(this.model.transformation.quaternion,this.model.transformation.quaternion,Math.PI*0.5);
+        Glm.quat.rotateY(this.model.transformation.quaternion,this.model.transformation.quaternion,Math.PI*0.5);
+        Glm.quat.rotateY(this.model.transformation.quaternion,this.model.transformation.quaternion,vel_angle);
+    }
+    gl_ready(shader_class) {
+        this.model.gl_create();
+        this.model.gl_bind_program(shader_class);
+    }
+    tick(game, time) {
+        const q = this.model.transformation.quaternion;
+        Glm.quat.multiply(q, q, this.angular_velocity);
+        Glm.quat.normalize(q, q);
+        Glm.vec2.add(this.pos, this.pos, this.velocity);
+        game.bound_to_field(this.pos);
+    }
+    gl_draw(shader_program, time) {
+        Glm.vec3.set(this.model.transformation.translation, this.pos[0],this.pos[1],0.);
+        this.model.gl_draw(shader_program, time);
+    }
+}
 class Spaceship {
     constructor(model_class) {
         this.pos      = Glm.vec2.create();
@@ -259,6 +294,7 @@ class Asteroids extends Frontend {
         this.gltfs = {};
         this.gltfs.spaceship = new GLTF.Gltf("gltf/spaceship.gltf");
         this.gltfs.asteroid  = new GLTF.Gltf("gltf/asteroid.gltf");
+        this.gltfs.rocket    = new GLTF.Gltf("gltf/rocket.gltf");
 
         for (const g in this.gltfs) {
             promises.push(this.gltfs[g].init());
@@ -277,6 +313,8 @@ class Asteroids extends Frontend {
         this.gltf_models.spaceship = new ModelClass("spaceship", g.get_node_by_name("Body.001").to_model_object(g))
         g = this.gltfs.asteroid;
         this.gltf_models.asteroid = new ModelClass("asteroid", g.get_node_by_name("Asteroid").to_model_object(g))
+        g = this.gltfs.rocket;
+        this.gltf_models.rocket = new ModelClass("rocket", g.get_node_by_name("Rocket").to_model_object(g))
 
         this.projection = new Projection();
         this.camera     = new Camera();
@@ -285,9 +323,16 @@ class Asteroids extends Frontend {
         for (var i=0; i<8; i++) {
             this.asteroids.push(new Asteroid(this.gltf_models.asteroid));
         }
+        this.rockets = [];
+        for (var i=0; i<2; i++) {
+            this.rockets.push(new Rocket(this.gltf_models.rocket));
+        }
             
         this.spaceship.gl_ready(this.shaders.bone.shader_class);
         for (const a of this.asteroids) {
+            a.gl_ready(this.shaders.bone.shader_class);
+        }
+        for (const a of this.rockets) {
             a.gl_ready(this.shaders.bone.shader_class);
         }
         this.particles = [];
@@ -348,6 +393,9 @@ class Asteroids extends Frontend {
         for (const a of this.asteroids) {
             a.tick(this, time);
         }
+        for (const a of this.rockets) {
+            a.tick(this, time);
+        }
         for (const p of this.particles) {
             p.tick(time);
         }
@@ -366,6 +414,9 @@ class Asteroids extends Frontend {
 
         this.spaceship.gl_draw(this.shaders.bone, time);
         for (const a of this.asteroids) {
+            a.gl_draw(this.shaders.bone, time);
+        }
+        for (const a of this.rockets) {
             a.gl_draw(this.shaders.bone, time);
         }
 
