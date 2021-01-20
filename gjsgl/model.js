@@ -131,14 +131,6 @@ class ModelBufferView {
 
 //c ModelPrimitiveView
 class ModelPrimitiveView {
-    attribute_mapping = { "vPosition":"position",
-                          "vNormal":"normal",
-                          "vTexture":"tex_coords",
-                          "vJoints":"joints",
-                          "vWeights":"weights",
-                          "vTangent":"tangent",
-                          "vColor":"color",
-                          }
     //f constructor
     constructor() {
         this.position   = undefined;
@@ -148,6 +140,14 @@ class ModelPrimitiveView {
         this.weights    = undefined;
         this.tangent    = undefined;
         this.color      = undefined;
+        this.attribute_mapping = { "vPosition":"position",
+                          "vNormal":"normal",
+                          "vTexture":"tex_coords",
+                          "vJoints":"joints",
+                          "vWeights":"weights",
+                          "vTangent":"tangent",
+                          "vColor":"color",
+                                 };
     }
     //f gl_create
     gl_create() {
@@ -262,7 +262,7 @@ class ModelMesh {
 
 //c ModelObject
 class ModelObject {
-    //f constructor
+    //f constructo\r
     constructor(parent, transformation) {
         this.transformation = transformation;
         this.parent = parent;
@@ -274,7 +274,7 @@ class ModelObject {
         this.bones = undefined;
     }
     //f iter_objects
-    iter_objects = function*(trans_mat) {
+    *iter_objects(trans_mat) {
         if (this.transformation !== undefined) {
             trans_mat = this.transformation.trans_mat_after(trans_mat);
         }
@@ -332,7 +332,7 @@ class ModelClass {
         this.bones = [];
     }
     //f iter_objects
-    iter_objects = function*() {
+    *iter_objects() {
         for (const o of this.root_object.iter_objects(new TransMat())) {
             yield(o);
         }
