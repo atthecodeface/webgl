@@ -20,7 +20,7 @@ class Projection {
 //cc Camera
 class Camera {
     constructor() {
-        this.translation = [0.,0.,-30.];
+        this.translation = [0.,0.,-45.];
         this.quaternion = Glm.quat.create();
         this.zoom = 1.;
         this.matrix = Glm.mat4.create();
@@ -41,12 +41,70 @@ class Camera {
 
 //v Global variables including temps
 //vt Temporary variables
+const tv_b = Glm.vec2.create(); // vec3 so it has room for stuff
 const tv  = Glm.vec3.create(); // vec3 so it has room for stuff
 const tv2 = Glm.vec3.create(); // vec3 so it has room for stuff
+const tv3 = Glm.vec3.create(); // vec3 so it has room for stuff
 const tq  = Glm.quat.create();
 
 //vc Constants
 const r_sqrt2 = Math.sqrt(0.5);
+
+//c Collider
+const Collider = ( () => {
+    function circle_to_circle(c0, r0, c1, r1, make_relative) {
+        const tv = Collider.tv0;
+        Glm.vec2.subtract(tv, c1, c0);
+        if (make_relative!==undefined) {
+            make_relative(tv);
+        }
+        tv[2] = 0;
+        d = Glm.vec2.length(tv);
+        return d<=r0+r1;
+    }
+    function circle_to_line(c0, r0, p0, p1, make_relative) {
+        const tv0 = Collider.tv0;
+        const tv1 = Collider.tv1;
+        const tv2 = Collider.tv2;
+        const tv3 = Collider.tv3;
+        // Get tv0 = vector of line dp, tv2=p0 rel to c0, tv3=p1 r3 to c0
+        Glm.vec2.subtract(tv0, p1, p0);
+        Glm.vec2.subtract(tv2, p0, c0);
+        Glm.vec2.subtract(tv3, p1, c0);
+        if (make_relative!==undefined) {
+            make_relative(tv0);
+            make_relative(tv2);
+            make_relative(tv3);
+        }
+        tv0[2] = 0;
+        tv2[2] = 0;
+        tv3[2] = 0;
+        // Get tv1 = unit normal to line dp, n
+        tv1[0] = -tv0[1];
+        tv1[1] =  tv0[0];
+        tv1[2] = 0;
+        Glm.vec2.normalize(tv1, tv1);
+        // Get distance between line and origin
+        const d = Glm.vec2.dot(tv2, tv1);
+        if (Math.abs(d)>r0) {return null;}
+        // Line passes close enough to circle
+        const pd0 = Glm.vec2.dot(tv2, tv0);
+        const pd1 = Glm.vec2.dot(tv3, tv0);
+        if ((pd0<0) && (pd1>0)) {
+            return Math.abs(d);
+        }
+        return null;
+    }
+    return {
+        circle_to_circle : circle_to_circle,
+        circle_to_line   : circle_to_line,
+        // sphere_to_sphere: sphere_to_sphere, 
+        tv0 : Glm.vec3.create(),
+        tv1 : Glm.vec3.create(),
+        tv2 : Glm.vec3.create(),
+        tv3 : Glm.vec3.create()
+    };
+} ) ();
 
 //cc Polar
 class Polar {
@@ -146,6 +204,7 @@ class Flame extends Particle {
         super(model);
         this.show = false;
         this.start_time = -1000;
+        this.life_time = 1.0;
     }
     start(time, pos, vel) {
         Glm.vec2.copy(this.pos,pos);
@@ -153,7 +212,8 @@ class Flame extends Particle {
         this.start_time = time;
     }
     tick(time) {
-        if (time>this.start_time+2.) {
+        const dt = (time - this.start_time) / this.life_time;
+        if (dt>1) {
             this.show = false;
             return;
         }
@@ -162,9 +222,9 @@ class Flame extends Particle {
         this.color[0] = 1.;
         this.color[1] = 1.;
         this.color[2] = 1.;
-        if (time>this.start_time+0.5) {this.color[1] = 0.9; this.color[2]=0.7;}
-        if (time>this.start_time+1.0) {this.color[1] = 0.7; this.color[2]=0.5;}
-        if (time>this.start_time+1.5) {this.color[1] = 0.5; this.color[2]=0.1;}
+        if (dt>0.25) {this.color[1] = 0.9; this.color[2]=0.7;}
+        if (dt>0.50) {this.color[1] = 0.7; this.color[2]=0.5;}
+        if (dt>0.75) {this.color[1] = 0.5; this.color[2]=0.1;}
     }
     gl_draw(shader_program) {
         tv[0] = Math.random()*2-1;
@@ -185,9 +245,10 @@ class Asteroid {
         this.pos[0]   = Math.cos(pos_angle)*dist;
         this.pos[1]   = Math.sin(pos_angle)*dist;
         this.velocity = Glm.vec2.create();
-        this.velocity[0]=Math.random()*0.2-0.1;
-        this.velocity[1]=Math.random()*0.2-0.1;
-        this.size = 1;
+        this.velocity[0]=(Math.random()-0.5)*0.1;
+        this.velocity[1]=(Math.random()-0.5)*0.1;
+        this.size = 0;
+        this.min_size = 0.3;
         this.angular_velocity = Glm.quat.create();
         tv[0] = Math.random()*2-1;
         tv[1] = Math.random()*2-1;
@@ -201,13 +262,75 @@ class Asteroid {
         this.model.gl_bind_program(shader_class);
     }
     tick(game, time) {
+        if (this.size==0) return;
         const q = this.model.transformation.quaternion;
         Glm.quat.multiply(q, q, this.angular_velocity);
         Glm.quat.normalize(q, q);
         Glm.vec2.add(this.pos, this.pos, this.velocity);
         game.bound_to_field(this.pos);
     }
+    hit(game, time, pos, velocity, d) {
+        if (this.size==0) return;
+        tv[0] = -velocity[1];
+        tv[1] =  velocity[0];
+        tv[2] = 0;
+        console.log(tv);
+        Glm.vec2.normalize(tv, tv); // normal to velocity
+        console.log(tv);
+        Glm.vec2.subtract(tv3,pos,this.pos);
+        game.bound_to_field(tv3);
+        tv3[2] = 0;
+        const side_guess = Glm.vec2.dot(tv3,tv);
+        const sign_side = (side_guess>0)?1.0:-1;
+        Glm.vec2.scaleAndAdd(tv2,this.pos,tv,sign_side*d); // point of separation
+        const mass = this.size * this.size; // fake it as a circle
+        const d_frac = (d>=this.size)?1 : Math.abs(d)/this.size; // defensive programming
+        /*
+        const smaller_mass_ratio = Math.acos(d_frac)/Math.PI; // (guess - correct of circle) this mass is the smaller mass
+        const smaller_mass = mass * smaller_mass_ratio;
+        const larger_mass  = mass - smaller_mass;
+        const larger_size = Math.sqrt(larger_mass);
+        const smaller_size = Math.sqrt(smaller_mass);
+        */
+        const larger_size  = this.size * (1+d_frac)/2;
+        const smaller_size = this.size-larger_size;
+        const larger_mass = larger_size*larger_size;
+        const smaller_mass = smaller_size*smaller_size;
+        const impulse = 0.003 * (smaller_mass+larger_mass);
+        console.log(tv, larger_size, smaller_size);
+        // console.log(d, mass, d_angle, smaller_mass_ratio, smaller_mass, larger_mass, larger_size, smaller_size);
+        if (larger_size < this.min_size) {
+            this.size = 0;
+            game.mass_destroyed(mass);
+            // console.log("Got one");
+            return;
+        }
+        game.mass_destroyed(mass - smaller_mass - larger_mass);
+        if (smaller_size > this.min_size){
+            const a = game.get_asteroid();
+            if (a==null) {
+                console.log("Should spawn asteroid subfragment but could not");
+                game.mass_destroyed(smaller_mass);
+            }
+            const rel_mass = game.rocket_mass / smaller_mass;
+            Glm.vec2.scaleAndAdd(a.velocity,this.velocity,velocity,rel_mass);
+            Glm.vec2.scaleAndAdd(a.velocity,a.velocity,tv,sign_side/smaller_mass*impulse);
+            Glm.vec2.scaleAndAdd(a.pos,tv2,tv,sign_side*smaller_size);
+            a.size = smaller_size;
+        } else {
+            game.mass_destroyed(smaller_mass);
+        }
+        // current momentum = this.velocity * mass; add other.velocity*its mass,
+        const rel_mass = game.rocket_mass / larger_mass;
+        Glm.vec2.scaleAndAdd(this.velocity,this.velocity,velocity,rel_mass);
+        Glm.vec2.scaleAndAdd(this.velocity,this.velocity,tv,-sign_side/larger_mass*impulse);
+        Glm.vec2.scaleAndAdd(this.pos,tv2,tv,-sign_side*larger_size);
+        // should add an impulse perpendicular to velocity in to both smaller and larger
+        this.size = larger_size;
+    }
     gl_draw(shader_program, time) {
+        if (this.size==0) return;
+        Glm.vec3.set(this.model.transformation.scale, this.size, this.size, this.size);
         Glm.vec3.set(this.model.transformation.translation, this.pos[0],this.pos[1],0.);
         this.model.gl_draw(shader_program, time);
     }
@@ -219,6 +342,7 @@ class Rocket {
     constructor(model_class) {
         this.fired = false;
         this.speed = 0.4;
+        this.size = 1.0;
         this.launch_time = 0.;
         this.life_time = 1.;
         this.pos      = Glm.vec2.create();
@@ -229,6 +353,7 @@ class Rocket {
         this.base_quaternion = Glm.quat.create();
         Glm.quat.rotateX(this.base_quaternion,this.base_quaternion,Math.PI*0.5);
         Glm.quat.rotateY(this.base_quaternion,this.base_quaternion,Math.PI*0.5);
+        Glm.vec3.set(this.model.transformation.translation, this.size, this.size, this.size);
     }
     //f gl_ready - invoked when WebGL is set up
     gl_ready(shader_class) {
@@ -259,6 +384,16 @@ class Rocket {
         const q = this.model.transformation.quaternion;
         Glm.quat.multiply(q, q, this.angular_velocity);
         Glm.quat.normalize(q, q);
+        Glm.vec2.add(tv, this.pos, this.velocity);
+        for (const a of game.asteroids) {
+            if (a.size==0) {continue;}
+            const d=Collider.circle_to_line(a.pos, a.size, this.pos, tv, game.make_relative);
+            if (d!=null){
+                a.hit(game, time, this.pos, this.velocity, d);
+                this.fired = false;
+                return;
+            }
+        }
         Glm.vec2.add(this.pos, this.pos, this.velocity);
         game.bound_to_field(this.pos);
     }
@@ -287,7 +422,7 @@ class Spaceship {
         this.reverse_acceleration = -0.003;
         this.braking = (this.max_speed - this.acceleration) / this.max_speed;
         this.next_allowed_launch_time = -999;
-        this.reload_time = 0.3;
+        this.reload_time = 0.2;
     }
     //mp gl_ready - invoked when WebGL is ready
     gl_ready(shader_class) {
@@ -296,7 +431,7 @@ class Spaceship {
     }
     //mp tick - move spaceship as required
     tick(game, time) {
-        this.angular_velocity = this.angular_velocity*0.95;
+        this.angular_velocity = this.angular_velocity*0.9;
         this.velocity[0] = this.velocity[0] * this.braking;
         this.velocity[1] = this.velocity[1] * this.braking;
         if (game.motions&8) {this.angular_velocity-=0.01;}
@@ -313,7 +448,7 @@ class Spaceship {
             tv[1] = 1;
             Polar.as_xy(tv,tv);
             Glm.vec2.scaleAndAdd(this.velocity, this.velocity, tv, this.acceleration);
-            if (Math.random()<0.4) {
+            if (Math.random()<0.3) {
                 const p = game.get_flame();
                 if (p!=null) {
                     tv2[0] = this.angle+(Math.random()+Math.random()-1)*0.3;
@@ -337,6 +472,12 @@ class Spaceship {
             }
         }
         Glm.vec2.add(this.pos, this.pos, this.velocity);
+        for (const a of game.asteroids) {
+            // if (!a.show)
+            if (Collider.circle_to_circle(this.pos, 1.0, a.pos, a.size)) { // make_relative
+                // console.log(this.pos,a);
+            }
+        }
     }
     //mp gl_draw - draw on canvas
     gl_draw(shader_program, time) {
@@ -358,12 +499,12 @@ class Asteroids extends Frontend {
         this.textures = {};
         this.motion_of_keys = { 87:1,    83:2,
                                 65:4,    68:8,
-                                90:16,   88:32,
+                                32:16,   88:32,
                                 76:256,  188:512,
                                 74:1024, 75:2048,
                                 78:4096, 77:8192
                               };
-        this.field_xy  = [16.,16.]; // actually should be based on field of view and distance from camera to plane, plus camera_xy
+        this.field_xy  = [20.,20.]; // actually should be based on field of view and distance from camera to plane, plus camera_xy
         this.camera_xy = [1.,1.];
         this.shaders = {}
         this.shaders.bone = new ShaderProgram(BoneShader);
@@ -401,13 +542,51 @@ class Asteroids extends Frontend {
         this.projection = new Projection();
         this.camera     = new Camera();
         this.spaceship  = new Spaceship(this.gltf_models.spaceship);
+
+        this.rocket_mass = 0.04;
+        this.rocket_speed = 0.2;
+        this.rocket_size = 1.0;
+        this.asteroid_size = 2.0;
+        this.num_asteroids = 6;
+        
+        this.spaceship.reload_time = 0.15;
+        this.spaceship.rocket_ofs = 0.9;
+        this.spaceship.max_speed = 0.25;
+        this.spaceship.acceleration = 0.01;
+        this.spaceship.reverse_acceleration = -0.003;
+        
+        this.rocket_mass = 0.02;
+        this.rocket_speed = 0.7;
+        this.rocket_size = 1.0;
+        this.asteroid_size = 2.0;
+        this.num_asteroids = 6;
+        
+        this.spaceship.reload_time = 0.4;
+        this.spaceship.rocket_ofs = 0.9;
+        this.spaceship.max_speed = 0.4;
+        this.spaceship.acceleration = 0.02;
+        this.spaceship.reverse_acceleration = -0.010;
+        
+        this.spaceship.braking = (this.spaceship.max_speed - this.spaceship.acceleration) / this.spaceship.max_speed;
+        
         this.asteroids = [];
-        for (var i=0; i<8; i++) {
+        for (var i=0; i<100; i++) {
             this.asteroids.push(new Asteroid(this.gltf_models.asteroid));
         }
+        this.total_size = 0.
+        for (var i=0; i<this.num_asteroids; i++) {
+            this.asteroids[i].size = this.asteroid_size;;
+            this.total_size += this.asteroids[i].size*this.asteroids[i].size;
+        }
+        this.destroyed = 0;
+        this.mass_destroyed(0);
+
         this.rockets = [];
-        for (var i=0; i<2; i++) {
-            this.rockets.push(new Rocket(this.gltf_models.rocket));
+        for (var i=0; i<20; i++) {
+            const r =new Rocket(this.gltf_models.rocket);
+            r.speed = this.rocket_speed;
+            r.size  = this.rocket_size;
+            this.rockets.push(r);
         }
             
         this.spaceship.gl_ready(this.shaders.bone.shader_class);
@@ -418,7 +597,7 @@ class Asteroids extends Frontend {
             a.gl_ready(this.shaders.bone.shader_class);
         }
         this.particles = [];
-        for (var i=0; i<20; i++) {
+        for (var i=0; i<50; i++) {
             this.particles.push( new Flame(this.particle_model) );
         }
     }
@@ -431,7 +610,7 @@ class Asteroids extends Frontend {
         } else {
             this.motions = this.motions &= ~motion;
         }
-        if (press && (key==80)) {console.log(this.camera, this.spaceship);}
+        if (press && (key==80)) {console.log(this);}
     }
     //f cursor_fn
     cursor_fn(xpos, ypos) {
@@ -441,17 +620,26 @@ class Asteroids extends Frontend {
     }
     //f bound_to_field
     bound_to_field(pos) {
-        Glm.vec2.subtract(tv, pos, this.spaceship.pos);
+        Glm.vec2.subtract(tv_b, pos, this.spaceship.pos);
         const w=this.field_xy[0], h=this.field_xy[1];
-        if (tv[0]<-w) {pos[0] += 2*w;}
-        if (tv[0]> w) {pos[0] -= 2*w;}
-        if (tv[1]<-h) {pos[1] += 2*h;}
-        if (tv[1]> h) {pos[1] -= 2*h;}
+        if (tv_b[0]<-w) {pos[0] += 2*w;}
+        if (tv_b[0]> w) {pos[0] -= 2*w;}
+        if (tv_b[1]<-h) {pos[1] += 2*h;}
+        if (tv_b[1]> h) {pos[1] -= 2*h;}
     }
     //f get_flame
     get_flame() {
         for (const p of this.particles) {
             if (!p.show) {
+                return p;
+            }
+        }
+        return null;
+    }
+    //f get_asteroid
+    get_asteroid() {
+        for (const p of this.asteroids) {
+            if (p.size==0) {
                 return p;
             }
         }
@@ -465,6 +653,14 @@ class Asteroids extends Frontend {
             }
         }
         return null;
+    }
+    //f mass_destroyed
+    mass_destroyed(m) {
+        this.destroyed += m;
+        const d=document.getElementById("destroyed");
+        if (d!=null) {
+            d.innerHTML = Math.round(this.destroyed/this.total_size*1000)/10+"%";
+        }
     }
     //f draw_scene
     draw_scene() {

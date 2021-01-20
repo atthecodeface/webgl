@@ -38,6 +38,7 @@ class Frontend {
     }
     //f set_animating
     set_animating(a) {
+        console.log("Set animating",a);
         if (a) {
             if (this.run_step_pending) {return;}
             this.animating = true;
@@ -64,7 +65,7 @@ class Frontend {
         const scancode = 0;
         const mods = (event.shiftKey?1:0)  | (event.ctrlKey?2:0) | (event.altKey?4:0);
         this.key_mods = mods;
-        if (key==81) {this.animating=false;}
+        if ((key==81) && (mods&2) && press) {this.set_animating(!this.animating);}
         if (press) {
             this.keys_down.add(key);
         } else {
