@@ -1,4 +1,6 @@
 #a Imports
+from dataclasses import dataclass
+from pathlib import Path
 from OpenGL import GL
 from typing import *
 
@@ -7,6 +9,23 @@ if not TYPE_CHECKING:
     pass
 
 #a Classes
+#c ShaderClassDesc
+@dataclass
+class ShaderClassDesc:
+    name : str
+    attrib_keys: List[str]
+    pass
+
+#c ShaderProgramDesc
+@dataclass
+class ShaderProgramDesc:
+    shader_class   : "ShaderClass"
+    vertex_uri     : str
+    fragment_uri   : str
+    attrib_keys    : List[str]
+    uniform_keys   : List[str]
+    pass
+
 #c ShaderClass
 class ShaderClass:
     """
@@ -16,44 +35,65 @@ class ShaderClass:
     must have a fixed attribute location
     """
     #v Properties
-    name            : ClassVar[str]
-    attrib_keys     : ClassVar[List[str]]
-    attributes      : ClassVar[Dict[str, GL.Attribute]]
-    @classmethod
-    def validate(cls, program:"ShaderProgram") -> None:
-        if not hasattr(cls, "attributes"):
-            cls.attributes = {}
-            for k in cls.attrib_keys:
+    name            : str
+    attrib_keys     : List[str]
+    attributes      : Dict[str, GL.Attribute]
+    #f __init__
+    def __init__(self, desc:ShaderClassDesc) -> None:
+        self.name = desc.name
+        self.attrib_keys = desc.attrib_keys
+        pass
+    #f validate
+    def validate(self, program:"ShaderProgram") -> None:
+        if not hasattr(self, "attributes"):
+            self.attributes = {}
+            for k in self.attrib_keys:
                 if k in program.attributes:
-                    cls.attributes[k] = program.attributes[k]
+                    self.attributes[k] = program.attributes[k]
                     pass
                 pass
             pass
-        for k in cls.attrib_keys:
-            if k in program.attributes and (cls.attributes[k] == program.attributes[k]):
-                continue
-            raise Exception("Shader program does not conform to shader class {cls.name}")
+        for k in self.attrib_keys:
+            if k not in program.attributes: continue
+            if self.attributes[k] == program.attributes[k]: continue
+            raise Exception("Shader program does not conform to shader class {self.name}")
         pass
     #f get_attr
-    @classmethod
-    def get_attr(cls, name:str) -> Optional[GL.Attribute]:
-        return cls.attributes.get(name,None)
+    def get_attr(self, name:str) -> Optional[GL.Attribute]:
+        return self.attributes.get(name,None)
+    #f All done
+    pass
 
 #c ShaderProgram
 class ShaderProgram:
     #v Properties
-    shader_class    : ClassVar[Type[ShaderClass]]
-    vertex_source   : ClassVar[str]
-    fragment_source : ClassVar[str]
-    attrib_keys     : ClassVar[List[str]]
-    uniform_keys    : ClassVar[List[str]]
+    shader_class    : ShaderClass
+    vertex_source   : str
+    fragment_source : str
+    attrib_keys     : List[str]
+    uniform_keys    : List[str]
     uniforms        : Dict[str, GL.Uniform]
     attributes      : Dict[str, GL.Attribute]
     vertex_shader   : GL.Shader
     fragment_shader : GL.Shader
     program         : GL.Program
     #f __init__
-    def __init__(self) -> None:
+    def __init__(self, program_desc:Type[ShaderProgramDesc]) -> None:
+        with Path(program_desc.vertex_uri).open() as f:
+            self.vertex_source = "#version 410 core\n"+f.read()
+            pass
+        with Path(program_desc.fragment_uri).open() as f:
+            self.fragment_source = "#version 410 core\n"+f.read()
+            pass
+        self.shader_class = program_desc.shader_class
+        self.attrib_keys  = program_desc.attrib_keys
+        self.uniform_keys = program_desc.uniform_keys
+        pass
+    #f gl_ready
+    def gl_ready(self):
+        """
+        Continue compilation etc; this can only happen when we have the source
+        """
         self.vertex_shader   = self.compile(GL.GL_VERTEX_SHADER, self.vertex_source)
         self.fragment_shader = self.compile(GL.GL_FRAGMENT_SHADER, self.fragment_source)
         self.program = GL.glCreateProgram()
@@ -62,10 +102,12 @@ class ShaderProgram:
         GL.glLinkProgram(self.program)
         if (GL.glGetProgramiv(self.program, GL.GL_LINK_STATUS)) != 1:
             raise Exception(f"Unable to initialize the shader program: {GL.glGetProgramInfoLog(self.program).decode()}")
+
         self.attributes = {}
         self.uniforms   = {}
         for k in self.attrib_keys:
-            self.attributes[k] = GL.glGetAttribLocation(self.program, k)
+            a = GL.glGetAttribLocation(self.program, k)
+            if a>=0: self.attributes[k] = a
             pass
         for k in self.uniform_keys:
             self.uniforms[k]   = GL.glGetUniformLocation(self.program, k)
@@ -93,119 +135,45 @@ class ShaderProgram:
     #f All done
     pass
 
-#c BoneshaderClass
-class BoneShaderClass(ShaderClass):
+#c BoneShaderClass
+class BoneShaderClass(ShaderClassDesc):
     name = "Simple shader class"
     attrib_keys = ["vPosition", "vNormal", "vJoints", "vWeights", "vTexture", "vColor",]
     pass
+bone_shader_class = ShaderClass(BoneShaderClass)
 
 #c BoneShader
-class BoneShader(ShaderProgram):
-    shader_class = BoneShaderClass
-    vertex_source = """
-    #version 410 core
-    layout(location = 0) in vec3 vPosition;
-    layout(location = 1) in vec3 vNormal;
-    layout(location = 2) in vec4 vWeights;
-    layout(location = 3) in vec2 vTexture;
-    layout(location = 4) in vec4 vJoints;
-    layout(location = 5) in vec4 vColor;
-
-    uniform mat4 uProjectionMatrix;
-    uniform mat4 uCameraMatrix;
-    uniform mat4 uModelMatrix;
-    uniform mat4 uMeshMatrix;
-    uniform mat4 uBonesMatrices[16];
-    uniform float uBonesScale;
-
-    out vec3 color_pos;
-    out vec3 normal;
-    out vec2 tex_uv;
-
-    void main() {
-      mat4 weightedMatrix = ( (uBonesMatrices[int(vJoints.x)] * vWeights.x) +
-                              (uBonesMatrices[int(vJoints.y)] * vWeights.y) +
-                              (uBonesMatrices[int(vJoints.z)] * vWeights.z) +
-                              (uBonesMatrices[int(vJoints.w)] * vWeights.w) );
-      weightedMatrix = weightedMatrix * uBonesScale + (mat4(1.) * (1.-uBonesScale));
-      color_pos      = (normalize(vPosition) + 1.) / 2.0;
-      color_pos = vJoints.xyz/14.0;
-
-      mat4 mesh_to_world = uModelMatrix * uMeshMatrix * weightedMatrix;
-      vec3 world_pos = (mesh_to_world * vec4(vPosition, 1.)).xyz;
-      normal         = (mesh_to_world * vec4(vNormal,   0.)).xyz;
-      gl_Position    = uProjectionMatrix * uCameraMatrix * vec4(world_pos.xyz, 1.);
-      tex_uv         = vTexture.xy;
-    }
-    """
-    fragment_source = """
-    #version 410 core
-    uniform sampler2D uTexture;
-
-    in vec3 color_pos;
-    in vec3 normal;
-    in vec2 tex_uv;
-    out vec4 outColor;
-    void main() {
-      vec4 t = texture( uTexture, tex_uv );
-      vec3 light_direction = -normalize(vec3(-0.2, -1., -1.));
-      float n = clamp( abs(dot(light_direction, normalize(normal))), 0., 1. );
-      vec4 c = vec4((n*0.8 + vec3(0.2)).xyz,1.) * t;
-      outColor = vec4(c.xyz, 1.0);
-    // outColor.xyz = color_pos;
-    }
-    """
-    attrib_keys = ["vPosition", "vNormal", "vJoints", "vWeights", "vTexture", "vColor",]
-    uniform_keys = ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix", "uMeshMatrix", "uBonesMatrices", "uBonesScale", "uTexture" ]
+class BoneShader(ShaderProgramDesc):
+    shader_class = bone_shader_class
+    vertex_uri   = "./shader/bone_shader_v.glsl"
+    fragment_uri = "./shader/bone_shader_f.glsl"
+    attrib_keys  = ["vPosition", "vNormal", "vJoints", "vWeights", "vTexture", "vColor",]
+    uniform_keys = ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix", "uMeshMatrix", "uBonesMatrices", "uBonesScale", "uMaterial.base_color", "uMaterial.base_texture" ]
     pass
     
-#c UnbonedShader
-class UnbonedShader(ShaderProgram):
-    shader_class = BoneShaderClass
-    vertex_source = """
-    #version 410 core
-    layout(location = 0) in vec3 vPosition;
 
-    uniform mat4 uProjectionMatrix;
-    uniform mat4 uCameraMatrix;
-    uniform mat4 uModelMatrix;
+#c GlowShader
+class GlowShader(ShaderProgramDesc):
+    shader_class = bone_shader_class
+    vertex_uri   = "./shader/unboned_shader_v.glsl"
+    fragment_uri = "./shader/glow_shader_f.glsl"
+    attrib_keys  = ["vPosition", "vNormal", "vJoints", "vWeights", "vTexture", "vColor",]
+    uniform_keys = ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix", "uMeshMatrix", "uMaterial.base_color", ]
+    pass
 
-    out vec3 color_pos;
-
-    void main() {
-      color_pos      = (normalize(vPosition) + 1.) / 2.0;
-// color_pos = vec3(1.);
-      gl_Position    = uProjectionMatrix * uCameraMatrix * uModelMatrix * vec4(vPosition.xyz, 1.);
-    }
-    """
-    fragment_source = """
-    #version 410 core
-    in vec3 color_pos;
-    out vec4 outColor;
-    void main() {
-      outColor = vec4(color_pos,1.);
-    }
-    """
+#c FlatShaderClass
+class FlatShaderClass(ShaderClassDesc):
+    name = "Simple shader class"
     attrib_keys = ["vPosition"]
-    uniform_keys = ["uProjectionMatrix", "uCameraMatrix", "uModelMatrix"]
-    
+    pass
+flat_shader_class = ShaderClass(FlatShaderClass)
+
 #c FlatShader
-class FlatShader(ShaderProgram):
-    shader_class = BoneShaderClass
-    vertex_source = """
-    #version 330 core
-    layout(location = 0) in vec3 position;
-    void main() {
-        gl_Position = vec4(position, 1);
-    }
-    """
-    fragment_source = """
-    #version 330 core
-    out vec4 outColor;
-    void main() {
-    outColor = vec4(1, 0, 0, 1);
-    }
-    """
-    attrib_keys  : ClassVar[List[str]] = ["vPosition"]
-    uniform_keys : ClassVar[List[str]] = []
-    
+class FlatShader(ShaderProgramDesc):
+    shader_class = flat_shader_class
+    vertex_uri   = "./shader/flat_v.glsl"
+    fragment_uri = "./shader/flat_f.glsl"
+    attrib_keys  = ["vPosition"]
+    uniform_keys = []
+    pass
+

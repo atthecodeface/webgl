@@ -38,7 +38,7 @@ class ObjectModel extends ModelClass {
         o += num_pts * 4;
         
         const material = new ModelMaterial();
-        material.color = (1.,5.,3.,1.);
+        material.color = [1.,5.,3.,1.];
         
         const primitive = new ModelPrimitive();
         primitive.view = view;

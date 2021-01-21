@@ -394,7 +394,7 @@ class Mesh:
         for p in self.primitives:
             model_mesh.primitives.append(p.to_model_primitive())
             pass
-        print(f"Created model mesh {model_mesh}")
+        # print(f"Created model mesh {model_mesh}")
         return model_mesh
     #f All done
     pass
@@ -510,7 +510,7 @@ class Node:
         if self.skin is not None:
             model_object.bones = gltf.bones_of_skin(self.skin)
             pass
-        print(f"Created model object {model_object}")
+        # print(f"Created model object {model_object}")
         return model_object
     #f All done
     pass

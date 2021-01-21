@@ -5,10 +5,10 @@ import math
 from .object import Object, Mesh, MeshObject
 from .sample_objects import Cube, DoubleCube, DoubleCube2, Snake
 from .bone import Bone, BonePose, AnimatedBonePose
-from .shader import BoneShader, FlatShader, UnbonedShader
+from .shader import BoneShader, ShaderProgram
 from .frontend import Frontend
 from .texture import Texture, TextureImage
-from .transformation import Transformation
+from .transformation import Transformation, quaternion_of_rotation, quaternion_to_euler
 from .gltf import Gltf
 from .sample_models import ObjectModel
 from .model import ModelClass, ModelInstance
@@ -41,28 +41,40 @@ class Camera:
         pass
     def recalculate(self) -> None:
         camera = glm.mat4()
-        q = glm.angleAxis(self.eulers[1], glm.vec3([0,1,0]))
-        q = glm.angleAxis(self.eulers[2], glm.vec3([0,0,1])) * q
-        q = glm.angleAxis(self.eulers[0], glm.vec3([1,0,0])) * q
+        q =     glm.angleAxis(self.eulers[1], glm.vec3([0,1,0]))
+        q = q * glm.angleAxis(self.eulers[2], glm.vec3([0,0,1]))
+        q = q * glm.angleAxis(self.eulers[0], glm.vec3([1,0,0]))
         camera = glm.mat4_cast(q)
-        camera[3][0] += self.translation[0]
-        camera[3][1] += self.translation[1]
-        camera[3][2] += self.translation[2]
+        for i in range(3):
+            for j in range(3):
+                camera[3][0] += camera[i][0]*self.translation[i]
+                camera[3][1] += camera[i][1]*self.translation[i]
+                camera[3][2] += camera[i][2]*self.translation[i]
         camera *= self.zoom
         self.matrix = camera
         pass
     def translate(self, n:int, x:float) -> None:
-        self.translation[0] += x*self.matrix[0+n]
-        self.translation[1] += x*self.matrix[4+n]
-        self.translation[2] += x*self.matrix[8+n]
+        self.translation[0] += x*self.matrix[0][n]
+        self.translation[1] += x*self.matrix[1][n]
+        self.translation[2] += x*self.matrix[2][n]
         self.recalculate()
         pass
     def rotate(self, n:int, x:float) -> None:
-        q = glm.rotate(Glm.quat.create(),x,n)
-        m = Glm.mat4.clone(self.matrix);
-        Glm.mat4.multiply(self.matrix, Glm.mat4.fromQuat(Glm.mat4.create(),q), self.matrix);
-        Glm.mat4.getRotation(q, self.matrix);
-        self.eulers = quaternion_to_euler(q);
+        if n==0: q = glm.angleAxis(x, glm.vec3([1,0,0]))
+        if n==1: q = glm.angleAxis(x, glm.vec3([0,1,0]))
+        if n==2: q = glm.angleAxis(x, glm.vec3([0,0,1]))
+        self.matrix = glm.mat4_cast(q) * self.matrix
+        m = glm.mat3()
+        for x in range(3):
+            for y in range(3):
+                m[x][y]= self.matrix[x][y]
+                pass
+            pass
+        q = quaternion_of_rotation(m)
+        e = quaternion_to_euler(q)
+        self.eulers[0] = e[0]
+        self.eulers[1] = e[1]
+        self.eulers[2] = e[2]
         self.recalculate();
         pass
     def set_euler(self, n:int, x:float) -> None:
@@ -89,24 +101,18 @@ class ViewerFrontend(Frontend):
     motion_of_keys = { 87:1, 83:2,
                        65:4, 68:8,
                        90:16, 88:32,
-                       59:256, 46:512,
-                       78:1024, 77:2048,
-                       76:4096, 44:8192,
+                       76:256, 44:512,
+                       74:1024, 75:2048,
+                       78:4096, 77:8192,
     }
     #f __init__
     def __init__(self, url, node) -> None:
         super().__init__()
-        self.gltf_data = (url, node)
-        pass
-    #f gl_ready
-    def gl_ready(self) -> None:
         self.camera = Camera()
         self.projection = Projection()
-        projection_matrix = glm.perspective(45.*3.1415/180., 1.0, 0.1, 100.0)
-        # Transformation(translation=(-0.2,-1.2,-5.))
+        self.gltf_data = (url, node)
         self.mesh_objects = []
         self.model_objects = []
-        self.shader = BoneShader()
         self.tick = 0
         self.motions = 0
 
@@ -114,10 +120,12 @@ class ViewerFrontend(Frontend):
         self.textures["wood_png"] = TextureImage("wood_square.png")
         self.textures["wood"] = TextureImage("wood.jpg")
         self.textures["moon"] = TextureImage("moon.png")
-        # texture = TextureImage("wood.jpg")
-        # texture = TextureImage("moon.png")
-
+        self.shader = ShaderProgram(BoneShader)
         self.gltf_file = Gltf(Path("."), Path(self.gltf_data[0]))
+        pass
+    #f gl_ready
+    def gl_ready(self) -> None:
+        self.shader.gl_ready()
         self.gltf_node = self.gltf_file.get_node_by_name(self.gltf_data[1]) [1]
         self.gltf_root = self.gltf_node.to_model_object(self.gltf_file)
 
@@ -161,21 +169,19 @@ class ViewerFrontend(Frontend):
         pass
     #f move_camera
     def move_camera(self) -> None:
-        mat = glm.mat4()
-        axes = self.camera.matrix
-        axes = mat
-        if   self.motions &   1: self.camera.translate(axis(axes,2),  0.1)
-        if   self.motions &   2: self.camera.translate(axis(axes,2), -0.1)
-        if   self.motions &   4: self.camera.translate(axis(axes,0),  0.1)
-        if   self.motions &   8: self.camera.translate(axis(axes,0), -0.1)
-        if   self.motions &  16: self.camera.translate(axis(axes,1),  0.1)
-        if   self.motions &  32: self.camera.translate(axis(axes,1), -0.1)
-        if   self.motions & 256: self.camera.rotate(axis(mat,0), -0.1)
-        if   self.motions & 512: self.camera.rotate(axis(mat,0),  0.1)
-        if   self.motions &1024: self.camera.rotate(axis(mat,1), -0.1)
-        if   self.motions &2048: self.camera.rotate(axis(mat,1),  0.1)
-        if   self.motions &4096: self.camera.rotate(axis(mat,2), -0.1)
-        if   self.motions &8192: self.camera.rotate(axis(mat,2),  0.1)
+        delta_angle = 0.03
+        if   self.motions &   1: self.camera.translate(2,  0.1)
+        if   self.motions &   2: self.camera.translate(2, -0.1)
+        if   self.motions &   4: self.camera.translate(0,  0.1)
+        if   self.motions &   8: self.camera.translate(0, -0.1)
+        if   self.motions &  16: self.camera.translate(1,  0.1)
+        if   self.motions &  32: self.camera.translate(1, -0.1)
+        if   self.motions & 256: self.camera.rotate(0, -delta_angle)
+        if   self.motions & 512: self.camera.rotate(0,  delta_angle)
+        if   self.motions &1024: self.camera.rotate(1, -delta_angle)
+        if   self.motions &2048: self.camera.rotate(1,  delta_angle)
+        if   self.motions &4096: self.camera.rotate(2, -delta_angle)
+        if   self.motions &8192: self.camera.rotate(2,  delta_angle)
         pass
     #f handle_tick
     def handle_tick(self, time, time_last) -> None:

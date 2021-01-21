@@ -100,8 +100,8 @@ class ViewerFrontend extends Frontend {
         this.shader = new ShaderProgram(BoneShader);
         this.model_objects = [];
 
-        const model = new ObjectModel("cube", make_snake(16,8.));
-
+        // const model = new ObjectModel("cube", make_snake(16,8.));
+        // this.model_objects.push(new ModelInstance(model));
         this.gltf_file = new GLTF.Gltf(this.gltf_data[0]);
 
         return Promise.all([this.shader.init(), this.textures.moon.init(), this.textures.wood.init(), this.gltf_file.init()])

@@ -24,6 +24,35 @@ def vec3_str(vec:glm.Vec3) -> str:
 def quat_str(quat:glm.Quat) -> str:
     return "q("+" ".join([str(v) for v in quat])+")" # type: ignore
 
+#f quaternion_to_euler
+def quaternion_to_euler(q:glm.Quat) -> Tuple[float,float,float]:
+    x=q.x
+    y=q.y
+    z=q.z
+    w=q.w
+    test = x*y + z*w
+    print(x,y,z,w,test)
+    heading = None
+    if (test > 0.499999):
+        heading  = 2*math.atan2(x,w)
+        attitude = math.pi/2
+        bank = 0
+        pass
+    elif (test < -0.499999):
+        heading  = -2*math.atan2(x,w)
+        attitude = -math.pi/2
+        bank = 0
+        pass
+    if heading is None:
+        x2 = x*x
+        y2 = y*y
+        z2 = z*z
+        heading  = math.atan2(2*y*w - 2*x*z , 1 - 2*y2 - 2*z2)
+        attitude = math.asin(2*test)
+        bank     = math.atan2(2*x*w - 2*y*z , 1 - 2*x2 - 2*z2)
+        pass
+    return (bank, heading, attitude)
+
 #f quaternion_of_rotation
 def quaternion_of_rotation(rotation:glm.Mat3) -> glm.Quat:
     """
