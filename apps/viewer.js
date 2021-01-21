@@ -174,7 +174,6 @@ class ViewerFrontend extends Frontend {
         GL.useProgram(this.shader.program);
         GL.uniformMatrix4fv(this.shader.uniforms["uProjectionMatrix"],false, this.projection.matrix);
         GL.uniformMatrix4fv(this.shader.uniforms["uCameraMatrix"],    false, this.camera.matrix);
-        GL.uniformMatrix4fv(this.shader.uniforms["uMeshMatrix"],      false, Glm.mat4.create());
 
         for (const o of this.model_objects) {
             if (o.bone_set_poses.length>0) {

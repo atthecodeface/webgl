@@ -24,16 +24,17 @@ class ObjectModel(ModelClass):
         bones.add_bone(b)
         b = Bone(parent=bones.bones[0], transformation=Transformation(translation=(0.,0.,2.)))
         bones.add_bone(b)
+        b = Bone(parent=bones.bones[1], transformation=Transformation(translation=(0.,0.,2.)))
+        bones.add_bone(b)
         bones.rewrite_indices()
+        bones.derive_matrices()
         
-        num_pts = len(obj.weights)//4
+        num_pts = len(obj.positions)//3
         buffer_data = []
         buffer_data.extend(obj.positions)
         buffer_data.extend(obj.normals)
         buffer_data.extend(obj.texcoords)
-        for i in range(num_pts):
-            buffer_data.extend([0.5,0.5,0.,0.]) # obj.weights
-            pass
+        buffer_data.extend(obj.weights)
         buffer_int_data = []
         for i in range(len(obj.positions)//3):
             buffer_int_data.extend([0,1,2,3])
@@ -41,30 +42,39 @@ class ObjectModel(ModelClass):
         buffer_size = len(buffer_data) * 4
         model_data      = ModelBufferData(data=np.array(buffer_data,np.float32), byte_offset=0)
         model_int_data  = ModelBufferData(data=np.array(buffer_int_data,np.uint8), byte_offset=0)
-        model_indices   = ModelBufferIndices(data=np.array(obj.indices,np.uint8), byte_offset=0)
         o = 0
         view = ModelPrimitiveView()
         view.position    = ModelBufferView(data=model_data, count=3, gl_type=GL.GL_FLOAT, offset=o)
-        o += len(obj.positions) * 4
+        o += num_pts * 12
         view.normal      = ModelBufferView(data=model_data, count=3, gl_type=GL.GL_FLOAT, offset=o)
-        o += len(obj.normals) * 4
+        o += num_pts * 12
         view.tex_coords  = ModelBufferView(data=model_data, count=2, gl_type=GL.GL_FLOAT, offset=o)
-        o += len(obj.texcoords) * 4
+        o += num_pts * 8
         view.weights     = ModelBufferView(data=model_data, count=4, gl_type=GL.GL_FLOAT, offset=o)
-        o += len(obj.weights) * 4
+        o += num_pts * 16
         o = 0
         view.joints      = ModelBufferView(data=model_int_data, count=4, gl_type=GL.GL_UNSIGNED_BYTE, offset=o)
-        o += len(obj.positions) * 4 // 3
-        view.indices = model_indices
+        o += num_pts * 4
+
         material = ModelMaterial()
         material.color = (1.,5.,3.,1.)
+
         primitive = ModelPrimitive()
         primitive.view = view
         primitive.material = material
         primitive.gl_type = GL.GL_TRIANGLE_STRIP
         primitive.indices_offset  = 0
         primitive.indices_count   = len(obj.indices)
-        primitive.indices_gl_type = GL.GL_UNSIGNED_BYTE
+        if num_pts<255:
+            primitive.indices_gl_type = GL.GL_UNSIGNED_BYTE
+            model_indices   = ModelBufferIndices(data=np.array(obj.indices,np.uint8), byte_offset=0)
+            view.indices = model_indices
+            pass
+        else:
+            primitive.indices_gl_type = GL.GL_UNSIGNED_SHORT
+            model_indices   = ModelBufferIndices(data=np.array(obj.indices,np.uint16), byte_offset=0)
+            view.indices = model_indices
+            pass
 
         root_object = ModelObject(parent=None)
         root_object.bones = bones

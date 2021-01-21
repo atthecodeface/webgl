@@ -111,7 +111,6 @@ class ViewerFrontend(Frontend):
         self.camera = Camera()
         self.projection = Projection()
         self.gltf_data = (url, node)
-        self.mesh_objects = []
         self.model_objects = []
         self.tick = 0
         self.motions = 0
@@ -129,13 +128,6 @@ class ViewerFrontend(Frontend):
         self.gltf_node = self.gltf_file.get_node_by_name(self.gltf_data[1]) [1]
         self.gltf_root = self.gltf_node.to_model_object(self.gltf_file)
 
-        c : Object = DoubleCube2()
-        c = Cube()
-        # c = Snake(16,8.)
-
-        mesh = Mesh(self.shader, c)
-        self.mesh_objects.append(MeshObject(mesh, self.textures["wood"], glm.vec3((3.,0.,0.))))
-
         gltf_model = ModelClass("gltf", self.gltf_root)
         gltf_inst = ModelInstance(gltf_model)
         self.pose = None
@@ -145,13 +137,12 @@ class ViewerFrontend(Frontend):
             self.animatables.append(AnimatedBonePose(self.pose.poses))
             pass
         self.model_objects.append( gltf_inst )
-        # self.mesh_objects = []
 
         for (_,t) in self.textures.items():
             t.gl_create()
             pass
         model = ObjectModel("cube", Snake(16,8.))
-        # self.model_objects.append( ModelInstance(model) )
+        self.model_objects.append( ModelInstance(model) )
         for o in self.model_objects:
             o.gl_create()
             o.gl_bind_program(self.shader.shader_class)
@@ -186,16 +177,17 @@ class ViewerFrontend(Frontend):
     #f handle_tick
     def handle_tick(self, time, time_last) -> None:
         self.move_camera()
-        for m in self.mesh_objects:
-            m.animate(time)
-            pass
+        #for m in self.mesh_objects:
+        #    m.animate(time)
+        #    pass
         for a in self.animatables:
             a.interpolate_to_time(time)
             pass
-        self.draw()
+        self.draw(time)
+        self.swap_buffers()
         pass
     #f draw
-    def draw(self) -> None:
+    def draw(self, time:float) -> None:
         self.tick = self.tick + 1
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
         GL.glClearColor(0.7, 0.1, 0.1, 1.0)
@@ -204,23 +196,25 @@ class ViewerFrontend(Frontend):
         GL.glDepthFunc(GL.GL_LEQUAL)
         # GL.glEnable(GL.GL_CULL_FACE)
         GL.glCullFace(GL.GL_BACK)
-        self.draw_objects()
-        self.swap_buffers()
+        self.draw_objects(time)
         pass
     #f draw_objects
-    def draw_objects(self) -> None:
+    def draw_objects(self, time:float) -> None:
         projection_matrix  = self.projection.matrix
         camera_matrix      = self.camera.matrix
 
         GL.glUseProgram(self.shader.program)
         GL.glUniformMatrix4fv(self.shader.uniforms["uProjectionMatrix"], 1, False, glm.value_ptr(projection_matrix))
         GL.glUniformMatrix4fv(self.shader.uniforms["uCameraMatrix"],     1, False, glm.value_ptr(camera_matrix))
-        mat = glm.mat4()
-        GL.glUniformMatrix4fv(self.shader.uniforms["uMeshMatrix"], 1, False, glm.value_ptr(mat))
-        for m in self.mesh_objects:
-            m.draw(self.shader)
-            pass
         for o in self.model_objects:
+            if o.bone_set_poses!=[]:
+                pose1 = o.bone_set_poses[0].poses[0]
+                pose2 = o.bone_set_poses[0].poses[1]
+                pose1.transformation_reset()
+                pose2.transformation_reset()
+                pose1.transform(Transformation([math.sin(time), 0., 0.5*math.cos(time*0.4)],glm.quat()))
+                pose2.transform(Transformation([-math.sin(time),0.,-0.5*math.cos(time*0.4)],glm.quat()))
+                pass
             o.gl_draw(self.shader, self.tick)
             pass
         pass
