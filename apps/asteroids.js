@@ -688,8 +688,8 @@ class Asteroids extends Frontend {
             d.innerHTML = Math.round(this.destroyed/this.total_size*1000)/10+"%";
         }
     }
-    //f draw_scene
-    draw_scene() {
+    //f handle_tick
+    handle_tick(time, time_last) {
         GL.clearColor(0.0, 0.0, 0.1, 1.0);  // Clear to black, fully opaque
         GL.clearDepth(1.0);                 // Clear everything
         GL.enable(GL.DEPTH_TEST);           // Enable depth testing
@@ -699,7 +699,6 @@ class Asteroids extends Frontend {
 
         GL.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
 
-        const time = this.time;
         this.spaceship.tick(this, time);
         for (const a of this.asteroids) {
             a.tick(this, time);

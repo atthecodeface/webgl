@@ -159,8 +159,8 @@ class ViewerFrontend extends Frontend {
         if (this.motions &4096) {this.camera.rotate(2, -delta_angle); }
         if (this.motions &8192) {this.camera.rotate(2,  delta_angle); }
     }
-    //f draw_scene
-    draw_scene() {
+    //f handle_tick
+    handle_tick(time, time_last) {
         this.move_camera();
         GL.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
         GL.clearDepth(1.0);                 // Clear everything

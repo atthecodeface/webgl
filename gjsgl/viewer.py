@@ -13,12 +13,76 @@ from .gltf import Gltf
 from .sample_models import ObjectModel
 from .model import ModelClass, ModelInstance
 
+#a Camera and projection
+class Projection:
+    def __init__(self) -> None:
+        self.fov = 45 * Math.PI / 180;  # in radians
+        self.aspect = GL.canvas.clientWidth / GL.canvas.clientHeight;
+        self.near = 0.1;
+        self.far = 100.0;
+        self.recalculate();
+        pass
+    def recalculate(self) -> None:
+        self.matrix = Glm.mat4.perspective(Glm.mat4.create(), self.fov, self.aspect, self.near, self.far);
+        pass
+    def set_fov(self, x:float) -> None:
+        self.fov = x * Math.PI / 180;   # in radians
+        self.recalculate();
+        pass
+    pass
+
+class Camera:
+    def __init__(self) -> None:
+        self.translation = [0.,-4.,-20.]
+        self.eulers = [0.3,0.,1.57]
+        self.zoom = 1.
+        self.transformation = Transformation()
+        self.recalculate()
+        pass
+    def recalculate(self) -> None:
+        camera = glm.mat4()
+        q      = glm.quat()
+        q = glm.rotate(q, self.eulers[1], 1)
+        q = glm.rotate(q, self.eulers[2], 2)
+        q = glm.rotate(q, self.eulers[0], 0)
+        camera = glm.mat4_cast(q)
+        glm.translate(camera, self.translation)
+        glm.scale(camera, [self.zoom,self.zoom,self.zoom])
+        self.matrix = camera
+        pass
+    def translate(self, n:int, x:float) -> None:
+        self.translation[0] += x*self.matrix[0+n]
+        self.translation[1] += x*self.matrix[4+n]
+        self.translation[2] += x*self.matrix[8+n]
+        self.recalculate()
+        pass
+    def rotate(self, n:int, x:float) -> None:
+        q = glm.rotate(Glm.quat.create(),x,n)
+        m = Glm.mat4.clone(self.matrix);
+        Glm.mat4.multiply(self.matrix, Glm.mat4.fromQuat(Glm.mat4.create(),q), self.matrix);
+        Glm.mat4.getRotation(q, self.matrix);
+        self.eulers = quaternion_to_euler(q);
+        self.recalculate();
+        pass
+    def set_euler(self, n:int, x:float) -> None:
+        self.eulers[n] = x * Math.PI / 180;
+        self.recalculate();
+        pass
+    def set_xyz(self, n:int, x:float) -> None:
+        self.translation[n] = x;
+        self.recalculate();
+        pass
+    def set_zoom(self, x:float) -> None:
+        self.zoom = x;
+        self.recalculate();
+        pass
+    pass
+
 #a Frontend
 def axis(mat:glm.Mat4, n:int) -> glm.Vec3:
     return glm.vec3((mat[n][0],mat[n][1],mat[n][2]))
 #c ViewerFrontend
 class ViewerFrontend(Frontend):
-    time = 0.
     tick = 0
     motions = 0
     motion_of_keys = { 87:1, 83:2,
@@ -28,8 +92,13 @@ class ViewerFrontend(Frontend):
                        78:1024, 77:2048,
                        76:4096, 44:8192,
     }
-    #f opengl_ready
-    def opengl_ready(self) -> None:
+    #f __init__
+    def __init__(self, url, node) -> None:
+        super().__init__()
+        self.gltf_data = (url, node)
+        pass
+    #f gl_ready
+    def gl_ready(self) -> None:
         self.mesh_objects = []
         self.model_objects = []
         self.shader = BoneShader()
@@ -44,13 +113,7 @@ class ViewerFrontend(Frontend):
         # texture = TextureImage("wood.jpg")
         # texture = TextureImage("moon.png")
 
-        self.gltf_data = (Path("./milo.gltf"), "Body.001")
-        # self.gltf_data = (Path("./cubeplus.gltf"), "Cube")
-        # self.gltf_data = (Path("./simple_escape.gltf"), "RoomExport")
-        # self.gltf_data = (Path("./milo2.gltf"), "Head.001")
-        # self.gltf_data = [Path("./WaterBottle.gltf"), "WaterBottle"];
-
-        self.gltf_file = Gltf(Path("."), self.gltf_data[0])
+        self.gltf_file = Gltf(Path("."), Path(self.gltf_data[0]))
         self.gltf_node = self.gltf_file.get_node_by_name(self.gltf_data[1]) [1]
         self.gltf_root = self.gltf_node.to_model_object(self.gltf_file)
 
@@ -110,15 +173,14 @@ class ViewerFrontend(Frontend):
         if   self.motions &4096: self.camera.rotate(axis(mat,2), -0.1)
         if   self.motions &8192: self.camera.rotate(axis(mat,2),  0.1)
         pass
-    #f idle_fn
-    def idle_fn(self) -> None:
+    #f handle_tick
+    def handle_tick(self, time, time_last) -> None:
         self.move_camera()
         for m in self.mesh_objects:
-            m.animate(self.time)
+            m.animate(time)
             pass
-        self.time += 0.01
         for a in self.animatables:
-            a.interpolate_to_time(self.time)
+            a.interpolate_to_time(time)
             pass
         self.draw()
         pass

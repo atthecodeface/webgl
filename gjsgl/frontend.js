@@ -57,8 +57,9 @@ class Frontend {
     run_step() {
         this.run_step_pending = false;
         if (this.animating) {
-            this.draw_scene(this.time);
+            this.time_last = this.time;
             this.time = (Date.now() - this.init_time) * 0.001;
+            this.handle_tick(this.time, this.time_last);
             requestAnimationFrame(()=>this.run_step());
             this.run_step_pending = true;
         }
@@ -142,19 +143,6 @@ class Frontend {
     //f touch_fn
     touch_fn(touch_handle, touch_id, xpos, ypos, action, mods) {
     }
-/*
-    #f idle
-    def idle(self) -> None:
-        try:
-            self.idle_fn()
-            pass
-        except Exception as e:
-            print(f"Failed: {e}")
-            print(f"Failed: {traceback.format_exc()}")
-            self.animating = True
-            pass
-        pass
-    */
     //f All done
 }
 
