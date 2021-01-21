@@ -1,3 +1,4 @@
+//a Camera and Projection
 class Projection {
     constructor() {
         this.fov = 45 * Math.PI / 180;   // in radians
@@ -74,12 +75,10 @@ class Camera {
     }
 }
 
+//a ViewerFrontend
 class ViewerFrontend extends Frontend {
     constructor(url, node) {
         super();
-        this.gltf_data = ["./milo.gltf", "Body.001"];
-        this.gltf_data = ["./milo2.gltf", "Head.001"];
-        this.gltf_data = ["./WaterBottle.gltf", "WaterBottle"];
         this.gltf_data = [url, node];
     }
     async init() {
@@ -98,7 +97,7 @@ class ViewerFrontend extends Frontend {
         this.textures.moon = new TextureImage("./moon.png");
         this.textures.wood = new TextureImage("./wood.jpg");
 
-        this.shader = new BoneShader();
+        this.shader = new ShaderProgram(BoneShader);
         this.model_objects = [];
 
         const model = new ObjectModel("cube", make_snake(16,8.));
@@ -177,7 +176,6 @@ class ViewerFrontend extends Frontend {
         GL.uniformMatrix4fv(this.shader.uniforms["uCameraMatrix"],    false, this.camera.matrix);
         GL.uniformMatrix4fv(this.shader.uniforms["uMeshMatrix"],      false, Glm.mat4.create());
 
-        const time = this.time;
         for (const o of this.model_objects) {
             if (o.bone_set_poses.length>0) {
                 const pose1 = o.bone_set_poses[0].poses[1];

@@ -16,18 +16,18 @@ from .model import ModelClass, ModelInstance
 #a Camera and projection
 class Projection:
     def __init__(self) -> None:
-        self.fov = 45 * Math.PI / 180;  # in radians
-        self.aspect = GL.canvas.clientWidth / GL.canvas.clientHeight;
-        self.near = 0.1;
-        self.far = 100.0;
-        self.recalculate();
+        self.fov = 45 * math.pi / 180  # in radians
+        self.aspect = 1.0 # GL.canvas.clientWidth / GL.canvas.clientHeight;
+        self.near = 0.1
+        self.far = 100.0
+        self.recalculate()
         pass
     def recalculate(self) -> None:
-        self.matrix = Glm.mat4.perspective(Glm.mat4.create(), self.fov, self.aspect, self.near, self.far);
+        self.matrix = glm.perspective(self.fov, self.aspect, self.near, self.far)
         pass
     def set_fov(self, x:float) -> None:
-        self.fov = x * Math.PI / 180;   # in radians
-        self.recalculate();
+        self.fov = x * math.pi / 180   # in radians
+        self.recalculate()
         pass
     pass
 
@@ -41,13 +41,14 @@ class Camera:
         pass
     def recalculate(self) -> None:
         camera = glm.mat4()
-        q      = glm.quat()
-        q = glm.rotate(q, self.eulers[1], 1)
-        q = glm.rotate(q, self.eulers[2], 2)
-        q = glm.rotate(q, self.eulers[0], 0)
+        q = glm.angleAxis(self.eulers[1], glm.vec3([0,1,0]))
+        q = glm.angleAxis(self.eulers[2], glm.vec3([0,0,1])) * q
+        q = glm.angleAxis(self.eulers[0], glm.vec3([1,0,0])) * q
         camera = glm.mat4_cast(q)
-        glm.translate(camera, self.translation)
-        glm.scale(camera, [self.zoom,self.zoom,self.zoom])
+        camera[3][0] += self.translation[0]
+        camera[3][1] += self.translation[1]
+        camera[3][2] += self.translation[2]
+        camera *= self.zoom
         self.matrix = camera
         pass
     def translate(self, n:int, x:float) -> None:
@@ -99,11 +100,14 @@ class ViewerFrontend(Frontend):
         pass
     #f gl_ready
     def gl_ready(self) -> None:
+        self.camera = Camera()
+        self.projection = Projection()
+        projection_matrix = glm.perspective(45.*3.1415/180., 1.0, 0.1, 100.0)
+        # Transformation(translation=(-0.2,-1.2,-5.))
         self.mesh_objects = []
         self.model_objects = []
         self.shader = BoneShader()
         self.tick = 0
-        self.camera = Transformation(translation=(-0.2,-1.2,-5.))
         self.motions = 0
 
         self.textures = {}
@@ -158,7 +162,7 @@ class ViewerFrontend(Frontend):
     #f move_camera
     def move_camera(self) -> None:
         mat = glm.mat4()
-        axes = self.camera.mat4()
+        axes = self.camera.matrix
         axes = mat
         if   self.motions &   1: self.camera.translate(axis(axes,2),  0.1)
         if   self.motions &   2: self.camera.translate(axis(axes,2), -0.1)
@@ -197,15 +201,14 @@ class ViewerFrontend(Frontend):
         self.draw_objects()
         self.swap_buffers()
         pass
+    #f draw_objects
     def draw_objects(self) -> None:
+        projection_matrix  = self.projection.matrix
+        camera_matrix      = self.camera.matrix
+
         GL.glUseProgram(self.shader.program)
-        matrices = []
-        projection_matrix = glm.perspective(45.*3.1415/180., 1.0, 0.1, 100.0)
-        camera_matrix     = self.camera.mat4()
-        matrices.append(projection_matrix)
-        matrices.append(camera_matrix)
-        GL.glUniformMatrix4fv(self.shader.uniforms["uProjectionMatrix"], 1, False, glm.value_ptr(matrices[0]))
-        GL.glUniformMatrix4fv(self.shader.uniforms["uCameraMatrix"],     1, False, glm.value_ptr(matrices[1]))
+        GL.glUniformMatrix4fv(self.shader.uniforms["uProjectionMatrix"], 1, False, glm.value_ptr(projection_matrix))
+        GL.glUniformMatrix4fv(self.shader.uniforms["uCameraMatrix"],     1, False, glm.value_ptr(camera_matrix))
         mat = glm.mat4()
         GL.glUniformMatrix4fv(self.shader.uniforms["uMeshMatrix"], 1, False, glm.value_ptr(mat))
         for m in self.mesh_objects:
