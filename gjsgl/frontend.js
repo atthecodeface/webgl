@@ -11,6 +11,10 @@ class Frontend {
         canvas.addEventListener("mousedown", (m) => this.mouse(m) );
         canvas.addEventListener("mouseup",   (m) => this.mouse(m) );
         canvas.addEventListener("mousemove", (m) => this.mouse(m) );
+        canvas.addEventListener("touchstart",  (t) => this.touch(t), false);
+        canvas.addEventListener("touchend",    (t) => this.touch(t), false);
+        canvas.addEventListener("touchcancel", (t) => this.touch(t), false);
+        canvas.addEventListener("touchmove",   (t) => this.touch(t), false);
 
         this.animating = false;
         this.run_step_pending = false;
@@ -21,6 +25,7 @@ class Frontend {
         this.buttons_down = 0;
         this.mouse_pos_drag_start = [0.,0.];
         this.mouse_pos = [0.,0.];
+        this.touches = new Map();
     }
     //f run
     run() {
@@ -95,6 +100,33 @@ class Frontend {
         }
         this.mouse_pos = [xpos, ypos];
     }
+    //f touch
+    touch(event) {
+        const mods = (event.shiftKey?1:0)  | (event.ctrlKey?2:0) | (event.altKey?4:0);
+        if (event.type=="touchstart") {
+            event.preventDefault();
+            for (const t of event.changedTouches) {
+                this.touches.set(t.identifier,this.touch_start(t.identifier, t.pageX, t.pageY, mods));
+            }
+        } else if (event.type=="touchmove") {
+            for (const t of event.changedTouches) {
+                const handle = this.touches.get(t.identifier);
+                this.touch_fn(handle, t.identifier, t.pageX, t.pageY, 1, mods);
+            }
+        } else if (event.type=="touchend") {
+            for (const t of event.changedTouches) {
+                const handle = this.touches.get(t.identifier);
+                this.touch_fn(handle, t.identifier, t.pageX, t.pageY, 2, mods);
+                this.touches.delete(t.identifier);
+            }
+        } else if (event.type=="touchcancel") {
+            for (const t of event.changedTouches) {
+                const handle = this.touches.get(t.identifier);
+                this.touch_fn(handle, t.identifier, t.pageX, t.pageY, 3, mods);
+                this.touches.delete(t.identifier);
+            }
+        }
+    }
     //f cursor_fn
     cursor_fn(xpos, ypos) {
         console.log(this.mouse_pos+" "+this.mouse_pos_drag_start+" "+this.buttons_down+" "+this.key_mods);
@@ -102,6 +134,13 @@ class Frontend {
     //f mouse_button_fn
     mouse_button_fn(xpos, ypos, button, action, mods) {
         console.log(this.mouse_pos+" "+this.mouse_pos_drag_start+" "+button+" "+mods);
+    }
+    //f touch_start
+    touch_start(touch_id, xpos, ypos, mods) {
+        return touch_id;
+    }
+    //f touch_fn
+    touch_fn(touch_handle, touch_id, xpos, ypos, action, mods) {
     }
 /*
     #f idle

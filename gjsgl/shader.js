@@ -78,10 +78,12 @@ class ShaderProgram {
         this.attributes = {};
         this.uniforms   = {};
         for (const k of this.attrib_keys) {
-            this.attributes[k] = GL.getAttribLocation(this.program, k);
+            const a=GL.getAttribLocation(this.program, k);
+            if (a>=0) {this.attributes[k] = a;}
         }
         for (const k of this.uniform_keys) {
-            this.uniforms[k]   = GL.getUniformLocation(this.program, k);
+            const u = GL.getUniformLocation(this.program, k);
+            this.uniforms[k] = u;
         }
         this.shader_class.validate(this);
         return this;

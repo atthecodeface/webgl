@@ -546,15 +546,16 @@ class Asteroids extends Frontend {
         this.rocket_mass = 0.04;
         this.rocket_speed = 0.2;
         this.rocket_size = 1.0;
-        this.asteroid_size = 2.0;
-        this.num_asteroids = 6;
+        this.asteroid_size = 3.0;
+        this.num_asteroids = 4;
         
-        this.spaceship.reload_time = 0.15;
+        this.spaceship.reload_time = 0.02;
         this.spaceship.rocket_ofs = 0.9;
         this.spaceship.max_speed = 0.25;
         this.spaceship.acceleration = 0.01;
         this.spaceship.reverse_acceleration = -0.003;
-        
+
+        if (0) {
         this.rocket_mass = 0.02;
         this.rocket_speed = 0.7;
         this.rocket_size = 1.0;
@@ -565,7 +566,8 @@ class Asteroids extends Frontend {
         this.spaceship.rocket_ofs = 0.9;
         this.spaceship.max_speed = 0.4;
         this.spaceship.acceleration = 0.02;
-        this.spaceship.reverse_acceleration = -0.010;
+            this.spaceship.reverse_acceleration = -0.010;
+        }
         
         this.spaceship.braking = (this.spaceship.max_speed - this.spaceship.acceleration) / this.spaceship.max_speed;
         
@@ -617,6 +619,30 @@ class Asteroids extends Frontend {
     }
     //f mouse_button_fn
     mouse_button_fn(xpos, ypos, button, action, mods) {
+    }
+    //f touch_start
+    touch_start(touch_id, xpos, ypos, mods) {
+        var motion = 0;
+        if (Glm.vec2.distance([xpos,ypos],[400,150])<150) {
+            motion = 1;
+        } else if (Glm.vec2.distance([xpos,ypos],[400,450])<150) {
+            motion = 2;
+        }
+        else if (Glm.vec2.distance([xpos,ypos],[200,300])<150) {
+            motion = 4;
+        } else if (Glm.vec2.distance([xpos,ypos],[600,300])<150) {
+            motion = 8;
+        } else if (Glm.vec2.distance([xpos,ypos],[400,600])<1000) {
+            motion = 16;
+        }
+        this.motions |= motion;
+        return motion;
+    }
+    //f touch_fn
+    touch_fn(touch_handle, touch_id, xpos, ypos, action, mods) {
+        if (action>1) {
+            this.motions &= ~touch_handle;
+        }
     }
     //f bound_to_field
     bound_to_field(pos) {
