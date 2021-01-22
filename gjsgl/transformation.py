@@ -31,7 +31,6 @@ def quaternion_to_euler(q:glm.Quat) -> Tuple[float,float,float]:
     z=q.z
     w=q.w
     test = x*y + z*w
-    print(x,y,z,w,test)
     heading = None
     if (test > 0.499999):
         heading  = 2*math.atan2(x,w)

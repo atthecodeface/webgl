@@ -37,7 +37,7 @@ class ShaderClass:
     #v Properties
     name            : str
     attrib_keys     : List[str]
-    attributes      : Dict[str, GL.Attribute]
+    attributes      : Dict[str, "GL.Attribute"]
     #f __init__
     def __init__(self, desc:ShaderClassDesc) -> None:
         self.name = desc.name
@@ -59,7 +59,7 @@ class ShaderClass:
             raise Exception("Shader program does not conform to shader class {self.name}")
         pass
     #f get_attr
-    def get_attr(self, name:str) -> Optional[GL.Attribute]:
+    def get_attr(self, name:str) -> Optional["GL.Attribute"]:
         return self.attributes.get(name,None)
     #f All done
     pass
@@ -72,11 +72,11 @@ class ShaderProgram:
     fragment_source : str
     attrib_keys     : List[str]
     uniform_keys    : List[str]
-    uniforms        : Dict[str, GL.Uniform]
-    attributes      : Dict[str, GL.Attribute]
-    vertex_shader   : GL.Shader
-    fragment_shader : GL.Shader
-    program         : GL.Program
+    uniforms        : Dict[str, "GL.Uniform"]
+    attributes      : Dict[str, "GL.Attribute"]
+    vertex_shader   : "GL.Shader"
+    fragment_shader : "GL.Shader"
+    program         : "GL.Program"
     #f __init__
     def __init__(self, program_desc:Type[ShaderProgramDesc]) -> None:
         with Path(program_desc.vertex_uri).open() as f:
@@ -115,7 +115,7 @@ class ShaderProgram:
         self.shader_class.validate(self)
         pass
     #f compile
-    def compile(self, shader_type:GL.ShaderType, source:str) -> GL.Shader:
+    def compile(self, shader_type:"GL.ShaderType", source:str) -> "GL.Shader":
         shader = GL.glCreateShader(shader_type)
         GL.glShaderSource(shader, source);
         GL.glCompileShader(shader);
@@ -123,10 +123,10 @@ class ShaderProgram:
             raise Exception(f"Failed to compile shader {GL.glGetShaderInfoLog(shader).decode()}")
         return shader
     #f get_attr
-    def get_attr(self, name:str) -> Optional[GL.Attribute]:
+    def get_attr(self, name:str) -> Optional["GL.Attribute"]:
         return self.attributes.get(name,None)
     #f set_uniform_if
-    def set_uniform_if(self, name:str, fn:Callable[[GL.Uniform],None]) -> None:
+    def set_uniform_if(self, name:str, fn:Callable[["GL.Uniform"],None]) -> None:
         # print("set_uniform_if",name,self.uniforms,self.uniforms.get(name,""))
         if name in self.uniforms:
             fn(self.uniforms[name])

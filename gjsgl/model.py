@@ -95,8 +95,7 @@ class ModelBufferData:
             self.gl_buffer = GL.glGenBuffers(1)
             GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.gl_buffer)
             GL.glBufferData(GL.GL_ARRAY_BUFFER, self.data[self.byte_offset:self.byte_offset+self.byte_length], GL.GL_STATIC_DRAW)
-            # print(f"Bound {self.gl_buffer}")
-            # print(f"Data {self.data[self.byte_offset:self.byte_offset+self.byte_length]}")
+            # print(f"Data {self} {self.data[self.byte_offset:self.byte_offset+self.byte_length]}")
             pass
         pass
     #f __str__
@@ -172,7 +171,7 @@ class ModelBufferView:
         if a is not None:
             GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.data.gl_buffer)
             GL.glEnableVertexAttribArray(a)
-            # print(f"VAO {a} of {self.count} of {self.gl_type} {self.stride} {self.offset}")
+            # print(f"VAO {a} of {self} {self.data.gl_buffer}")
             GL.glVertexAttribPointer(a, self.count, self.gl_type, False, self.stride, ctypes.c_void_p(self.offset))
             pass
         pass 
@@ -479,6 +478,7 @@ class ModelInstance:
     def __init__(self, model_class:ModelClass) -> None:
         self.bone_set_poses = []
         self.meshes = []
+        self.transformation = Transformation();
         bone_set_dict = {}
         for (trans_mat,model) in model_class.iter_objects():
             if not model.has_mesh(): continue
@@ -510,7 +510,7 @@ class ModelInstance:
         pass
     #f gl_draw
     def gl_draw(self, program:ShaderProgram, tick:int) -> None:
-        mat = glm.mat4()
+        mat = self.transformation.mat4()
         GL.glUniformMatrix4fv(program.uniforms["uModelMatrix"], 1, False, glm.value_ptr(mat))
         for bone_set_pose in self.bone_set_poses:
             bone_set_pose.update(tick)

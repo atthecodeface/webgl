@@ -24,6 +24,11 @@ function assert_vec3_eq(a,b,...args) {
     const d = Glm.vec3.subtract(Glm.vec3.create(),a,b);
     assert (Glm.vec3.length(d)<1E-4, a,b,...args);
 }
+function assert_quat_eq(a,b,...args) {
+    const d0 = Glm.quat.subtract(Glm.quat.create(),a,b);
+    const d1 = Glm.quat.add(Glm.quat.create(),a,b);
+    assert ( (Glm.quat.length(d0)<1E-4) || (Glm.quat.length(d1)<1E-4), a,b,...args);
+}
 function assert_mat2_eq(a,b,...args) {
     const c = Glm.mat2.subtract(Glm.mat2.create(),a,b);
     const d = Math.abs(Glm.mat2.determinant(c));
@@ -283,12 +288,63 @@ function test_matrix3() {
     
 }
 
+function test_quat() {
+    const sqrt2 = Math.sqrt(2.);
+    const x = Glm.vec3.fromValues(1., 0, 0.);
+    const y = Glm.vec3.fromValues(0., 1, 0.);
+    const z = Glm.vec3.fromValues(0., 0, 1.);
+    const xy = Glm.vec3.add(Glm.vec3.create(),x,y);
+    const tv = Glm.vec3.create();
+    const qi = Glm.quat.create();
+    const tm1 = Glm.mat4.create();
+    const tm2 = Glm.mat4.create();
+
+    const qx45 = Glm.quat.setAxisAngle(Glm.quat.create(), x, Math.PI*0.25);
+    const qx90 = Glm.quat.setAxisAngle(Glm.quat.create(), x, Math.PI*0.5);
+    const qx180 = Glm.quat.setAxisAngle(Glm.quat.create(), x, Math.PI);
+    const qy45 = Glm.quat.setAxisAngle(Glm.quat.create(), y, Math.PI*0.25);
+    const qy90 = Glm.quat.setAxisAngle(Glm.quat.create(), y, Math.PI*0.5);
+    const qy180 = Glm.quat.setAxisAngle(Glm.quat.create(), y, Math.PI);
+    const qz90 = Glm.quat.setAxisAngle(Glm.quat.create(), z, Math.PI*0.5);
+
+    const tq1 = Glm.quat.create();
+    const tq2 = Glm.quat.create();
+
+    Glm.quat.rotateX(tq1, tq1, Math.PI*0.5);
+    assert_quat_eq(tq1, qx90,"quat rotate by x is same as axis angle x");
+    Glm.quat.rotateX(tq1, tq1, Math.PI*0.5);
+    assert_quat_eq(tq1, qx180,"quat rotate by x is same as axis angle x");
+
+    Glm.mat4.fromQuat(tm1, qx45);
+    Glm.mat4.fromQuat(tm2, qx90);
+    Glm.mat4.multiply(tm1, tm1, tm1);
+    assert_mat4_eq(tm1, tm2,"quat 90 = quat 45+45 to mat");
+
+    Glm.mat4.fromQuat(tm1, qx45);
+    Glm.mat4.fromQuat(tm2, qy45);
+    Glm.mat4.multiply(tm1, tm2, tm1); // tm1 = qy45 * qx45
+    Glm.quat.multiply(tq1, qy45, qx45);
+    Glm.mat4.fromQuat(tm2, tq1);
+    assert_mat4_eq(tm1, tm2,"quat 45Y * 45 X is same as mat version");
+
+    Glm.quat.multiply(tq1, qy45, qx45);
+    Glm.quat.multiply(tq1, qy45, tq1);
+    Glm.quat.multiply(tq1, qy45, tq1);
+    Glm.quat.multiply(tq1, qy45, tq1);
+    Glm.quat.multiply(tq1, qy45, tq1);
+    Glm.quat.multiply(tq1, qy45, tq1);
+    Glm.quat.multiply(tq1, qy45, tq1);
+    Glm.quat.multiply(tq1, qy45, tq1);
+    assert_quat_eq(tq1, qx45,"quat rotate 8 times by 45 about y is identity");
+}
+
 function main() {
     console.log(Glm);
     test_hierarchy();
     test_vector();
     test_matrix2();
     test_matrix3();
+    test_quat();
     test_trans_mat();
     test_transformation();
     test_bone();

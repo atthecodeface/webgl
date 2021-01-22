@@ -58,51 +58,45 @@ const Collider = ( () => {
         if (make_relative!==undefined) {
             make_relative(tv);
         }
-        tv[2] = 0;
         d = Glm.vec2.length(tv);
         return d<=r0+r1;
     }
-    function circle_to_line(c0, r0, p0, p1, make_relative) {
-        const tv0 = Collider.tv0;
+    function circle_to_line(c0, r0, p0, dp, make_relative) {
         const tv1 = Collider.tv1;
         const tv2 = Collider.tv2;
-        const tv3 = Collider.tv3;
-        // Get tv0 = vector of line dp, tv2=p0 rel to c0, tv3=p1 r3 to c0
-        Glm.vec2.subtract(tv0, p1, p0);
+        // Get tv2 = p0 rel to c0
         Glm.vec2.subtract(tv2, p0, c0);
-        Glm.vec2.subtract(tv3, p1, c0);
         if (make_relative!==undefined) {
-            make_relative(tv0);
             make_relative(tv2);
-            make_relative(tv3);
         }
-        tv0[2] = 0;
-        tv2[2] = 0;
-        tv3[2] = 0;
         // Get tv1 = unit normal to line dp, n
-        tv1[0] = -tv0[1];
-        tv1[1] =  tv0[0];
-        tv1[2] = 0;
+        tv1[0] = -dp[1];
+        tv1[1] =  dp[0];
         Glm.vec2.normalize(tv1, tv1);
         // Get distance between line and origin
         const d = Glm.vec2.dot(tv2, tv1);
         if (Math.abs(d)>r0) {return null;}
         // Line passes close enough to circle
-        const pd0 = Glm.vec2.dot(tv2, tv0);
-        const pd1 = Glm.vec2.dot(tv3, tv0);
+        const dp_len = Glm.vec2.length(dp);
+        const pd0 = Glm.vec2.dot(tv2, dp);
+        const pd1 = pd0+dp_len*dp_len;
         if ((pd0<0) && (pd1>0)) {
             return Math.abs(d);
         }
+        // either end is inside the circle
+        const x = (r0*r0-d*d)*dp_len*dp_len;
+        if (pd0*pd0<x){ return Math.abs(d);}
+        if (pd1*pd1<x){ return Math.abs(d);}
         return null;
     }
     return {
         circle_to_circle : circle_to_circle,
         circle_to_line   : circle_to_line,
         // sphere_to_sphere: sphere_to_sphere, 
-        tv0 : Glm.vec3.create(),
-        tv1 : Glm.vec3.create(),
-        tv2 : Glm.vec3.create(),
-        tv3 : Glm.vec3.create()
+        tv0 : Glm.vec2.create(),
+        tv1 : Glm.vec2.create(),
+        tv2 : Glm.vec2.create(),
+        tv3 : Glm.vec2.create()
     };
 } ) ();
 
@@ -384,10 +378,9 @@ class Rocket {
         const q = this.model.transformation.quaternion;
         Glm.quat.multiply(q, q, this.angular_velocity);
         Glm.quat.normalize(q, q);
-        Glm.vec2.add(tv, this.pos, this.velocity);
         for (const a of game.asteroids) {
             if (a.size==0) {continue;}
-            const d=Collider.circle_to_line(a.pos, a.size, this.pos, tv, game.make_relative);
+            const d=Collider.circle_to_line(a.pos, a.size, this.pos, this.velocity, (x) => game.bound_vector(x));
             if (d!=null){
                 a.hit(game, time, this.pos, this.velocity, d);
                 this.fired = false;
@@ -473,8 +466,8 @@ class Spaceship {
         }
         Glm.vec2.add(this.pos, this.pos, this.velocity);
         for (const a of game.asteroids) {
-            // if (!a.show)
-            if (Collider.circle_to_circle(this.pos, 1.0, a.pos, a.size)) { // make_relative
+            if (a.size==0) {continue;}
+            if (Collider.circle_to_circle(this.pos, 1.0, a.pos, a.size, (x) => game.bound_vector(x))) {
                 // console.log(this.pos,a);
             }
         }
@@ -522,6 +515,7 @@ class Asteroids extends Frontend {
         for (const g in this.gltfs) {
             promises.push(this.gltfs[g].init());
         }
+        this.motions = 0;
 
         return Promise.all(promises);
     }
@@ -610,7 +604,7 @@ class Asteroids extends Frontend {
         if (press) {
             this.motions = this.motions | motion;
         } else {
-            this.motions = this.motions &= ~motion;
+            this.motions = this.motions & ~motion;
         }
         if (press && (key==80)) {console.log(this);}
     }
@@ -652,6 +646,14 @@ class Asteroids extends Frontend {
         if (tv_b[0]> w) {pos[0] -= 2*w;}
         if (tv_b[1]<-h) {pos[1] += 2*h;}
         if (tv_b[1]> h) {pos[1] -= 2*h;}
+    }
+    //f bound_vector
+    bound_vector(vec) {
+        const w=this.field_xy[0], h=this.field_xy[1];
+        if (vec.x<-w){ vec[0] += 2*w;}
+        if (vec.x> w){ vec[0] -= 2*w;}
+        if (vec.y<-h){ vec[1] += 2*h;}
+        if (vec.y> h){ vec[1] -= 2*h;}
     }
     //f get_flame
     get_flame() {

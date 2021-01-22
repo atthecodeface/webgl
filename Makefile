@@ -32,8 +32,11 @@ mypy:
 jslib:
 	cat ${JS_SOURCES:%.js=gjsgl/%.js} > gjsgl.js
 
-py:
-	python3 -m test
+viewer:
+	PYTHONPATH=${CURDIR}:${PYTHONPATH} ./python/viewer.py
+
+asteroids:
+	PYTHONPATH=${CURDIR}:${PYTHONPATH} ./python/asteroids.py
 
 py_all:
 	python3 -m test_all

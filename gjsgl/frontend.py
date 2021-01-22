@@ -18,6 +18,7 @@ class Frontend:
     time_last   : float
     mouse_pos   : Tuple[float,float]
     mouse_pos_drag_start   : Tuple[float,float]
+    window : ClassVar[Tuple[int,int]] = (720,600)
     # touches : Dict[TouchId, Any] - in JS, for touch Web interface
     #f __init__
     def __init__(self) -> None:
@@ -26,7 +27,7 @@ class Frontend:
         glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 1)
         glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, GL.GL_TRUE)
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-        self.main_window = glfw.create_window(720, 600, "Opengl GLFW Window", None, None)
+        self.main_window = glfw.create_window(self.window[0], self.window[1], "Opengl GLFW Window", None, None)
         glfw.set_key_callback(self.main_window, self.key)
         glfw.set_cursor_pos_callback(self.main_window, self.cursor_pos)
         glfw.set_mouse_button_callback(self.main_window, self.mouse_button)
@@ -136,21 +137,21 @@ class Frontend:
         """
         Method to be subclassed - same in JS and Python
         """
-        print(f"{key} {scancode} {press} {mods}")
+        # print(f"{key} {scancode} {press} {mods}")
         pass
     #f cursor_fn
     def cursor_fn(self, xpos:float, ypos:float) -> None:
         """
         Method to be subclassed - same in JS and Python
         """
-        print(f"{self.mouse_pos}, {self.mouse_pos_drag_start} {self.buttons_down} {self.key_mods}")
+        # print(f"{self.mouse_pos}, {self.mouse_pos_drag_start} {self.buttons_down} {self.key_mods}")
         pass
     #f mouse_button_fn
     def mouse_button_fn(self, xpos:float, ypos:float, button:int, action:int, mods:int) -> None:
         """
         Method to be subclassed - same in JS and Python
         """
-        print(f"{self.mouse_pos}, {self.mouse_pos_drag_start} {self.buttons_down} {self.key_mods} {button} {action} {mods}")
+        # print(f"{self.mouse_pos}, {self.mouse_pos_drag_start} {self.buttons_down} {self.key_mods} {button} {action} {mods}")
         pass
     #f All done
     pass

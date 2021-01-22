@@ -1,17 +1,19 @@
+#!/usr/bin/env python3
+
+#a Imports
 from pathlib import Path
 from OpenGL import GL
 import glm
 import math
-from .object import Object, Mesh, MeshObject
-from .sample_objects import Cube, DoubleCube, DoubleCube2, Snake
-from .bone import Bone, BonePose, AnimatedBonePose
-from .shader import BoneShader, ShaderProgram
-from .frontend import Frontend
-from .texture import Texture, TextureImage
-from .transformation import Transformation, quaternion_of_rotation, quaternion_to_euler
-from .gltf import Gltf
-from .sample_models import ObjectModel
-from .model import ModelClass, ModelInstance
+from gjsgl.sample_objects import Cube, DoubleCube, DoubleCube2, Snake
+from gjsgl.bone import Bone, BonePose, AnimatedBonePose
+from gjsgl.shader import BoneShader, ShaderProgram
+from gjsgl.frontend import Frontend
+from gjsgl.texture import TextureImage
+from gjsgl.transformation import Transformation, quaternion_of_rotation, quaternion_to_euler
+from gjsgl.gltf import Gltf
+from gjsgl.sample_models import ObjectModel
+from gjsgl.model import ModelClass, ModelInstance
 
 #a Camera and projection
 class Projection:
@@ -47,9 +49,9 @@ class Camera:
         camera = glm.mat4_cast(q)
         for i in range(3):
             for j in range(3):
-                camera[3][0] += camera[i][0]*self.translation[i]
-                camera[3][1] += camera[i][1]*self.translation[i]
-                camera[3][2] += camera[i][2]*self.translation[i]
+                camera[3][j] += self.translation[i]*camera[i][j]
+                pass
+            pass
         camera *= self.zoom
         self.matrix = camera
         pass
@@ -141,8 +143,8 @@ class ViewerFrontend(Frontend):
         for (_,t) in self.textures.items():
             t.gl_create()
             pass
-        model = ObjectModel("cube", Snake(16,8.))
-        self.model_objects.append( ModelInstance(model) )
+        #model = ObjectModel("cube", Snake(16,8.))
+        #self.model_objects.append( ModelInstance(model) )
         for o in self.model_objects:
             o.gl_create()
             o.gl_bind_program(self.shader.shader_class)
@@ -177,9 +179,6 @@ class ViewerFrontend(Frontend):
     #f handle_tick
     def handle_tick(self, time, time_last) -> None:
         self.move_camera()
-        #for m in self.mesh_objects:
-        #    m.animate(time)
-        #    pass
         for a in self.animatables:
             a.interpolate_to_time(time)
             pass
@@ -190,7 +189,7 @@ class ViewerFrontend(Frontend):
     def draw(self, time:float) -> None:
         self.tick = self.tick + 1
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
-        GL.glClearColor(0.7, 0.1, 0.1, 1.0)
+        GL.glClearColor(0.1, 0.1, 0.1, 1.0)
         GL.glClearDepth(1.0)
         GL.glEnable(GL.GL_DEPTH_TEST)
         GL.glDepthFunc(GL.GL_LEQUAL)
@@ -220,3 +219,6 @@ class ViewerFrontend(Frontend):
         pass
     pass
 
+#a Main
+p = ViewerFrontend("gltf/spaceship.gltf","Body.001")
+p.run()
