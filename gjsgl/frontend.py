@@ -59,6 +59,12 @@ class Frontend:
         """
         self.animating = animating
         pass
+    #f gl_ready
+    def gl_ready(self) -> None:
+        return
+    #f handle_tick
+    def handle_tick(self, time:float, time_last:float) -> None:
+        return
     #f run
     def run(self) -> None:
         """

@@ -255,7 +255,7 @@ class Matrix extends Common {
     static multiplyScalar(a,x,s) {return _multiplyScalar(a,x,s); }
     //f absmax
     static absmax(x) {
-        var r = 0.; for (const v of x) { r=Math.max(Math.abs(r,v)); }
+        var r = 0.; for (const v of x) { r=Math.max(r,Math.abs(v)); }
         return r;
     }
     //f normalize
@@ -279,6 +279,7 @@ class Matrix extends Common {
         for (const i in a) {
             a[i]=_temp[i];
         }
+        return a;
     }
     //f All done
 }
@@ -378,7 +379,7 @@ class Mat4 extends Matrix {
         const b10 = x21 * x33 - x23 * x31;
         const b11 = x22 * x33 - x23 * x32;
         var d = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
-        if (!Math.abs(d)>1E-8) {d=1/d;}
+        if (Math.abs(d)>1E-8) {d=1/d;}
         a[0]  = (x11 * b11 - x12 * b10 + x13 * b09) * d;
         a[1]  = (x02 * b10 - x01 * b11 - x03 * b09) * d;
         a[2]  = (x31 * b05 - x32 * b04 + x33 * b03) * d;
@@ -470,10 +471,14 @@ class Mat4 extends Matrix {
         for (var i=0; i<12; i++) {
             a[i]=x[i];
         }
-        a[12+0] = x[ 0]*v[0] + x[4+0]*v[1] + x[8+0]*v[2] + x[12+0];
-        a[12+1] = x[ 1]*v[0] + x[4+1]*v[1] + x[8+1]*v[2] + x[12+1];
-        a[12+2] = x[ 2]*v[0] + x[4+2]*v[1] + x[8+2]*v[2] + x[12+2];
-        a[12+3] = x[ 3]*v[0] + x[4+3]*v[1] + x[8+3]*v[2] + x[12+3];
+        a12 = x[ 0]*v[0] + x[4+0]*v[1] + x[8+0]*v[2] + x[12+0];
+        a13 = x[ 1]*v[0] + x[4+1]*v[1] + x[8+1]*v[2] + x[12+1];
+        a14 = x[ 2]*v[0] + x[4+2]*v[1] + x[8+2]*v[2] + x[12+2];
+        a15 = x[ 3]*v[0] + x[4+3]*v[1] + x[8+3]*v[2] + x[12+3];
+        a[12+0] = a12;
+        a[12+1] = a13;
+        a[12+2] = a14;
+        a[12+3] = a15;
         return a;
     }
     //f perspective

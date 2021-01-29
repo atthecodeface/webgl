@@ -3,7 +3,7 @@ from OpenGL import GL
 import ctypes
 import numpy as np
 import math
-import glm
+from . import glm as Glm
 from .texture import Texture
 from .bone import Bone, BoneSet, BonePose, BonePoseSet
 from .shader import ShaderProgram
@@ -140,8 +140,10 @@ class Mesh(MeshBase):
     def draw(self, shader:ShaderProgram, poses:BonePoseSet, texture:Texture) -> None:
         self.bind(shader)
 
-        GL.glActiveTexture(GL.GL_TEXTURE0)
-        GL.glBindTexture(GL.GL_TEXTURE_2D, texture.texture)
+        if texture.texture is not None:
+            GL.glActiveTexture(GL.GL_TEXTURE0)
+            GL.glBindTexture(GL.GL_TEXTURE_2D, texture.texture)
+            pass
         shader.set_uniform_if("uTexture",    lambda u:GL.glUniform1i(u, 0))
         shader.set_uniform_if("uBonesScale", lambda u:GL.glUniform1f(u, 1.))
 
@@ -157,27 +159,27 @@ class Mesh(MeshBase):
 #c MeshObject
 class MeshObject:
     #f __init__
-    def __init__(self, mesh:MeshBase, texture:Texture, world_vec:glm.Vec3) -> None:
+    def __init__(self, mesh:MeshBase, texture:Texture, world_vec:Glm.vec3) -> None:
         self.texture = texture
-        self.world_matrix = glm.mat4()
+        self.world_matrix = Glm.mat4.create()
         self.place(world_vec)
         self.mesh = mesh
 
         self.bones = BoneSet()
-        self.bones.add_bone(Bone(parent=None,                transformation=Transformation(translation=(0.,0., 1.))))
-        self.bones.add_bone(Bone(parent=self.bones.bones[0], transformation=Transformation(translation=(0.,0.,-2.))))
-        self.bones.add_bone(Bone(parent=self.bones.bones[1], transformation=Transformation(translation=(0.,0.,-2.))))
+        self.bones.add_bone(Bone(parent=None,                transformation=Transformation(translation=Glm.vec3.fromValues(0.,0., 1.))))
+        self.bones.add_bone(Bone(parent=self.bones.bones[0], transformation=Transformation(translation=Glm.vec3.fromValues(0.,0.,-2.))))
+        self.bones.add_bone(Bone(parent=self.bones.bones[1], transformation=Transformation(translation=Glm.vec3.fromValues(0.,0.,-2.))))
         self.bones.rewrite_indices()
         self.bones.derive_matrices()
         self.pose = BonePoseSet(self.bones)
         self.poses = self.pose.poses
         pass
     #f place
-    def place(self, world_vec:glm.Vec3) -> None:
-        self.world_matrix = glm.mat4()
-        self.world_matrix[3][0] = world_vec[0]
-        self.world_matrix[3][1] = world_vec[1]
-        self.world_matrix[3][2] = world_vec[2]
+    def place(self, world_vec:Glm.vec3) -> None:
+        self.world_matrix = Glm.mat4.create()
+        self.world_matrix[12] = world_vec[0]
+        self.world_matrix[13] = world_vec[1]
+        self.world_matrix[14] = world_vec[2]
         pass
     #f animate
     def animate(self, time:float) -> None:
@@ -185,21 +187,22 @@ class MeshObject:
         self.poses[1].transformation_reset()
         self.poses[2].transformation_reset()
         angle = math.sin(time*0.2)*0.3
-        q = glm.quat()
-        q = glm.angleAxis(time*0.3, glm.vec3([0,0,1])) * q
-        q = glm.angleAxis(1.85,     glm.vec3([1,0,0])) * q
-        self.poses[0].transform(Transformation(translation=(0.,0.,0.), quaternion=q))
-        q = glm.quat()
-        q = glm.angleAxis(angle*4, glm.vec3([0,0,1])) * q
-        self.poses[1].transform(Transformation(translation=(0.,0.,-math.cos(4*angle)), quaternion=q))
-        q = glm.quat()
-        q = glm.angleAxis(angle*4, glm.vec3([0,0,1])) * q
-        self.poses[2].transform(Transformation(translation=(0.,0.,+math.cos(4*angle)), quaternion=q))
+        q = Glm.quat.create()
+        Glm.quat.identity(q);
+        Glm.quat.rotateX(q,q,1.85);
+        Glm.quat.rotateZ(q,q,time*0.3);
+        self.poses[0].transform(Transformation(translation=Glm.vec3.fromValues(0.,0.,0.), quaternion=q))
+        Glm.quat.identity(q);
+        Glm.quat.rotateZ(q,q,4*angle);
+        self.poses[1].transform(Transformation(translation=Glm.vec3.fromValues(0.,0.,-math.cos(4*angle)), quaternion=q))
+        Glm.quat.identity(q);
+        Glm.quat.rotateZ(q,q,-4*angle);
+        self.poses[2].transform(Transformation(translation=Glm.vec3.fromValues(0.,0.,+math.cos(4*angle)), quaternion=q))
         self.pose.update(int(time*1E5))
         pass
     #f draw
     def draw(self, shader:ShaderProgram) -> None:
-        GL.glUniformMatrix4fv(shader.uniforms["uModelMatrix"], 1, False, glm.value_ptr(self.world_matrix))
+        GL.glUniformMatrix4fv(shader.uniforms["uModelMatrix"], 1, False, self.world_matrix)
         self.mesh.draw(shader, self.pose, self.texture)
         pass
     pass

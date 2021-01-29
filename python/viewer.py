@@ -3,8 +3,8 @@
 #a Imports
 from pathlib import Path
 from OpenGL import GL
-import glm
 import math
+import gjsgl.glm as Glm
 from gjsgl.sample_objects import Cube, DoubleCube, DoubleCube2, Snake
 from gjsgl.bone import Bone, BonePose, AnimatedBonePose
 from gjsgl.shader import BoneShader, ShaderProgram
@@ -14,6 +14,8 @@ from gjsgl.transformation import Transformation, quaternion_of_rotation, quatern
 from gjsgl.gltf import Gltf
 from gjsgl.sample_models import ObjectModel
 from gjsgl.model import ModelClass, ModelInstance
+
+from typing import *
 
 #a Camera and projection
 class Projection:
@@ -25,7 +27,7 @@ class Projection:
         self.recalculate()
         pass
     def recalculate(self) -> None:
-        self.matrix = glm.perspective(self.fov, self.aspect, self.near, self.far)
+        self.matrix = Glm.mat4.perspective(Glm.mat4.create(), self.fov, self.aspect, self.near, self.far)
         pass
     def set_fov(self, x:float) -> None:
         self.fov = x * math.pi / 180   # in radians
@@ -35,44 +37,37 @@ class Projection:
 
 class Camera:
     def __init__(self) -> None:
-        self.translation = [0.,-4.,-20.]
+        self.translation = Glm.vec3.fromValues(0.,-4.,-20.)
         self.eulers = [0.3,0.,1.57]
         self.zoom = 1.
         self.transformation = Transformation()
         self.recalculate()
         pass
     def recalculate(self) -> None:
-        camera = glm.mat4()
-        q =     glm.angleAxis(self.eulers[1], glm.vec3([0,1,0]))
-        q = q * glm.angleAxis(self.eulers[2], glm.vec3([0,0,1]))
-        q = q * glm.angleAxis(self.eulers[0], glm.vec3([1,0,0]))
-        camera = glm.mat4_cast(q)
-        for i in range(3):
-            for j in range(3):
-                camera[3][j] += self.translation[i]*camera[i][j]
-                pass
-            pass
+        camera = Glm.mat4.create()
+        q = Glm.quat.create()
+        Glm.quat.rotateY(q, q, self.eulers[1]);
+        Glm.quat.rotateZ(q, q, self.eulers[2]);
+        Glm.quat.rotateX(q, q, self.eulers[0]);
+        Glm.mat4.fromQuat(camera ,q);
+        Glm.mat4.translate(camera, camera, self.translation);
         camera *= self.zoom
         self.matrix = camera
         pass
     def translate(self, n:int, x:float) -> None:
-        self.translation[0] += x*self.matrix[0][n]
-        self.translation[1] += x*self.matrix[1][n]
-        self.translation[2] += x*self.matrix[2][n]
+        self.translation[0] += x*self.matrix[0+n]
+        self.translation[1] += x*self.matrix[4+n]
+        self.translation[2] += x*self.matrix[8+n]
         self.recalculate()
         pass
     def rotate(self, n:int, x:float) -> None:
-        if n==0: q = glm.angleAxis(x, glm.vec3([1,0,0]))
-        if n==1: q = glm.angleAxis(x, glm.vec3([0,1,0]))
-        if n==2: q = glm.angleAxis(x, glm.vec3([0,0,1]))
-        self.matrix = glm.mat4_cast(q) * self.matrix
-        m = glm.mat3()
-        for x in range(3):
-            for y in range(3):
-                m[x][y]= self.matrix[x][y]
-                pass
-            pass
-        q = quaternion_of_rotation(m)
+        q = Glm.quat.create();
+        if n==0: Glm.quat.rotateX(q,q,x);
+        if n==1: Glm.quat.rotateY(q,q,x);
+        if n==2: Glm.quat.rotateZ(q,q,x);
+        m = Glm.mat4.clone(self.matrix);
+        Glm.mat4.multiply(self.matrix, Glm.mat4.fromQuat(Glm.mat4.create(),q), self.matrix);
+        Glm.mat4.getRotation(q, self.matrix);
         e = quaternion_to_euler(q)
         self.eulers[0] = e[0]
         self.eulers[1] = e[1]
@@ -80,7 +75,7 @@ class Camera:
         self.recalculate();
         pass
     def set_euler(self, n:int, x:float) -> None:
-        self.eulers[n] = x * Math.PI / 180;
+        self.eulers[n] = x * math.pi / 180;
         self.recalculate();
         pass
     def set_xyz(self, n:int, x:float) -> None:
@@ -94,8 +89,8 @@ class Camera:
     pass
 
 #a Frontend
-def axis(mat:glm.Mat4, n:int) -> glm.Vec3:
-    return glm.vec3((mat[n][0],mat[n][1],mat[n][2]))
+"""def axis(mat:glm.Mat4, n:int) -> glm.Vec3:
+    return glm.vec3((mat[n][0],mat[n][1],mat[n][2]))"""
 #c ViewerFrontend
 class ViewerFrontend(Frontend):
     tick = 0
@@ -107,8 +102,9 @@ class ViewerFrontend(Frontend):
                        74:1024, 75:2048,
                        78:4096, 77:8192,
     }
+    model_objects: List[ModelInstance]
     #f __init__
-    def __init__(self, url, node) -> None:
+    def __init__(self, url:str, node:str) -> None:
         super().__init__()
         self.camera = Camera()
         self.projection = Projection()
@@ -127,7 +123,9 @@ class ViewerFrontend(Frontend):
     #f gl_ready
     def gl_ready(self) -> None:
         self.shader.gl_ready()
-        self.gltf_node = self.gltf_file.get_node_by_name(self.gltf_data[1]) [1]
+        blah = self.gltf_file.get_node_by_name(self.gltf_data[1])
+        assert blah is not None
+        self.gltf_node = blah[1]
         self.gltf_root = self.gltf_node.to_model_object(self.gltf_file)
 
         gltf_model = ModelClass("gltf", self.gltf_root)
@@ -177,7 +175,7 @@ class ViewerFrontend(Frontend):
         if   self.motions &8192: self.camera.rotate(2,  delta_angle)
         pass
     #f handle_tick
-    def handle_tick(self, time, time_last) -> None:
+    def handle_tick(self, time:float, time_last:float) -> None:
         self.move_camera()
         for a in self.animatables:
             a.interpolate_to_time(time)
@@ -203,16 +201,16 @@ class ViewerFrontend(Frontend):
         camera_matrix      = self.camera.matrix
 
         GL.glUseProgram(self.shader.program)
-        GL.glUniformMatrix4fv(self.shader.uniforms["uProjectionMatrix"], 1, False, glm.value_ptr(projection_matrix))
-        GL.glUniformMatrix4fv(self.shader.uniforms["uCameraMatrix"],     1, False, glm.value_ptr(camera_matrix))
+        GL.glUniformMatrix4fv(self.shader.uniforms["uProjectionMatrix"], 1, False, projection_matrix)
+        GL.glUniformMatrix4fv(self.shader.uniforms["uCameraMatrix"],     1, False, camera_matrix)
         for o in self.model_objects:
             if o.bone_set_poses!=[]:
                 pose1 = o.bone_set_poses[0].poses[0]
                 pose2 = o.bone_set_poses[0].poses[1]
                 pose1.transformation_reset()
                 pose2.transformation_reset()
-                pose1.transform(Transformation([math.sin(time), 0., 0.5*math.cos(time*0.4)],glm.quat()))
-                pose2.transform(Transformation([-math.sin(time),0.,-0.5*math.cos(time*0.4)],glm.quat()))
+                pose1.transform(Transformation(translation=Glm.vec3.fromValues(math.sin(time), 0., 0.5*math.cos(time*0.4))))
+                pose2.transform(Transformation(translation=Glm.vec3.fromValues(-math.sin(time),0.,-0.5*math.cos(time*0.4))))
                 pass
             o.gl_draw(self.shader, self.tick)
             pass

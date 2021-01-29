@@ -3,7 +3,7 @@ from OpenGL import GL
 import ctypes
 import numpy as np
 import math
-import glm
+from . import glm as Glm
 from .hierarchy import Hierarchy
 from .texture import Texture
 from .bone import Bone, BonePose, BoneSet, BonePoseSet
@@ -59,6 +59,7 @@ class ModelMaterial:
     #f gl_program_configure
     def gl_program_configure(self, program:ShaderProgram) -> None:
         if self.base_texture is not None:
+            assert self.base_texture.texture is not None
             GL.glActiveTexture(GL.GL_TEXTURE0)
             GL.glBindTexture(GL.GL_TEXTURE_2D, self.base_texture.texture)
             program.set_uniform_if("uMaterial.base_texture",
@@ -131,7 +132,7 @@ class ModelBufferIndices:
             pass
         pass
     #f gl_buffer
-    def gl_bind_program(self, shader_class:Type[ShaderClass]) -> None:
+    def gl_bind_program(self, shader_class:ShaderClass) -> None:
         GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.gl_buffer)
         pass
     #f hier_debug
@@ -166,7 +167,7 @@ class ModelBufferView:
         self.data.gl_create()
         pass
     #f gl_bind_program
-    def gl_bind_program(self, shader_class:Type[ShaderClass], attr:str) -> None:
+    def gl_bind_program(self, shader_class:ShaderClass, attr:str) -> None:
         a = shader_class.get_attr(attr)
         if a is not None:
             GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.data.gl_buffer)
@@ -229,7 +230,7 @@ class ModelPrimitiveView:
         self.gl_vao = GL.glGenVertexArrays(1)
         pass
     #f gl_bind_program
-    def gl_bind_program(self, shader_class:Type[ShaderClass]) -> None:
+    def gl_bind_program(self, shader_class:ShaderClass) -> None:
         GL.glBindVertexArray(self.gl_vao)
         self.indices.gl_bind_program(shader_class)
         for (san,an) in self.attribute_mapping.items():
@@ -278,7 +279,7 @@ class ModelPrimitive:
         self.material.gl_create()
         pass
     #f gl_bind_program
-    def gl_bind_program(self, shader_class:Type[ShaderClass]) -> None:
+    def gl_bind_program(self, shader_class:ShaderClass) -> None:
         self.view.gl_bind_program(shader_class)
         pass
     #f gl_draw
@@ -312,7 +313,7 @@ class ModelMesh:
             pass
         pass
     #f gl_bind_program
-    def gl_bind_program(self, shader_class:Type[ShaderClass]) -> None:
+    def gl_bind_program(self, shader_class:ShaderClass) -> None:
         for p in self.primitives:
             p.gl_bind_program(shader_class)
             pass
@@ -391,7 +392,7 @@ class ModelObject:
         if self.mesh is not None: self.mesh.gl_create()
         pass
     #f gl_bind_program
-    def gl_bind_program(self, shader_class:Type[ShaderClass]) -> None:
+    def gl_bind_program(self, shader_class:ShaderClass) -> None:
         if self.mesh is not None: self.mesh.gl_bind_program(shader_class)
         pass
     #f gl_draw
@@ -503,7 +504,7 @@ class ModelInstance:
             pass
         pass
     #f gl_bind_program
-    def gl_bind_program(self, shader_class:Type[ShaderClass]) -> None:
+    def gl_bind_program(self, shader_class:ShaderClass) -> None:
         for (t,m,b) in self.meshes:
             m.gl_bind_program(shader_class)
             pass
@@ -511,7 +512,7 @@ class ModelInstance:
     #f gl_draw
     def gl_draw(self, program:ShaderProgram, tick:int) -> None:
         mat = self.transformation.mat4()
-        GL.glUniformMatrix4fv(program.uniforms["uModelMatrix"], 1, False, glm.value_ptr(mat))
+        GL.glUniformMatrix4fv(program.uniforms["uModelMatrix"], 1, False, mat)
         for bone_set_pose in self.bone_set_poses:
             bone_set_pose.update(tick)
             pass
@@ -529,7 +530,7 @@ class ModelInstance:
                 pass
             # Provide mesh matrix and material uniforms
             program.set_uniform_if("uMeshMatrix",
-                                   lambda u: GL.glUniformMatrix4fv(u, 1, False, glm.value_ptr(t.mat4())) )
+                                   lambda u: GL.glUniformMatrix4fv(u, 1, False, t.mat4()) )
             m.gl_draw(program)
             pass
         pass

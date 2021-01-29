@@ -1,40 +1,39 @@
 #a Imports
-import glm
 import math
 import numpy as np
-Vec2 = object
+from . import glm as Glm
 from typing import *
-RelativeFn = Callable[[int],None]
+RelativeFn = Callable[[Glm.vec2],None]
 
 #a Collider
 #c Collider
 class Collider:
     #f circle_to_circle
     @staticmethod
-    def circle_to_circle(c0:Vec2, r0:float, c1:Vec2, r1:float, make_relative:Optional[RelativeFn]=None) -> bool:
+    def circle_to_circle(c0:Glm.vec2, r0:float, c1:Glm.vec2, r1:float, make_relative:Optional[RelativeFn]=None) -> bool:
         tv = c1 - c0
         if make_relative is not None: make_relative(tv)
-        d = glm.length(tv)
+        d = Glm.vec2.length(tv)
         return d<=r0+r1
     pass
     #f circle_to_line
     @staticmethod
-    def circle_to_line(c0:Vec2, r0:float, p0:Vec2, dp:Vec2, make_relative:Optional[RelativeFn]=None) -> Optional[float]:
+    def circle_to_line(c0:Glm.vec2, r0:float, p0:Glm.vec2, dp:Glm.vec2, make_relative:Optional[RelativeFn]=None) -> Optional[float]:
         # Get tv0 = vector of line dp, tv2=p0 rel to c0, tv3=p1 r3 to c0
         tv2 = p0 - c0
         if make_relative is not None:
             make_relative(tv2)
             pass
         # Get tv1 = unit normal to line dp, n
-        tv1 = glm.vec2([-dp[1], dp[0]])
-        tv1 = glm.normalize(tv1)
+        tv1 : Glm.vec2 = Glm.vec2.fromValues(-dp[1], dp[0])
+        Glm.vec2.normalize(tv1, tv1)
         # print(f"tv1,tv2:{tv1},{tv2}")
         # Get distance between line and origin
-        d = glm.dot(tv2, tv1)
+        d = Glm.vec2.dot(tv2, tv1)
         if (abs(d)>r0): return None
         # Two ends of line are
-        dp_len = glm.length(dp)
-        pd0 = glm.dot(tv2,    dp)
+        dp_len = Glm.vec2.length(dp)
+        pd0 = Glm.vec2.dot(tv2,    dp)
         pd1 = pd0 + dp_len*dp_len # glm.dot(tv2+dp, dp)
         # print(f"pd0,pd1: {pd0},{pd1}")
         if ((pd0<0) and (pd1>0)):

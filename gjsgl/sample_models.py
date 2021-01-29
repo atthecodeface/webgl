@@ -1,6 +1,7 @@
 #a Imports
 from OpenGL import GL
 import numpy as np
+from . import glm as Glm
 from .bone import Bone, BoneSet
 from .object import Object
 from .transformation import Transformation
@@ -20,11 +21,11 @@ class ObjectModel(ModelClass):
     def __init__(self, name:str, obj:Object) -> None:
         
         bones = BoneSet()
-        b = Bone(parent=None, transformation=Transformation(translation=(0.,0.,-1.)))
+        b = Bone(parent=None, transformation=Transformation(translation=Glm.vec3.fromValues(0.,0.,-1.)))
         bones.add_bone(b)
-        b = Bone(parent=bones.bones[0], transformation=Transformation(translation=(0.,0.,2.)))
+        b = Bone(parent=bones.bones[0], transformation=Transformation(translation=Glm.vec3.fromValues(0.,0.,2.)))
         bones.add_bone(b)
-        b = Bone(parent=bones.bones[1], transformation=Transformation(translation=(0.,0.,2.)))
+        b = Bone(parent=bones.bones[1], transformation=Transformation(translation=Glm.vec3.fromValues(0.,0.,2.)))
         bones.add_bone(b)
         bones.rewrite_indices()
         bones.derive_matrices()

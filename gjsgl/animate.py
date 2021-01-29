@@ -1,6 +1,6 @@
 #a Imports
 import math
-import glm
+from . import glm as Glm
 
 from typing import *
 

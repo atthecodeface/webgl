@@ -1,4 +1,4 @@
-JS_SOURCES =
+\JS_SOURCES =
 JS_SOURCES += bone.js
 JS_SOURCES += frontend.js
 JS_SOURCES += glm.js
@@ -21,13 +21,20 @@ help:
 
 help_install:
 	@echo "Help install"
-	@echo "pip3 install pyglm PyOpenGL Pillow glfw"
+	# @echo "pip3 install pyglm PyOpenGL Pillow glfw"
+	@echo "pip3 install PyOpenGL Pillow glfw"
 
 httpd:
 	python3 -m http.server
 
 mypy:
-	MYPYPATH=${CURDIR}/mypy_stubs mypy --strict -m test
+	MYPYPATH=${CURDIR}/mypy_stubs mypy --config-file mypy.cfg --strict -m test
+mypy2:
+	MYPYPATH=${CURDIR}/mypy_stubs mypy --config-file mypy.cfg --strict -m test_all
+mypy3:
+	MYPYPATH=${CURDIR}/mypy_stubs mypy --config-file mypy.cfg --strict python/asteroids.py
+mypy4:
+	MYPYPATH=${CURDIR}/mypy_stubs mypy --config-file mypy.cfg --strict python/viewer.py
 
 jslib:
 	cat ${JS_SOURCES:%.js=gjsgl/%.js} > gjsgl.js

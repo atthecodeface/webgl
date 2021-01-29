@@ -17,13 +17,12 @@ class ShaderClassDesc:
     pass
 
 #c ShaderProgramDesc
-@dataclass
 class ShaderProgramDesc:
     shader_class   : "ShaderClass"
     vertex_uri     : str
     fragment_uri   : str
-    attrib_keys    : List[str]
-    uniform_keys   : List[str]
+    attrib_keys    : List[str] = []
+    uniform_keys   : List[str] = []
     pass
 
 #c ShaderClass
@@ -39,7 +38,7 @@ class ShaderClass:
     attrib_keys     : List[str]
     attributes      : Dict[str, "GL.Attribute"]
     #f __init__
-    def __init__(self, desc:ShaderClassDesc) -> None:
+    def __init__(self, desc:Type[ShaderClassDesc]) -> None:
         self.name = desc.name
         self.attrib_keys = desc.attrib_keys
         pass
@@ -90,7 +89,7 @@ class ShaderProgram:
         self.uniform_keys = program_desc.uniform_keys
         pass
     #f gl_ready
-    def gl_ready(self):
+    def gl_ready(self) -> None:
         """
         Continue compilation etc; this can only happen when we have the source
         """
@@ -107,7 +106,7 @@ class ShaderProgram:
         self.uniforms   = {}
         for k in self.attrib_keys:
             a = GL.glGetAttribLocation(self.program, k)
-            if a>=0: self.attributes[k] = a
+            if a>=0: self.attributes[k] = a # type: ignore
             pass
         for k in self.uniform_keys:
             self.uniforms[k]   = GL.glGetUniformLocation(self.program, k)
@@ -174,6 +173,5 @@ class FlatShader(ShaderProgramDesc):
     vertex_uri   = "./shader/flat_v.glsl"
     fragment_uri = "./shader/flat_f.glsl"
     attrib_keys  = ["vPosition"]
-    uniform_keys = []
     pass
 

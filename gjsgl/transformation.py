@@ -1,46 +1,33 @@
 #a Imports
-import glm
 import math
 
 from typing import *
-if not TYPE_CHECKING:
-    glm.Vec3 = Tuple[float,float,float]
-    glm.Vec4 = Tuple[float,float,float,float]
-    glm.Mat4 = Tuple[glm.Vec4,glm.Vec4,glm.Vec4,glm.Vec4]
-    glm.Mat3 = Tuple[glm.Vec3,glm.Vec3,glm.Vec3]
-    glm.Quat = object
-    pass
+from . import glm as Glm
 
 #a Useful functions
 #f mat4_str
-def mat4_str(mat:glm.Mat4) -> str:
-    return "[" + ("   ".join([" ".join([str(v) for v in col]) for col in mat])) + "]" # type: ignore
+def mat4_str(mat:Glm.mat4) -> str: return str(mat)
 
 #f vec3_str
-def vec3_str(vec:glm.Vec3) -> str:
-    return "["+" ".join([str(v) for v in vec])+"]" # type: ignore
+def vec3_str(vec:Glm.vec3) -> str: return str(vec)
 
 #f quat_str
-def quat_str(quat:glm.Quat) -> str:
-    return "q("+" ".join([str(v) for v in quat])+")" # type: ignore
+def quat_str(quat:Glm.quat) -> str: return str(quat)
 
 #f quaternion_to_euler
-def quaternion_to_euler(q:glm.Quat) -> Tuple[float,float,float]:
-    x=q.x
-    y=q.y
-    z=q.z
-    w=q.w
+def quaternion_to_euler(q:Glm.Quat) -> Tuple[float,float,float]:
+    x=q[0]; y=q[1]; z=q[2]; w=q[3];
     test = x*y + z*w
     heading = None
     if (test > 0.499999):
         heading  = 2*math.atan2(x,w)
         attitude = math.pi/2
-        bank = 0
+        bank = 0.
         pass
     elif (test < -0.499999):
         heading  = -2*math.atan2(x,w)
         attitude = -math.pi/2
-        bank = 0
+        bank = 0.
         pass
     if heading is None:
         x2 = x*x
@@ -53,7 +40,7 @@ def quaternion_to_euler(q:glm.Quat) -> Tuple[float,float,float]:
     return (bank, heading, attitude)
 
 #f quaternion_of_rotation
-def quaternion_of_rotation(rotation:glm.Mat3) -> glm.Quat:
+def quaternion_of_rotation(rotation:Glm.Mat3) -> Glm.quat:
     """
     Note that R . axis = axis
     RI = (R - I*999/1000)
@@ -76,53 +63,53 @@ def quaternion_of_rotation(rotation:glm.Mat3) -> glm.Quat:
     v''' = normalize(RI' . v'') etc
     This gets closer and closer to the axis
     """
-    rot_min_id   : glm.Mat3 = rotation - (0.99999 * glm.mat3()) # type: ignore
-    rot_min_id_i : glm.Mat3 = glm.inverse(rot_min_id) # type: ignore
+    rot_min_id   = rotation - (Glm.mat3.create() * 0.99999)
+    rot_min_id_i = Glm.mat3.inverse(rot_min_id) # type: ignore
     for j in range(3):
-        v = glm.vec3()
+        v = Glm.vec3()
         v[j] = 1.
         for i in range(10):
             last_v = v
-            rid_i_v : glm.Vec3 = rot_min_id_i * v # type: ignore
-            v = glm.normalize(rid_i_v)
+            rid_i_v : Glm.Vec3 = rot_min_id_i * v # type: ignore
+            Glm.vec3.normalize(v, rid_i_v)
             pass
         axis = v
-        dist2 = glm.length2(v - last_v) # type: ignore
+        dist2 = Glm.length2(v - last_v) # type: ignore
         if dist2<0.00001: break
         pass
 
-    w = glm.vec3([1.0,0,0])
-    if axis[0]>0.9 or axis[0]<-0.9: w = glm.vec3([0,1.0,0])
-    na0 : glm.Vec3 = glm.normalize(glm.cross(w, axis))
-    na1 : glm.Vec3 = glm.cross(axis, na0)
+    w = Glm.vec3.fromValues(1.0,0,0);
+    if axis[0]>0.9 or axis[0]<-0.9: w = Glm.vec3.fromValues(0,1.0,0)
+    na0 : Glm.vec3 = Glm.vec3.normalize(Glm.vec3.create(), Glm.vec3.cross(Glm.vec3.create(), w, axis))
+    na1 : Glm.vec3 = Glm.vec3.cross(Glm.vec3.create(), axis, na0)
 
     # Rotate w_perp_n around the axis of rotation by angle A
-    na0_r : glm.Vec3 = rotation * na0 # type: ignore
-    na1_r : glm.Vec3 = rotation * na1 # type: ignore
+    na0_r : Glm.vec3 = Glm.vec3.transformMat3(Glm.vec3.create(), na0, rotation)
+    na1_r : Glm.vec3 = Glm.vec3.transformMat3(Glm.vec3.create(), na1, rotation)
 
     # Get angle of rotation
-    cos_angle =  glm.dot(na0, na0_r)
-    sin_angle = -glm.dot(na0, na1_r)
+    cos_angle =  Glm.vec3.dot(na0, na0_r)
+    sin_angle = -Glm.vec3.dot(na0, na1_r)
     angle = math.atan2(sin_angle, cos_angle)
 
     # Set quaternion
-    return glm.angleAxis(angle, axis)
+    return Glm.quat.setAxisAngle(Glm.quat.create(), axis, angle)
 
 #c TransMat
 class TransMat:
     #v properties
-    mat : glm.Mat4
+    mat : Glm.mat4
     #f __init__
-    def __init__(self, mat:Optional[glm.Mat4]=None) -> None:
+    def __init__(self, mat:Optional[Glm.mat4]=None) -> None:
         if mat is None:
-            self.mat = glm.mat4()
+            self.mat = Glm.mat4.create()
             pass
         else:
             self.mat = mat
             pass
         pass
     #f mat4
-    def mat4(self) -> glm.Mat4:
+    def mat4(self) -> Glm.mat4:
         return self.mat
     #f mat_after
     def mat_after(self, pre_mat:"TransMat") -> "TransMat":
@@ -135,31 +122,25 @@ class TransMat:
     
 #c Transformation
 class Transformation:
-    translation      : glm.Vec3
-    scale            : glm.Vec3
-    quaternion       : glm.Quat
+    translation      : Glm.vec3
+    scale            : Glm.vec3
+    quaternion       : Glm.quat
     #f __init__
     def __init__(self,
-                 translation: Optional[Tuple[float,float,float]]=None,
-                 quaternion : Optional[glm.Quat] = None,
-                 scale      : Optional[Tuple[float,float,float]]=None ) -> None:
-        if translation is None:
-            self.translation = glm.vec3()
+                 translation: Optional[Glm.vec3]=None,
+                 quaternion : Optional[Glm.quat] = None,
+                 scale      : Optional[Glm.vec3]=None ) -> None:
+        self.translation = Glm.vec3.create();
+        self.quaternion  = Glm.quat.create();
+        self.scale       = Glm.vec3.fromValues(1.,1.,1.);
+        if translation is not None:
+            Glm.vec3.copy(self.translation, translation);
             pass
-        else:
-            self.translation = glm.vec3(translation)
+        if quaternion is not None:
+            Glm.quat.copy(self.quaternion, quaternion);
             pass
-        if quaternion is None:
-            self.quaternion  = glm.quat()
-            pass
-        else:
-            self.quaternion  = glm.quat(quaternion)
-            pass
-        if scale is None:
-            self.scale       = glm.vec3([1.,1.,1.])
-            pass
-        else:
-            self.scale       = glm.vec3(scale)
+        if scale is not None:
+            Glm.vec3.copy(self.scale,scale);
             pass
         pass
     #f __str__
@@ -174,9 +155,9 @@ class Transformation:
         return t
     #f copy
     def copy(self, other:"Transformation") -> None:
-        self.quaternion  = glm.quat(other.quaternion)
-        self.translation = glm.vec3(other.translation)
-        self.scale       = glm.vec3(other.scale)
+        Glm.quat.copy(self.quaternion,  other.quaternion)
+        Glm.vec3.copy(self.translation, other.translation)
+        Glm.vec3.copy(self.scale,       other.scale)
         pass
     #f combine
     def combine(self, base:"Transformation", other:"Transformation") -> None:
@@ -191,36 +172,39 @@ class Transformation:
         self.copy(other)
         pass
     #f translate
-    def translate(self, t:glm.Vec3, scale:float) -> None:
-        self.translation = self.translation + (t * scale) # type: ignore
+    def translate(self, t:Glm.vec3, scale:float) -> None:
+        self.translation = self.translation + (t * scale)
         pass
     #f rotate
-    def rotate(self, axis:glm.Vec3, angle:float) -> None:
-        q = glm.angleAxis(angle, axis)
-        self.quaternion  = q * self.quaternion
-        self.translation = q * self.translation # type: ignore
+    def rotate(self, axis:Glm.vec3, angle:float) -> None:
+        q = Glm.quat.setAxisAngle(Glm.quat.create(), axis, angle)
+        Glm.quat.multiply(self.quaternion, q, self.quaternion)
+        Glm.quat.multiply(self.translation, q, self.translation)
+        # self.translation = q * self.translation # type: ignore
         pass
     #f mat4
-    def mat4(self) -> glm.Mat4:
-        m = glm.mat4_cast(self.quaternion)
+    def mat4(self) -> Glm.mat4:
+        m = Glm.mat4.fromQuat(Glm.mat4.create(), self.quaternion)
         for i in range(3):
-            m[i][0] *= self.scale[i]
-            m[i][1] *= self.scale[i]
-            m[i][2] *= self.scale[i]
+            m[4*i+0] *= self.scale[i]
+            m[4*i+1] *= self.scale[i]
+            m[4*i+2] *= self.scale[i]
             pass
-        m[3][0] += self.translation[0]
-        m[3][1] += self.translation[1]
-        m[3][2] += self.translation[2]
+        m[12] += self.translation[0]
+        m[13] += self.translation[1]
+        m[14] += self.translation[2]
         return m
     #f from_mat4
-    def from_mat4(self, m:glm.Mat4) -> None:
-        self.translation = glm.vec3([m[3][0], m[3][1], m[3][2]])
-        rotation = glm.mat3()
+    def from_mat4(self, m:Glm.mat4) -> None:
+        self.translation = Glm.vec3.fromValues(m[12], m[13], m[14])
+        rotation = Glm.mat3.create()
         for i in range(3):
-            v = glm.vec3([m[i][0], m[i][1], m[i][2]])
-            l = glm.length(v)
+            v = Glm.vec3.fromValues(m[4*i+0],m[4*i+1],m[4*i+2]);
+            l = Glm.vec3.length(v);
             self.scale[i] = l
-            rotation[i] = v / l # type: ignore
+            rotation[3*i+0] = v[0] / l
+            rotation[3*i+1] = v[1] / l
+            rotation[3*i+2] = v[2] / l
             pass
         self.quaternion = quaternion_of_rotation(rotation)
         pass
@@ -232,12 +216,11 @@ class Transformation:
         return TransMat(mat=pre_mat.mat * self.mat4())
     #f distance
     def distance(self, other:"Transformation") -> float:
-        td = glm.distance(self.translation, other.translation)
-        sd = glm.distance(self.scale, other.scale)
-        qn : glm.Quat = glm.inverse(self.quaternion)  # type: ignore
-        qn = qn * other.quaternion
-        if qn.w<0: qn = -qn
-        qd = glm.length(qn - glm.quat())
+        td = Glm.vec3.distance(self.translation, other.translation)
+        sd = Glm.vec3.distance(self.scale, other.scale)
+        qn = Glm.quat.multiply(Glm.quat.create(), Glm.quat.invert(Glm.quat.create(),self.quaternion), other.quaternion)
+        if qn[3]<0: qn = -qn
+        qd = Glm.quat.length(qn - Glm.quat())
         return td+sd+qd
     #f lerp
     def lerp(self, t:float, in0:"Transformation", in1:"Transformation") -> None:
@@ -246,7 +229,7 @@ class Transformation:
             self.translation[i] = t*in0.translation[i] + tn*in1.translation[i]
             self.scale[i]       = t*in0.scale[i]       + tn*in1.scale[i]
             pass
-        self.quaternion = glm.slerp(in0.quaternion, in1.quaternion, t)
+        self.quaternion = Glm.slerp(in0.quaternion, in1.quaternion, t)
         pass
     #f All done
     pass

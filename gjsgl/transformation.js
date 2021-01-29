@@ -118,6 +118,7 @@ class Transformation {
     //f rotate
     rotate(self, axis, angle) {
         const q = Glm.quat.setAxisAngle(Glm.quat.create(), axis, angle);
+        die_in_a_heap();
         Glm.quat.multiply(this.quaternion , this.quaternion);
         Glm.quat.multiply(this.translation, this.translation);
     }

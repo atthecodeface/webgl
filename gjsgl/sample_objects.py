@@ -1,5 +1,4 @@
 #a Imports
-import glm
 from .object import Object, Submesh
 
 from typing import *

@@ -2,12 +2,12 @@
 from OpenGL import GL
 import json
 import base64
-import glm
 import ctypes
 import numpy as np
 import PIL
 from pathlib import Path
 from dataclasses import dataclass
+from . import glm as Glm
 from .transformation import Transformation
 from .object import MeshBase
 from .bone import Bone, BoneSet
@@ -467,16 +467,18 @@ class Node:
             pass
         if "rotation" in json:
             q = json["rotation"]
-            self.transformation.quaternion.w = q[0]
-            self.transformation.quaternion.x = q[1]
-            self.transformation.quaternion.y = q[2]
-            self.transformation.quaternion.z = q[3]
+            self.transformation.quaternion[0] = q[1] # x
+            self.transformation.quaternion[1] = q[2] # y
+            self.transformation.quaternion[2] = q[3] # z
+            self.transformation.quaternion[3] = q[0] # w
             pass
         if "scale" in json:
-            self.transformation.scale = glm.vec3(json["scale"])
+            scale = json["scale"]
+            for i in range(3): self.transformation.scale[i] = scale[i]
             pass
         if "translation" in json:
-            self.transformation.translation = glm.vec3(json["translation"])
+            translation = json["translation"]
+            for i in range(3): self.transformation.translation[i] = translation[i]
             pass
         pass
     #f calculate_depth

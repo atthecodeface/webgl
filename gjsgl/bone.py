@@ -1,22 +1,14 @@
 #a Imports
-import glm
 import numpy as np
+import math
+from . import glm as Glm
 from .hierarchy import Hierarchy
 from .transformation import Transformation
 from .animate import Linear, Bezier2
 
 from typing import *
-if not TYPE_CHECKING:
-    glm.Vec3 = Tuple[float,float,float]
-    glm.Vec4 = Tuple[float,float,float,float]
-    glm.Mat4 = Tuple[glm.Vec4,glm.Vec4,glm.Vec4,glm.Vec4]
-    glm.Quat = object
-    pass
 FloatArray = Any
 
-def mat4_str(mat:glm.Mat4) -> str:
-    return "[" + ("   ".join([" ".join([str(v) for v in col]) for col in mat])) + "]" # type: ignore
-    
 #a Bone and pose classes
 #c Bone
 class Bone:
@@ -39,8 +31,8 @@ class Bone:
     children       : List["Bone"]
     transformation : Transformation # at rest
     matrix_index   : int # Index into matrix array to put this bones animated mtm
-    ptb            : glm.Mat4
-    mtb            : glm.Mat4
+    ptb            : Glm.mat4
+    mtb            : Glm.mat4
     #f __init__
     def __init__(self, parent:Optional["Bone"], transformation:Transformation, matrix_index:int=-1) -> None:
         self.parent = parent
@@ -49,6 +41,8 @@ class Bone:
             pass
         self.children = []
         self.matrix_index = matrix_index
+        self.ptb = Glm.mat4.create()
+        self.mtb = Glm.mat4.create()
         self.transformation = Transformation()
         self.set_transformation(transformation)
         pass
@@ -89,12 +83,12 @@ class Bone:
     #f derive_matrices
     def derive_matrices(self) -> None:
         btp = self.transformation.mat4()
-        self.ptb = glm.inverse(btp) # type: ignore
+        self.ptb = Glm.inverse(btp) # type: ignore
         if self.parent is None:
-            self.mtb = glm.mat4(self.ptb)
+            Glm.mat4.copy(self.mtb, self.ptb)
             pass
         else:
-            self.mtb = self.ptb * self.parent.mtb
+            Glm.mat4.multiply(self.mtb, self.ptb, self.parent.mtb)
             pass
         for c in self.children:
             c.derive_matrices()
@@ -105,8 +99,8 @@ class Bone:
         hier.add(f"Bone {self.matrix_index}")
         hier.push()
         hier.add(f"{self.transformation}")
-        if hasattr(self, "ptb"): hier.add(f"parent-to-bone: {mat4_str(self.ptb)}")
-        if hasattr(self, "mtb"): hier.add(f"mesh-to-bone  : {mat4_str(self.mtb)}")
+        if hasattr(self, "ptb"): hier.add(f"parent-to-bone: {self.ptb}")
+        if hasattr(self, "mtb"): hier.add(f"mesh-to-bone  : {self.mtb}")
         for c in self.children:
             c.hier_debug(hier)
             pass
@@ -177,10 +171,10 @@ class BonePose:
     parent           : Optional["BonePose"]
     children         : List["BonePose"]
     transformation   : Transformation # relative to bone rest
-    btp              : glm.Mat4
-    ptb              : glm.Mat4
-    animated_btm     : glm.Mat4
-    animated_mtm     : glm.Mat4
+    btp              : Glm.mat4
+    ptb              : Glm.mat4
+    animated_btm     : Glm.mat4
+    animated_mtm     : Glm.mat4
     #f pose_bones
     @classmethod
     def pose_bones(cls:Type[T], bone:Bone, parent:Optional["BonePose"]=None) -> T:
@@ -200,10 +194,10 @@ class BonePose:
         self.transformation = Transformation()
         self.transformation_reset()
 
-        self.btp = glm.mat4()
-        self.ptb = glm.mat4()
-        self.animated_btm = glm.mat4() # bone to mesh
-        self.animated_mtm = glm.mat4() # mesh to animated mesh
+        self.btp = Glm.mat4.create()
+        self.ptb = Glm.mat4.create()
+        self.animated_btm = Glm.mat4.create() # bone to mesh
+        self.animated_mtm = Glm.mat4.create() # mesh to animated mesh
         pass
     #f set_parent
     def set_parent(self, parent:"BonePose") -> None:
@@ -230,14 +224,14 @@ class BonePose:
         pass
     #f derive_animation
     def derive_animation(self) -> None:
-        self.btp = self.transformation.mat4()
+        Glm.mat4.copy(self.btp, self.transformation.mat4())
         if self.parent is None:
-            self.animated_btm = glm.mat4(self.btp)
+            Glm.mat4.copy(self.animated_btm, self.btp)
             pass
         else:
-            self.animated_btm = self.parent.animated_btm * self.btp
+            Glm.mat4.multiply(self.animated_btm, self.parent.animated_btm, self.btp)
             pass
-        self.animated_mtm = self.animated_btm * self.bone.mtb
+        Glm.mat4.multiply(self.animated_mtm, self.animated_btm, self.bone.mtb)
         for c in self.children:
             c.derive_animation()
             pass
@@ -247,10 +241,10 @@ class BonePose:
         hier.add(f"Pose {self.bone.matrix_index}")
         hier.push()
         hier.add(f"{self.transformation}")
-        hier.add(f"parent-to-bone: {mat4_str(self.ptb)}")
-        hier.add(f"bone-to-parent: {mat4_str(self.btp)}")
-        hier.add(f"bone-to-mesh  : {mat4_str(self.animated_btm)}")
-        hier.add(f"mesh-to-mesh  : {mat4_str(self.animated_mtm)}")
+        hier.add(f"parent-to-bone: {self.ptb}")
+        hier.add(f"bone-to-parent: {self.btp}")
+        hier.add(f"bone-to-mesh  : {self.animated_btm}")
+        hier.add(f"mesh-to-mesh  : {self.animated_mtm}")
         for c in self.children:
             c.hier_debug(hier)
             pass
@@ -315,10 +309,7 @@ class BonePoseSet:
         for (bone,pose) in self.iter_bones_and_poses():
             if bone.matrix_index<0: continue
             base = bone.matrix_index*16
-            for i in range(16):
-                (r,c) = (i//4, i%4)
-                self.data[base+i] = pose.animated_mtm[r][c]
-                pass
+            self.data[base:base+16] = pose.animated_mtm[:16]
             pass
         pass
     #f hier_debug
@@ -335,13 +326,13 @@ class BonePoseSet:
     pass
 #c AnimatedBonePose
 class AnimatedBonePose:
-    def __init__(self, poses:BonePoseSet) -> None:
+    def __init__(self, poses:List[BonePose]) -> None:
         self.poses = poses
         self.animatable = Bezier2(Transformation())
         self.animatable.set_target( t1=1.,
-                                    c0=Transformation( quaternion=glm.angleAxis(0.3,glm.vec3((1.,0.,0.)))),
-                                    c1=Transformation( quaternion=glm.angleAxis(0.3,glm.vec3((1.,0.,0.)))),
-                                    tgt=Transformation(quaternion=glm.angleAxis(0.3,glm.vec3((1.,0.,0.)))),
+                                    c0=Transformation( quaternion=Glm.quat.setAxisAngle(Glm.quat.create(), Glm.vec3.fromValues(1.,0.,0.), 0.3)),
+                                    c1=Transformation( quaternion=Glm.quat.setAxisAngle(Glm.quat.create(), Glm.vec3.fromValues(1.,0.,0.), 0.3)),
+                                    tgt=Transformation(quaternion=Glm.quat.setAxisAngle(Glm.quat.create(), Glm.vec3.fromValues(1.,0.,0.), 0.3)),
                                     callback=self.animation_callback )
         pass
     def interpolate_to_time(self, t:float) -> None:
@@ -356,9 +347,9 @@ class AnimatedBonePose:
         tgt = 1.0
         if (t_int&1): tgt=-1.
         self.animatable.set_target( t1=t_sec+1.,
-                                    c0=Transformation(quaternion=glm.angleAxis(0.3,glm.vec3((1.,0.,0.)))),
-                                    c1=Transformation(quaternion=glm.angleAxis(0.5,glm.vec3((0.,1.,0.)))),
-                                    tgt=Transformation(quaternion=glm.angleAxis(tgt*0.3,glm.vec3((1.,0.,0.)))),
+                                    c0=Transformation(quaternion=Glm.quat.setAxisAngle(Glm.quat.create(), Glm.vec3.fromValues(1.,0.,0.), 0.3)),
+                                    c1=Transformation(quaternion=Glm.quat.setAxisAngle(Glm.quat.create(), Glm.vec3.fromValues(0.,1.,0.), 0.5)),
+                                    tgt=Transformation(quaternion=Glm.quat.setAxisAngle(Glm.quat.create(), Glm.vec3.fromValues(1.,0.,0.), tgt*0.3)),
                                     callback=self.animation_callback )
         pass
     pass
